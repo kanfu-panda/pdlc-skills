@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-orange)](https://docs.anthropic.com/)
 
 > 作者：**LEO**
@@ -72,51 +72,50 @@ $ /pdlc-feature 给用户登录加手机号验证
 
 ## 安装
 
-```bash
-git clone git@github.com:kanfu-panda/pdlc-skills.git
-cd pdlc-skills
-```
-
-### 项目级安装（推荐）
+> 一行命令搞定，无需 clone 整个仓库。会从 GitHub 拉取最新发布版本。
 
 ```bash
-bash install.sh --project /path/to/my-project
-# 安装到 <project>/.claude/skills/pdlc/
+# 全局安装（~/.claude/skills/pdlc/）
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --global
+
+# 项目级安装（<project>/.claude/skills/pdlc/）
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --project /path/to/my-project
 ```
 
-### 全局安装
-
-```bash
-bash install.sh --global
-# 安装到 ~/.claude/skills/pdlc/
-```
-
-### 交互式安装
-
-```bash
-bash install.sh
-# 按提示选择全局 / 项目级
-```
+就这一条。安装器会下载对应版本的 tarball，解压，把 skill 文件复制到你的 `.claude/skills/pdlc/` 目录下。
 
 ### 升级
 
+同一条命令——每次执行都会拉最新发布版：
+
 ```bash
-bash install.sh --upgrade --global
-bash install.sh --upgrade --project /path/to/my-project
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --upgrade --global
 ```
 
 ### 卸载
 
 ```bash
-bash install.sh --uninstall --global
-bash install.sh --uninstall --project /path/to/my-project
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --uninstall --global
 ```
 
-### 查看版本 / 获取最新版
+### 锁定到特定版本
 
 ```bash
-bash install.sh --version       # 显示本地克隆 / 已安装 / GitHub 最新版本
-bash install.sh --self-update   # git pull 拉取最新源码（需是 git clone）
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --global --ref v1.0.0
+```
+
+`--ref main` 会安装开发分支（不建议普通用户用）。
+
+### 查看版本
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --version
 ```
 
 示例输出：
@@ -124,15 +123,26 @@ bash install.sh --self-update   # git pull 拉取最新源码（需是 git clone
 ```text
 PDLC Skill version status
 ──────────────────────────────────────
-  Local clone:         1.0.0
   Installed (global):  1.0.0
   Latest on GitHub:    1.1.0
 
-⚠️  Your local clone (1.0.0) is behind GitHub (1.1.0).
-    To upgrade:
-      cd /path/to/pdlc-skills && git pull
-      bash install.sh --upgrade --global
+⚠️  Installed version (1.0.0) is behind latest (1.1.0).
+    Upgrade:
+      curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh | bash -s -- --upgrade --global
 ```
+
+### 贡献者 / 自定义模板的用户
+
+如果你想本地编辑命令体或文档模板再装：
+
+```bash
+git clone https://github.com/kanfu-panda/pdlc-skills.git
+cd pdlc-skills
+# 改 references/templates/*.md 或 references/commands/*.md
+bash install.sh --global
+```
+
+clone 模式下，`bash install.sh --self-update` 会替你跑 `git pull`；`bash install.sh --version` 会同时显示本地克隆 / 已安装 / GitHub 三个版本。
 
 ## 使用方式
 
@@ -146,7 +156,7 @@ PDLC Skill version status
 
 Claude 会读取 `SKILL.md` 入口索引，定位到对应命令规范文件（`references/commands/<名称>.md`），并按其中的工作流执行。
 
-## 命令清单（v2 分层结构）
+## 命令清单（三层结构）
 
 ### Layer 1 · 入口（3 个，新手只学这 3 个）
 
@@ -183,7 +193,7 @@ Claude 会读取 `SKILL.md` 入口索引，定位到对应命令规范文件（`
 
 ## 新手路径（3 步上手）
 
-1. 安装：`bash install.sh --project /path/to/my-project`
+1. 安装：`curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh | bash -s -- --project /path/to/my-project`
 2. 写代码：对 Claude 说 "用 PDLC 流程给登录加验证码"
 3. 修 bug：对 Claude 说 "按 PDLC 流程修分页器在 0 条时崩溃的问题"
 

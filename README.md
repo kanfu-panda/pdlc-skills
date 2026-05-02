@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-orange)](https://docs.anthropic.com/)
 
 > Author: **LEO**
@@ -74,51 +74,50 @@ Every artifact above is a real file you can `git diff`. Run `/pdlc-status` any t
 
 ## Install
 
+> One-liner — no clone needed. Pulls the latest published release from GitHub.
+
 ```bash
-git clone git@github.com:kanfu-panda/pdlc-skills.git
-cd pdlc-skills
+# Global (~/.claude/skills/pdlc/)
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --global
+
+# Project-scoped (<project>/.claude/skills/pdlc/)
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --project /path/to/my-project
 ```
 
-### Project-scoped (recommended)
+That's it. The installer downloads the matching release tarball, extracts it, and copies only the skill files to your `.claude/skills/pdlc/` directory.
 
-Install into one project so your team gets it via `git clone`:
+### Upgrade
+
+Same one-liner — every invocation fetches the latest release:
 
 ```bash
-bash install.sh --project /path/to/my-project
-# installs to <project>/.claude/skills/pdlc/
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --upgrade --global
 ```
 
-### Global
-
-Install once for every project on your machine:
+### Uninstall
 
 ```bash
-bash install.sh --global
-# installs to ~/.claude/skills/pdlc/
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --uninstall --global
 ```
 
-### Interactive
+### Pin to a specific version
 
 ```bash
-bash install.sh
-# prompts for global vs project
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --global --ref v1.0.0
 ```
 
-### Upgrade / uninstall
+`--ref main` installs from the development branch (not recommended for end users).
+
+### Check your version
 
 ```bash
-bash install.sh --upgrade   --global
-bash install.sh --upgrade   --project /path/to/my-project
-
-bash install.sh --uninstall --global
-bash install.sh --uninstall --project /path/to/my-project
-```
-
-### Check your version / fetch the latest
-
-```bash
-bash install.sh --version       # Show local clone, installed, and latest GitHub version
-bash install.sh --self-update   # git pull the latest source (requires a git clone)
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --version
 ```
 
 Sample output:
@@ -126,15 +125,26 @@ Sample output:
 ```text
 PDLC Skill version status
 ──────────────────────────────────────
-  Local clone:         1.0.0
   Installed (global):  1.0.0
   Latest on GitHub:    1.1.0
 
-⚠️  Your local clone (1.0.0) is behind GitHub (1.1.0).
-    To upgrade:
-      cd /path/to/pdlc-skills && git pull
-      bash install.sh --upgrade --global
+⚠️  Installed version (1.0.0) is behind latest (1.1.0).
+    Upgrade:
+      curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh | bash -s -- --upgrade --global
 ```
+
+### For contributors / template customization
+
+If you want to edit command bodies or document templates locally before installing:
+
+```bash
+git clone https://github.com/kanfu-panda/pdlc-skills.git
+cd pdlc-skills
+# edit references/templates/*.md or references/commands/*.md
+bash install.sh --global
+```
+
+In a clone, `bash install.sh --self-update` runs `git pull` for you, and `bash install.sh --version` shows local-clone vs installed vs latest.
 
 ---
 
@@ -195,7 +205,7 @@ Specialized commands you can stack on top of the stages.
 
 ## 3-step quick start
 
-1. **Install:** `bash install.sh --project /path/to/my-project`
+1. **Install:** `curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh | bash -s -- --project /path/to/my-project`
 2. **Ship a feature:** tell Claude "use PDLC to add a captcha to login"
 3. **Fix a bug:** tell Claude "use PDLC to fix the pagination crash on empty lists"
 
