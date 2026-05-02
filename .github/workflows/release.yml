@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches VERSION
+        run: |
+          tag="${GITHUB_REF#refs/tags/v}"
+          file="$(cat VERSION | head -1)"
+          if [[ "$tag" != "$file" ]]; then
+            echo "Tag ($tag) does not match VERSION file ($file)" >&2
+            exit 1
+          fi
+          echo "Tag and VERSION match: $tag"
+
+      - name: Extract changelog section for this version
+        id: changelog
+        run: |
+          version="${GITHUB_REF#refs/tags/v}"
+          {
+            echo "body<<__END_OF_BODY__"
+            awk -v v="$version" '
+              $0 ~ "^## \\[" v "\\]" { in_section = 1; next }
+              in_section && /^## \[/ { exit }
+              in_section { print }
+            ' CHANGELOG.md
+            echo "__END_OF_BODY__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.1.0
+        with:
+          name: v${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false

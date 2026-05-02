@@ -1,0 +1,8 @@
+# Default reviewer for everything
+*               @kanfu-panda
+
+# Critical paths require explicit review
+/install.sh     @kanfu-panda
+/tests/         @kanfu-panda
+/.github/       @kanfu-panda
+/SKILL.md       @kanfu-panda

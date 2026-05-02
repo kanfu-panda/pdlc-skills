@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local scratch
+*.bak
+*.tmp
+/tmp/
+/test-output/
+
+# Per-developer Claude Code settings
+.claude/settings.local.json
+
+# Future tooling, just in case
+node_modules/
