@@ -1,0 +1,62 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Rendered Markdown preview output (e.g., VS Code Markdown Preview Enhanced
+# generates a .html next to each .md file — these get huge and have no
+# business in this repo; if you ever need to ship an HTML file, override
+# with `!path/to/that-file.html`)
+*.html
+*.html.map
+
+# Local scratch
+*.bak
+*.tmp
+*.orig
+*.rej
+/tmp/
+/test-output/
+
+# Claude Code: never commit anything from .claude/
+# (settings, hooks, commands, skills — all stay local to each developer's machine)
+.claude/
+
+# Secrets — defensive patterns. NEVER commit these.
+*.env
+*.env.*
+!*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.crt
+*.cer
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.gpg
+secrets/
+credentials/
+**/secret_*
+**/credentials*
+
+# Python (in case any tooling shows up)
+__pycache__/
+*.pyc
+
+# Node (just in case)
+node_modules/
+npm-debug.log*
+
+# Coverage / test output
+coverage/
+.coverage
+htmlcov/

@@ -1,0 +1,36 @@
+# gitleaks configuration — extends the default ruleset with project-specific
+# allowlists for legitimate placeholders and template examples.
+#
+# Test locally: gitleaks detect --source . --redact --verbose
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow legitimate placeholders and template examples"
+
+paths = [
+    # Document templates contain illustrative password / token references
+    # by design (e.g., `DB_PASSWORD: ****`).
+    '''references/templates/.*\.md''',
+    # Command bodies that document anti-patterns include literal strings
+    # like "硬编码密钥/密码" in instructions.
+    '''references/commands/adopt\.md''',
+    '''references/commands/security\.md''',
+    # Self-documentation may discuss tokens and secrets in prose.
+    '''docs/.*\.md''',
+    '''SECURITY\.md''',
+    '''CONTRIBUTING\.md''',
+    '''CHANGELOG\.md''',
+]
+
+regexes = [
+    # i18n translation example
+    '''"password":\s*"密码"''',
+    # JWT auth-method label (not an actual JWT)
+    '''Bearer Token \(JWT\)''',
+    # Env-var references in deploy docs
+    '''\$\{[A-Z_]+_(PASSWORD|SECRET|TOKEN|KEY)\}''',
+    # Placeholder secrets in example configs
+    '''(password|secret|token|key)\s*[:=]\s*['"]?(\*+|<.*>|YOUR_.*|<your-.*>|TODO|PLACEHOLDER|xxx+|\*\*\*\*)['"]?''',
+]
