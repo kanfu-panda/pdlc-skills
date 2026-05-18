@@ -247,3 +247,25 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 - `CODE_OF_CONDUCT.md` — 行为准则
 - `SECURITY.md` — 安全策略
 - `CHANGELOG.md` — 版本变更记录
+
+---
+
+## 💖 支持本项目
+
+PDLC 是业余时间维护的开源项目。如果它给你省下了几个小时（或者一点头发），欢迎支持后续迭代。
+
+**捐赠通道：**
+
+- 🇨🇳 **[爱发电](https://afdian.com/a/kanfu-panda)** — 中国大陆用户首选，支付宝 / 微信支付，原生支持档位订阅与一次性打赏
+- 🌍 **[PayPal](https://paypal.me/Leosh980)** — 国际用户专用，金额自定，一次性打赏
+
+**档位（爱发电按档订阅 / 一次性同价）：**
+
+| 档位 | 爱发电 | PayPal 等值 | 你将获得 |
+|---|---|---|---|
+| ☕ 打赏 | ¥10 一次性 | $1+ 一次性 | 真诚感谢，不进名单 |
+| 🌱 支持者 | ¥30/月 | $5+ 一次性 | 昵称登上 [SPONSORS.md](./SPONSORS.md) |
+| 🌳 长期赞助者 | ¥66/月 | $20+ 一次性 | 昵称 + 头像 + 个人链接登上 [SPONSORS.md](./SPONSORS.md) |
+| 🏢 企业赞助 | ¥888/月 | $100+/月 | 企业 Logo + 链接出现在 `README.md` 顶部 |
+
+通过 PayPal 赞助后，请在 [SPONSORS issue](https://github.com/kanfu-panda/pdlc-skills/issues/new?title=%5BSponsor%5D%20add%20me%20to%20the%20list) 留下你的 GitHub 用户名，方便加入名单。名单按月度同步，见 [SPONSORS.md](./SPONSORS.md)。
