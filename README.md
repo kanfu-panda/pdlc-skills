@@ -265,6 +265,28 @@ User manual: [docs/usage-guide.md](./docs/usage-guide.md) · Release notes: [CHA
 
 ---
 
+## 💖 Support this project
+
+PDLC is built and maintained in spare time. If it saves you hours (or sanity), consider supporting its development.
+
+**Donation channels:**
+
+- 🇨🇳 **[Afdian (爱发电)](https://afdian.com/a/kanfu-panda)** — for users in China; Alipay / WeChat Pay; native support for monthly tiers and one-time tips.
+- 🌍 **[PayPal](https://paypal.me/Leosh980)** — for international users; any amount, one-time.
+
+**Tiers (Afdian — choose monthly or one-time at the same amount):**
+
+| Tier | Afdian | PayPal equivalent | What you get |
+|---|---|---|---|
+| ☕ Tip | ¥10 one-time | $1+ one-time | Thank-you. Not listed. |
+| 🌱 Backer | ¥30/month | $5+ one-time | Your name on [SPONSORS.md](./SPONSORS.md) |
+| 🌳 Sponsor | ¥66/month | $20+ one-time | Name + avatar + link on [SPONSORS.md](./SPONSORS.md) |
+| 🏢 Enterprise | ¥888/month | $100+/month | Logo + link at the top of `README.md` |
+
+If you donate via PayPal, please drop your GitHub handle in [a SPONSORS issue](https://github.com/kanfu-panda/pdlc-skills/issues/new?title=%5BSponsor%5D%20add%20me%20to%20the%20list) so we can add you to the list. The list is updated monthly — see [SPONSORS.md](./SPONSORS.md).
+
+---
+
 ## License
 
 [MIT](./LICENSE) — use it, fork it, ship it.

@@ -1,0 +1,17 @@
+# 赞助渠道配置 — 仓库 Sponsor 按钮的数据源
+#
+# 现状：以下字段先用占位符填写，账号开通后替换为真实用户名/链接即可。
+# - GitHub Sponsors 需要先在 https://github.com/sponsors 申请并通过审核
+# - 爱发电（afdian.com）注册后立刻有个人页面 URL
+#
+# 完整字段说明：https://docs.github.com/sponsors/getting-started-with-github-sponsors/about-github-sponsors
+
+# GitHub Sponsors 用户名（不带 @）。审核通过前先注释掉，避免按钮链接到 404。
+# github: kanfu-panda
+
+# 自定义链接：可填多个。爱发电、Open Collective 的捐赠主页都放在这里。
+custom:
+  # 爱发电（中文用户首选，支付宝/微信收款，原生支持档位订阅）
+  - "https://afdian.com/a/kanfu-panda"
+  # PayPal（国际用户，一次性打赏；提现到国内银行卡）
+  - "https://paypal.me/Leosh980"
