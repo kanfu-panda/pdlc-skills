@@ -68,9 +68,9 @@ echo "Test: skills/ layout"
 assert_exists "skills/ directory exists" "skills"
 
 skill_count=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-assert_eq "exactly 31 sub-skill directories" "31" "$skill_count"
+assert_eq "exactly 33 sub-skill directories" "33" "$skill_count"
 
-for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship; do
+for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate; do
     assert_exists "skills/$name/SKILL.md exists" "skills/$name/SKILL.md"
 done
 
@@ -93,14 +93,24 @@ echo "Test: shared resources"
 assert_exists "references/templates/ directory exists" "references/templates"
 
 template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | wc -l | tr -d ' ')
-assert_eq "9 user-facing templates"                    "9"   "$template_count"
+assert_eq "11 user-facing templates"                   "11"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "9 shared prompt fragments"                  "9"   "$prompt_count"
+assert_eq "10 shared prompt fragments"                 "10"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
+
+# ─── v1.1 invariants ───
+assert_exists "docs/ARCHITECTURE.md exists" "docs/ARCHITECTURE.md"
+assert_exists "docs/GLOSSARY.md exists" "docs/GLOSSARY.md"
+assert_exists "architecture-overview template exists" "references/templates/architecture-overview-template.md"
+assert_exists "glossary template exists" "references/templates/glossary-template.md"
+assert_contains "pdlc-standard declares artifact_type: surface" "artifact_type: surface" "$(cat skills/pdlc-standard/SKILL.md)"
+assert_contains "state-update schema includes relations block" '"relations"' "$(cat references/templates/prompts/state-update.md)"
+assert_contains "pdlc-trace header includes relations line" '关系:' "$(cat references/templates/prompts/pdlc-trace.md)"
+assert_eq "pdlc-arch dropped legacy 07_reviews/design path" "0" "$(grep -c '07_reviews/design' skills/pdlc-arch/SKILL.md || true)"
 
 # ─── Test 4: install.sh without claude CLI ───
 echo ""

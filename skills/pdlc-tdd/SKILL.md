@@ -38,7 +38,7 @@ terminal_state: tdd_done
 ## 工作流程
 
 1. **阅读设计文档**: 阅读找到的设计文档，全面理解接口/架构/数据模型
-2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范
+2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 3. **编写测试计划**: 在 `docs/04_testing/unit-tests/` 下创建测试计划文档
    - **使用模板**: `templates/test-plan-template.md`
    - **文件名格式**: `<功能ID>-<功能名>-test-plan.md`（如 `F20260326-01-user-auth-test-plan.md`）

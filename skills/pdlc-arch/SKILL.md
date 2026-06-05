@@ -1,12 +1,13 @@
 ---
 name: pdlc-arch
-description: 架构分析
+description: 架构分析（生成/更新 docs/ARCHITECTURE.md 系统架构总览 · surface 型）
 argument-hint: <项目 | 模块范围>
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: design
+artifact_type: surface
 produces:
-  - docs/02_design/architecture/**
+  - docs/ARCHITECTURE.md
 requires: []
 next_step: null
 terminal_state: null
@@ -50,36 +51,42 @@ terminal_state: null
 - 容量规划
 
 ## 工作流程
-1. 扫描 `backend/` 和 `frontend/` 下的所有服务和应用
-2. 阅读 `docs/02_design/architecture/` 下的架构设计文档
-3. 分析代码中的依赖关系和调用链路
-4. **【必须创建文件】** 生成架构分析报告到 `docs/07_reviews/design/`
 
-> ⚠️ **必须创建文件，不可仅在对话中输出。**
+> **架构总览是 surface 型产物**：`docs/ARCHITECTURE.md` 描述"系统当前长什么样"，**就地覆盖更新**，不按日期累积多份文件。演进历史靠 `git log docs/ARCHITECTURE.md` 追溯。这与 per-feature 的 `docs/02_design/architecture/F-xxx-arch.md`（ledger 型，记录"为某个 feature 为什么改架构"）分工互补。
+
+1. 扫描 `backend/` 和 `frontend/` 下的所有服务和应用
+2. 阅读 `docs/02_design/architecture/` 下的 per-feature 架构 ledger（若有）
+3. 分析代码中的依赖关系和调用链路
+4. **遗留检测**：若发现旧版按日期命名的 `*-arch-analysis.md`（散落在 `docs/02_design/architecture/` 或旧 review 目录，即 v1.0 的 v1..v5 累积模式），提示并移到 `docs/.archive/architecture/`，以最新一份作为 `ARCHITECTURE.md` 的起点
+5. **【必须创建/更新文件】** 就地生成/覆盖 `docs/ARCHITECTURE.md`（参考 `templates/architecture-overview-template.md`）
+
+> ⚠️ **必须写入磁盘，不可仅在对话中输出。**
 
 ## 输出格式
 
-文件名: `YYYYMMDD-arch-analysis.md`
+文件路径：`docs/ARCHITECTURE.md`（固定，就地覆盖）
 
-**文档顶部包含 PDLC 追溯头**：
+**文档顶部包含 PDLC 追溯头 + surface 标记**：
 ```
+<!-- artifact_type: surface -->
 <!-- PDLC-TRACE -->
-<!-- 功能名称: 架构分析 -->
-<!-- 阶段: 架构评估 -->
-<!-- 创建时间: <ISO 8601> -->
+<!-- 功能名称: 架构总览 -->
+<!-- 阶段: design -->
+<!-- 创建时间: <执行时的实际 ISO 8601 时间戳> -->
 ```
 
 **报告内容**：
-- 架构全景图（文本描述）
-- 各维度评分（1-5分）
+- 架构全景图（文本描述 / mermaid）
+- 服务拆分 / 通信 / 数据 / 可观测性 / 可扩展性 各维度评分（1-5）
 - 问题清单与改进建议
 
-**创建后验证**：确认文件已存在于 `docs/07_reviews/design/` 目录
+**创建后验证**：确认 `docs/ARCHITECTURE.md` 已存在且为本次内容
 
 ## 要求
 <!-- @include templates/prompts/output-language.md -->
 - 评价要客观，给出依据
 - 建议要可操作，标注优先级
+- surface 铁律：不创建带日期/版本号的架构文件，永远就地覆盖 `ARCHITECTURE.md`
 
 $ARGUMENTS
 
@@ -88,7 +95,7 @@ $ARGUMENTS
 **本命令的 handoff 输出：**
 
 ```
-✅ 架构分析报告 完成
-📦 产出：docs/02_design/architecture/YYYYMMDD-arch-analysis.md
+✅ 架构总览已更新：docs/ARCHITECTURE.md
+📦 surface 型就地覆盖（历史见 git log docs/ARCHITECTURE.md）
 👉 下一步：（本次流程结束，无后续）
 ```

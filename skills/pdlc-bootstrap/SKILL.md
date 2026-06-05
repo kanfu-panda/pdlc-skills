@@ -109,10 +109,12 @@ terminal_state: null
    - 参考 `templates/prd-template.md` 模板格式
    - **文档顶部包含 PDLC 追溯头**（功能ID、阶段: 需求、前置文档: 无）
    - 包含：项目背景、目标用户、功能清单（基于服务拆分）、非功能需求、验收标准
-2. **架构设计草稿**：在 `docs/02_design/architecture/` 下创建 `<功能ID>-<项目名>-arch.md`
+2. **架构设计草稿（per-feature ledger）**：在 `docs/02_design/architecture/` 下创建 `<功能ID>-<项目名>-arch.md`
    - 参考 `templates/arch-design-template.md` 模板格式
    - **文档顶部包含 PDLC 追溯头**（功能ID、阶段: 设计、前置文档指向 PRD）
    - 包含：系统架构图（文本描述）、服务间通信方式、技术栈决策
+   - ℹ️ 这是 **ledger 型**（记录"为这个 feature 为什么这样设计"）。系统级**架构总览**是 surface 型，由 `/pdlc-arch` 单独生成/维护 `docs/ARCHITECTURE.md`，不在 bootstrap 阶段创建。
+   - ⚠️ **遗留检测**：若发现旧版 `*-arch-analysis.md`（v1.0 的 v1..v5 累积模式），提示用户运行 `/pdlc-arch` 整合到 `docs/ARCHITECTURE.md` 并归档旧文件。
 3. **API 设计模板**：在 `docs/02_design/api/` 下为每个后端服务创建 `<功能ID>-<服务名>-api.md`
    - 参考 `templates/api-design-template.md` 模板格式
    - **文档顶部包含 PDLC 追溯头**

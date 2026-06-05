@@ -27,7 +27,7 @@ For "how do I..." questions, design discussions, or anything where you're not ye
 
 - `.claude-plugin/plugin.json` — plugin manifest (name, version, description, ...)
 - `.claude-plugin/marketplace.json` — marketplace manifest (so the repo itself is a marketplace)
-- `skills/pdlc-<name>/SKILL.md` — 31 sub-skill specs. Each becomes the slash command `/pdlc-<name>`.
+- `skills/pdlc-<name>/SKILL.md` — 33 sub-skill specs. Each becomes the slash command `/pdlc-<name>`.
 - `references/templates/prompts/*.md` — shared prompt fragments referenced via `<!-- @include templates/prompts/<x>.md -->` from skill bodies
 - `references/templates/*-template.md` — user-facing document templates
 - `install.sh` — curl-based installer wrapping `claude plugin marketplace add` + `claude plugin install`
@@ -61,7 +61,7 @@ claude plugin install pdlc@pdlc-skills
 bash install.sh --global
 ```
 
-Then restart Claude Code and verify `/pdlc-` autocomplete shows all 31 sub-commands.
+Then restart Claude Code and verify `/pdlc-` autocomplete shows all 33 sub-commands.
 
 To uninstall: `claude plugin uninstall pdlc@pdlc-skills`.
 

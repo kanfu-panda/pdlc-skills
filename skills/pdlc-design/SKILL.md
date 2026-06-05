@@ -51,7 +51,7 @@ terminal_state: design_done
 
 1. 先阅读找到的 PRD 文档，全面理解需求
 2. 参考 `templates/api-design-template.md` 获取 API 设计模板格式
-3. 参考 `docs/00_standards/` 目录了解项目规范
+3. 参考 `docs/00_standards/` 目录了解项目规范（未命中 → 提示 `consider /pdlc-standard add <category>/<topic>`）
 4. **文件名格式**: `<功能ID>-<功能名>-<类型>.md`（如 `F20260326-01-user-auth-api.md`），类型可以是 api / arch / db
    - 若 PRD 为旧格式无功能ID，则使用旧格式 `YYYYMMDD-<功能名>-<类型>.md`
 5. **文档顶部必须包含 PDLC 追溯头**：

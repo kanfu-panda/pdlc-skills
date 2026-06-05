@@ -4,14 +4,14 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
-> Author: **LEO**
+> Author: **kanfu-panda**
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete Product Development Life Cycle workflow — **31 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
+**PDLC** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete Product Development Life Cycle workflow — **33 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
 
 Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
 
@@ -133,10 +133,10 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.0.0  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.1.0  Status: ✔ enabled
 ```
 
-In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 31 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
+In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 33 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
 
 ---
 
@@ -170,13 +170,14 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-retro` | Iteration retrospective with trend comparison |
 | `/pdlc-task` | In-stage task tracking |
 
-### Layer 3 · Tools (17)
+### Layer 3 · Tools (19)
 
 Specialized stages you can invoke explicitly.
 
 - **🎨 Design (4):** `/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
 - **🔍 Quality (3):** `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 - **🔧 Engineering (7):** `/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
+- **🔗 Governance (2):** `/pdlc-standard` · `/pdlc-relate`
 - **🏗️ Project lifecycle (3):** `/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
 
 ---
@@ -199,7 +200,9 @@ Check progress anytime: `/pdlc-status`.
 When a stage runs, it reads and writes these paths in your project:
 
 ```
-docs/00_standards/coding/                                   # coding standards (read by prd / implement / tdd / code-gen / onboard; optional)
+docs/ARCHITECTURE.md                                        # surface · whole-system overview (pdlc-arch, in-place)
+docs/GLOSSARY.md                                            # surface · project vocabulary
+docs/00_standards/                                          # surface · team conventions (pdlc-standard; read by prd / implement / tdd / code-gen / onboard)
 docs/01_requirements/prd/                                   # PRDs
 docs/02_design/{api,database,architecture,ui-ux}/           # technical design
 docs/03_development/                                        # developer manuals (onboard writes here)
@@ -207,23 +210,27 @@ docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   # tests & defect
 docs/05_deployment/                                         # deployment docs
 docs/06_tasks/                                              # in-stage task tracking
 docs/07_reviews/{doc,code,design,retro}/                    # review records
-docs/.pdlc-state/<feature-id>.json                          # state machine (one per feature, e.g. F20260419-01.json)
+docs/.pdlc-state/<feature-id>.json                          # state machine + relations (one per feature, e.g. F20260419-01.json)
+docs/.pdlc-state/_relations.json                            # auto · reverse index of feature relations (pdlc-relate)
+docs/.pdlc-state/_graph.md                                  # auto · mermaid relation graph
 ```
 
 ---
 
 ## Document templates
 
-`references/templates/` ships 9 standard document templates that Claude fills in per feature:
+`references/templates/` ships 11 standard document templates that Claude fills in per feature:
 
 - `prd-template.md` — Product Requirements Document
 - `api-design-template.md` — API design
-- `arch-design-template.md` — Architecture design
+- `arch-design-template.md` — Architecture design (per-feature, ledger)
+- `architecture-overview-template.md` — Whole-system architecture overview (surface)
 - `db-design-template.md` — Database schema design
 - `db-migrate-template.md` — DB migration script
 - `test-plan-template.md` — Test plan
 - `deploy-doc-template.md` — Deployment manual
 - `changelog-template.md` — Changelog entry
+- `glossary-template.md` — Project glossary (surface)
 - `adopt-report-template.md` — Legacy-project adoption report
 
 ---

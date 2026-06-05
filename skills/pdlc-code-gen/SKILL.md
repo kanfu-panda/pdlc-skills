@@ -61,7 +61,7 @@ terminal_state: null
 
 ## 要求
 <!-- @include templates/prompts/output-language.md -->
-- 生成的代码要遵循 `docs/00_standards/coding-standards.md` 规范
+- 生成的代码要遵循 `docs/00_standards/coding-standards.md` 规范（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 - 方法体用 `// TODO: 待实现` 占位
 - 测试用例用 `// TODO: 补充测试逻辑` 占位
 - 生成后提示用户先运行 `/tdd` 补充测试

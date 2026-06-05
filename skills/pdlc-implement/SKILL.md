@@ -44,7 +44,7 @@ terminal_state: impl_done
 
 1. **阅读设计文档**：`docs/02_design/` 对应子目录下的文档，逐字理解
 2. **阅读测试用例**：对应服务/应用下的测试代码，理解每条意图
-3. **阅读编码规范**：`docs/00_standards/coding/`
+3. **阅读编码规范**：`docs/00_standards/coding/`（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 4. **最少量实现**：使所有测试通过的最小代码
 5. **运行测试**：确认绿灯
 6. **重构优化**：测试通过前提下优化代码结构
