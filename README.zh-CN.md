@@ -4,14 +4,14 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
-> 作者：**LEO**
+> 作者：**kanfu-panda**
 > 仓库：[github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上"产品开发生命周期"工作流——**31 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
+**PDLC** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上"产品开发生命周期"工作流——**33 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
 
 每个阶段都强制硬契约（产物落到 `docs/`、每功能状态机、实现前必须有红灯测试、阶段交接前自检、自动修复仅一轮），让 AI 驱动的工程产出真实可审计的文件，而不是只活在对话里。
 
@@ -136,7 +136,7 @@ claude plugin list | grep pdlc
 # 应该输出： pdlc@pdlc-skills  Version: 1.0.0  Status: ✔ enabled
 ```
 
-在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 31 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
+在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 33 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
 
 ---
 
@@ -168,11 +168,12 @@ claude plugin list | grep pdlc
 | `/pdlc-retro` | 迭代复盘（趋势对比） |
 | `/pdlc-task` | 阶段内任务跟踪 |
 
-### Layer 3 · 工具（17 个，专项叠加）
+### Layer 3 · 工具（19 个，专项叠加）
 
 - **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
 - **🔍 质量（3）**：`/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 - **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
+- **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 - **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
 
 ---

@@ -57,7 +57,7 @@ Usage:
   bash install.sh --help                         Show this message
   bash install.sh                                Interactive mode
 
-After install, restart Claude Code and type \`/pdlc-\`. You should see 31
+After install, restart Claude Code and type \`/pdlc-\`. You should see 33
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
 
 Remote (no clone) install one-liner:
@@ -173,7 +173,7 @@ case "$ACTION" in
     echo ""
     echo "✅ Done."
     echo ""
-    echo "Restart Claude Code, then type /pdlc- to see all 31 sub-commands."
+    echo "Restart Claude Code, then type /pdlc- to see all 33 sub-commands."
     ;;
   upgrade)
     echo "Updating ${PLUGIN_NAME}@${MARKETPLACE_NAME}..."

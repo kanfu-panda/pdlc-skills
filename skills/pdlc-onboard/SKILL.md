@@ -38,7 +38,7 @@ terminal_state: null
 - 配置文件说明
 
 ### 3. 开发规范
-- 引用 `docs/00_standards/coding-standards.md`
+- 引用 `docs/00_standards/coding-standards.md`（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 - Git 分支策略和提交规范
 - PDLC 工作流说明
 

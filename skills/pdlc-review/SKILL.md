@@ -40,7 +40,7 @@ terminal_state: review_done
 ## 评审流程
 
 1. **阅读设计文档**: 先阅读 `docs/02_design/` 对应子目录下的相关设计文档
-2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范
+2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范（未命中 → 报告里提示 `consider /pdlc-standard add coding/<topic>`）
 3. **检查代码实现**: 对照设计文档逐一检查实现是否符合
 4. **检查测试覆盖**: 确认测试是否充分覆盖
 5. **代码质量自动检查与修复**（必须执行）：

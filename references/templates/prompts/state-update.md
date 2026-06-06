@@ -20,9 +20,20 @@
       "self_audit": { "passed": <N>, "failed": <N>, "manual": <N> }
     }
   ],
+  "relations": {
+    "extends": [],
+    "depends_on": [],
+    "supersedes": [],
+    "resolves": [],
+    "conflicts_with": [],
+    "relates_to": [],
+    "_updated_at": "<ISO 8601 | 省略>"
+  },
   "next_step": "<下一跳命令名，如 pdlc-design；若流程结束则为 null>"
 }
 ```
+
+> **`relations` 块（RFC#6，Phase 1 可选，Phase 2 推荐）**：6 个 key 对应 6 种关系类型，各为 ID 数组，存**出边**。类型语义与方向性见 `relations.md`。旧状态文件无此块时视为全空，向后兼容。入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`，不在此块手维护。
 
 ### 更新流程
 

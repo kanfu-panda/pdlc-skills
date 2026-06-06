@@ -48,7 +48,7 @@ terminal_state: prd_done
 ### 1.3 生成 PRD 文档
 
 1. 阅读 `templates/prd-template.md` 获取模板格式
-2. 阅读 `docs/00_standards/coding/` 获取编码规范（若存在）
+2. 阅读 `docs/00_standards/coding/` 获取编码规范（若存在；**查找未命中 → 在报告里提示 `consider /pdlc-standard add coding/<topic>`**）
 3. 文件名格式：`<功能ID>-<功能名>-prd.md`
 4. 文档顶部加 PDLC 追溯头：
 
@@ -57,6 +57,17 @@ terminal_state: prd_done
 5. 文档必须包含：背景与目标、目标用户、功能需求（含优先级）、非功能需求、验收标准
 <!-- @include templates/prompts/output-language.md -->
 7. 用户故事使用标准格式："作为[角色]，我希望[功能]，以便[收益]"
+
+### 1.4 关系检测（RFC#6）
+
+从输入检测 feature 关系信号：
+
+1. **关键词扫描**：输入含「基于 / 扩展 / 增强 / based on / extends / 依赖 / 替代 / 修复缺陷」等 → 存在关系
+2. **扫描现有 feature**：读 `docs/.pdlc-state/*.json` 列已有 feature 名，判断本 PRD 是否 extends/depends_on 其一
+3. **填 §6.1 关系表**：识别到的关系填入模板「6.1 关系」表（类型/目标ID/目标名/原因）。无则留空
+4. 类型语义见 `relations.md`
+
+> Phase 2：本步从"被动检测"升级为"主动提示用户确认关系"。
 
 ## 段二：自检（强制）
 

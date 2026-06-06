@@ -48,15 +48,34 @@ terminal_state: null
   - F20260419-01 停留在 design 超过 2 天，建议推进 /pdlc-tdd
 ```
 
+### 3.5 关系树视图（RFC#6）
+
+若存在 `docs/.pdlc-state/_relations.json`，附加关系视图（读其 index 的 inbound/outbound）：
+
+```
+🔗 关系链
+  F20260419-01 user-auth
+    ├─ extends → F20260415-03 feature-xyz
+    └─ ← depended_on_by F20260419-02 pwd-reset
+
+  🧩 孤立 feature（无任何关系）：F20260420-05
+```
+
+- 出边用 `→`，入边用 `← <反向类型>`
+- 末尾列 orphans（inbound + outbound 均空的 feature）
+- `_relations.json` 不存在时跳过本节（Phase 1 向后兼容）；Phase 2 起关系视图进入默认总览
+
 ### 4. 参数处理
 
 - `$ARGUMENTS` 为空或 `--all` → 输出所有功能
-- `$ARGUMENTS` 为功能ID → 只输出该功能的详情（含 history 全量）
+- `$ARGUMENTS` 为功能ID → 只输出该功能的详情（含 history 全量 + 该 feature 的关系）
+- `--relations` → 只输出关系树视图
 
 ## 参数
 
 - `--all`（默认）：全部功能总览
 - `<feature-id>`：单个功能的完整 history
+- `--relations`：只输出关系树视图（出边 + 入边 + orphans）
 - `--stale <days>`：列出停留在同一阶段超过 `<days>` 天的功能（默认 3 天）
 
 ---

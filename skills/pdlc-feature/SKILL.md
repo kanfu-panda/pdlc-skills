@@ -56,6 +56,16 @@ terminal_state: feature_done
 4. 生成功能ID：`F<YYYYMMDD>-<NN>`（如 `F20260326-01`）
 5. 从用户描述中提取功能名关键词（英文小写+连字符，如 `user-auth`）
 
+### 关系建议（RFC#6）
+
+分配 ID 后，扫描 `docs/.pdlc-state/*.json` 列出已有 feature 名，结合用户描述判断本功能与既有 feature 的关系：
+
+- 描述含「基于 / 扩展 / 增强 X」→ 建议 `extends X`
+- 描述含「需要 / 依赖 X」→ 建议 `depends_on X`
+- 描述含「替代 / 重做 X」→ 建议 `supersedes X`
+- 命中后填入 PRD §6.1 关系表，并在阶段四状态机的 `relations` 块写入。类型语义见 `relations.md`
+- 无明显关系则跳过
+
 ---
 
 ## 阶段一：需求分析（PRD）
