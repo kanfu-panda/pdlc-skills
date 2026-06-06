@@ -75,6 +75,7 @@ terminal_state: null
 
 - `--all`（默认）：全部功能总览
 - `<feature-id>`：单个功能的完整 history
+- `--relations`：只输出关系树视图（出边 + 入边 + orphans）
 - `--stale <days>`：列出停留在同一阶段超过 `<days>` 天的功能（默认 3 天）
 
 ---

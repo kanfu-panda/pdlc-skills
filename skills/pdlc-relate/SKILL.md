@@ -27,7 +27,7 @@ terminal_state: null
 
 ### `set <fid> <type> <target-fid> [target-fid...]`
 为 feature `<fid>` 添加 `<type>` 关系，指向一或多个目标。
-1. 读 `docs/.pdlc-state/<fid>.json`，在 `relations.<type>` 数组追加目标（去重）
+1. 读 `docs/.pdlc-state/<fid>.json`；**若无 `relations` 块**（旧状态文件 / Phase 1 关系块可选），先初始化六类空块（`extends`/`depends_on`/`supersedes`/`resolves`/`conflicts_with`/`relates_to`），再在 `relations.<type>` 数组追加目标（去重）
 2. 若 `<type>` 是对称类型（conflicts_with / relates_to）→ 同时在每个目标的 `<fid>.json` 镜像写入
 3. 写回后调用本命令 `rebuild` 流程刷新 `_relations.json` + `_graph.md`
 

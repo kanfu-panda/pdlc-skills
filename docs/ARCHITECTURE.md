@@ -1,4 +1,8 @@
 <!-- artifact_type: surface -->
+<!-- PDLC-TRACE -->
+<!-- 功能名称: 架构总览 -->
+<!-- 阶段: design -->
+<!-- 创建时间: 2026-06-03T00:00:00Z -->
 
 # Architecture
 
@@ -55,7 +59,7 @@ When applied to a target project, PDLC skills produce and maintain a fixed layou
 ```
 docs/
 ├── ARCHITECTURE.md              # surface · whole-system overview (pdlc-arch)
-├── GLOSSARY.md                  # surface · project vocabulary (pdlc-standard)
+├── GLOSSARY.md                  # surface · project vocabulary (manual, no dedicated skill in v1.1)
 ├── 00_standards/                # surface · team conventions (pdlc-standard)
 │   ├── _index.md
 │   └── <category>/<name>.md + _changelog.md

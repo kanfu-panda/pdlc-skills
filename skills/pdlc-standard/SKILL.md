@@ -24,7 +24,7 @@ terminal_state: null
 1. **不允许版本化文件名**：禁止 `coding-style-v2.md` / `coding-style-2026-Q1.md` 这类 ledger 绕路。一个主题永远一个文件，就地改。
 2. **就地编辑 + `_changelog.md`**：每次修改在同目录 `_changelog.md` 追加一条（日期 / 命令 / 变更摘要）。
 3. **git log 是真实审计链**：演进历史靠 `git log <file>` 看，不靠多份文件。
-4. **归档不删除**：废弃的规范用 `archive` 子命令移到 `docs/00_standards/.archive/`，留 stub 指向新位置。
+4. **归档不删除**：废弃的规范用 `archive` 子命令移到 `docs/.archive/standards/`（与 `/pdlc-arch` 共用统一 archive 根 `docs/.archive/`），留 stub 指向新位置。
 
 ## 段一：执行子命令
 
@@ -41,7 +41,7 @@ terminal_state: null
 就地编辑已有规范。改完在 `_changelog.md` 追加变更摘要。**禁止**另存为新版本文件。
 
 ### `archive <path>`
-移到 `docs/00_standards/.archive/`，原位置留 stub（一行指向新位置 + 废弃原因）。
+移到 `docs/.archive/standards/`，原位置留 stub（一行指向新位置 + 废弃原因）。
 
 ### `index`
 扫描 `docs/00_standards/**`，重新生成 `_index.md`（按 category 分组列出所有规范 + 一句话摘要）。
