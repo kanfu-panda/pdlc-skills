@@ -1,0 +1,11 @@
+# docs/00_standards/test-commands.yml — 本项目 check 命令的唯一真源
+#
+# pdlc-tdd / pdlc-implement / pdlc-review 与外层循环都从这里取「check」，消除歧义。
+# 每条是一个可执行命令；约定「退出码 0 = 通过」。
+# 达标线（如覆盖率阈值）写死在命令自身参数里，不做二次解释。
+# 用不到的项留空字符串。
+
+unit:     "<单元测试命令>"     # 例：cargo test / ./gradlew test / pnpm test
+coverage: "<覆盖率命令>"       # 例：cargo llvm-cov --fail-under-lines 85（达标线写死在 --fail-under）
+lint:     "<lint 命令>"        # 例：cargo clippy -- -D warnings / npx eslint .
+e2e:      "<e2e 命令>"         # 例：cargo test --test e2e / pnpm exec playwright test（可选）

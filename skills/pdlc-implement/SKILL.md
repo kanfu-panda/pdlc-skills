@@ -14,6 +14,8 @@ requires:
   - frontend/*/src/__tests__/
 next_step: pdlc-review
 terminal_state: impl_done
+recommended_model: sonnet
+recommended_effort: medium
 ---
 
 # 按设计文档实现代码
@@ -21,6 +23,7 @@ terminal_state: impl_done
 严格按照设计文档和已有的测试用例实现功能代码。
 
 <!-- @include templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/noninteractive.md -->
 
 ## PDLC 前置守卫（不可跳过）
 
@@ -34,7 +37,9 @@ terminal_state: impl_done
    实现代码前必须先编写测试（TDD）。请先运行：
    👉 /pdlc-tdd <功能描述>
    ```
-4. **找到测试** → 运行测试，确认**红灯**（失败）。若已全绿，提示："测试已全部通过，可能代码已实现，请确认是否需要继续。"
+4. **找到测试** → 运行测试，确认**红灯**（失败）。若已全绿：
+   - 交互模式：提示"测试已全部通过，可能代码已实现，请确认是否需要继续。"
+   - `--autonomous` 模式：视为流程性确认，默认**跳过实现直接收尾**（写 `auto_decisions[]` 留痕），`last_phase_result.advanced_to` 指向 `pdlc-review`
 5. 提取功能ID（从设计文档或 PRD），继续
 6. **任务状态关联**（如 `docs/06_tasks/` 存在任务文件）：
    - 匹配含功能ID的任务文件
@@ -78,6 +83,7 @@ terminal_state: impl_done
 **本阶段状态机更新**：
 - `current_stage`: `impl`
 - `next_step`: `pdlc-review`
+- **写 `last_phase_result`**：`checks.tests_pass` / `coverage_pass` / `lint_clean` 取自真跑 `docs/00_standards/test-commands.yml` 的 `unit` / `coverage` / `lint` 命令退出码（该文件不存在则回退项目既有约定，并在报告中提示 `consider 建立 docs/00_standards/test-commands.yml`）。**不得用自检结果冒充 checks**。
 
 <!-- @include templates/prompts/handoff.md -->
 

@@ -20,6 +20,9 @@ terminal_state: ship_done
 串联发布一个版本所需的所有步骤：跑测试 → 升级 VERSION → 更新 CHANGELOG → 创建 tag → 推送触发 CI/CD。
 
 <!-- @include templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/noninteractive.md -->
+
+> ⛔ **发布是破坏性·不可逆操作**：打 tag / bump 版本 / 触发 CI/CD 属破坏性范畴。**`--autonomous` 对本命令无效**——即使带该参数，§1.1（未完成功能）与 §1.2（测试门）的人工确认仍必须真实由人应答。自主循环（`/pdlc-loop-run`）的终态是 `review_done`，永不进入本命令。
 
 ## 段一：执行
 

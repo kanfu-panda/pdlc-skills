@@ -12,14 +12,28 @@
   "feature_name": "<kebab-case>",
   "created_at": "<首次创建时间 ISO 8601>",
   "current_stage": "<当前阶段名>",
+  "run_mode": "interactive | autonomous",
   "history": [
     {
       "stage": "<阶段名>",
       "done_at": "<ISO 8601>",
       "produced": ["<相对路径 1>", "<相对路径 2>"],
-      "self_audit": { "passed": <N>, "failed": <N>, "manual": <N> }
+      "self_audit": { "passed": <N>, "failed": <N>, "manual": <N> },
+      "auto_decisions": [
+        { "point": "<autonomous 下自动前进的确认点>", "chose": "<所选默认>", "at": "<ISO 8601>" }
+      ]
     }
   ],
+  "last_phase_result": {
+    "stage": "<本次阶段名>",
+    "ok": true,
+    "advanced_to": "<推进到的下一阶段 | null>",
+    "checks": { "tests_pass": true, "coverage_pass": true, "lint_clean": true },
+    "self_audit": { "failed": 0 },
+    "blocked_reason": null,
+    "run_mode": "interactive | autonomous",
+    "at": "<ISO 8601>"
+  },
   "relations": {
     "extends": [],
     "depends_on": [],
@@ -42,3 +56,13 @@
 3. **写回文件**：用 `jq` 或等效工具保持格式化
 
 ⚠️ 若更新失败（文件损坏/权限问题），必须中止命令并在最终报告中报错。状态机不可跳过。
+
+### `last_phase_result`（机器可读阶段结果，每个 phase 收尾必写）
+
+顶层 `last_phase_result` 是循环判停的**唯一真源**，外层只需 `jq '.last_phase_result.ok'` 即可决定 继续 / 停止 / 交还人类。规则：
+
+1. **`checks` 必须客观**：`tests_pass` / `coverage_pass` / `lint_clean` 全部来自**真跑命令的退出码**（命令取自 `docs/00_standards/test-commands.yml`，见 `test-commands-template.yml`），**绝不用模型自评**。退出码 0 记 `true`，非 0 记 `false`。stage 语义不同则用对应键（如 tdd 段用 `{ "red_verified": true }` 表示红灯已验证）。
+2. **`self_audit` 单列**：只放自检未通过数，**仅供参考，不作循环判停依据**。
+3. **`ok` 的定义**：本阶段全部 `checks` 通过且未命中 `blocked_reason` → `true`；否则 `false`。
+4. **推进一致**：`ok=true` 时 `advanced_to` 必须等于新的 `current_stage`（与第 6 条 IRON LAW 呼应）；`ok=false` 时 `current_stage` 不变、`advanced_to=null`、`blocked_reason` 写明原因。
+5. **`run_mode`**：镜像本次调用是否带 `--autonomous`（见 `noninteractive.md`）。

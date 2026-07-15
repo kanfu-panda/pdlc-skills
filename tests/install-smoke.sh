@@ -68,9 +68,9 @@ echo "Test: skills/ layout"
 assert_exists "skills/ directory exists" "skills"
 
 skill_count=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-assert_eq "exactly 33 sub-skill directories" "33" "$skill_count"
+assert_eq "exactly 35 sub-skill directories" "35" "$skill_count"
 
-for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate; do
+for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate pdlc-loop-next pdlc-loop-run; do
     assert_exists "skills/$name/SKILL.md exists" "skills/$name/SKILL.md"
 done
 
@@ -96,9 +96,9 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "11 user-facing templates"                   "11"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "10 shared prompt fragments"                 "10"  "$prompt_count"
+assert_eq "11 shared prompt fragments"                 "11"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations noninteractive; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
 
@@ -111,6 +111,17 @@ assert_contains "pdlc-standard declares artifact_type: surface" "artifact_type: 
 assert_contains "state-update schema includes relations block" '"relations"' "$(cat references/templates/prompts/state-update.md)"
 assert_contains "pdlc-trace header includes relations line" '关系:' "$(cat references/templates/prompts/pdlc-trace.md)"
 assert_eq "pdlc-arch dropped legacy 07_reviews/design path" "0" "$(grep -c '07_reviews/design' skills/pdlc-arch/SKILL.md || true)"
+
+# ─── loop-engineering (PR-1) invariants ───
+assert_exists "noninteractive prompt fragment exists" "references/templates/prompts/noninteractive.md"
+assert_exists "test-commands template exists" "references/templates/test-commands-template.yml"
+assert_exists "pdlc-loop-next skill exists" "skills/pdlc-loop-next/SKILL.md"
+assert_exists "pdlc-loop-run skill exists" "skills/pdlc-loop-run/SKILL.md"
+assert_contains "pdlc-loop-run stays at review_done (no auto ship)" "review_done" "$(cat skills/pdlc-loop-run/SKILL.md)"
+assert_contains "state-update schema includes last_phase_result" "last_phase_result" "$(cat references/templates/prompts/state-update.md)"
+assert_contains "iron-law has 6th law (状态必推进)" "状态必推进" "$(cat references/templates/prompts/iron-law.md)"
+assert_contains "pdlc-implement @includes noninteractive" "noninteractive.md" "$(cat skills/pdlc-implement/SKILL.md)"
+assert_contains "pdlc-ship states autonomous does not bypass" "对本命令无效" "$(cat skills/pdlc-ship/SKILL.md)"
 
 # ─── Test 4: install.sh without claude CLI ───
 echo ""
