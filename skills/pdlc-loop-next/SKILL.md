@@ -31,18 +31,22 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 
 1. 从 `$ARGUMENTS` 取功能ID；读取 `docs/.pdlc-state/<功能ID>.json`。
 2. 文件不存在 / 无法解析 → 输出 `blocked`。
-3. 读 `last_phase_result`：若 `blocked_reason` 非空（`ok=false`）→ 输出 `blocked`。
-4. 读 `current_stage`，按下表映射并输出（映射依据 `next_step` 字段，但收敛到白名单）：
+3. `last_phase_result.blocked_reason` 非空 → 输出 `blocked`。
+4. `current_stage` 属终态（以 `_done` 结尾，如 `review_done` / `feature_done` / `fix_done`）→ 输出 `done`。
+5. 否则**以 `next_step`（状态机里存的下一跳命令名）为主键**判定并输出。
 
-   | current_stage | 输出 |
-   |---|---|
-   | 设计就绪但无测试（`design_done` / 有设计文档无测试） | `pdlc-tdd` |
-   | `tdd_done`（测试红灯就绪） | `pdlc-implement` |
-   | `impl_done`（实现绿灯） | `pdlc-review` |
-   | `review_done` 或任一 `*_done` 终态 | `done` |
-   | 其它无法判定 | `blocked` |
+   > ⚠️ **必须用 `next_step` 判定，不要用 `current_stage` 字符串匹配**：现有状态机的 `current_stage` 用短名（`requirements` / `design` / `tdd` / `impl` / `review`，如 `pdlc-implement` 明写 `current_stage: impl`），格式不适合直接判阶段；而 `next_step` 是无歧义的命令名。
 
-5. 不写文件、不产任何 artifact。
+   | `next_step` | 输出 | 说明 |
+   |---|---|---|
+   | `pdlc-tdd` | `pdlc-tdd` | |
+   | `pdlc-implement` | `pdlc-implement` | |
+   | `pdlc-review` | `pdlc-review` | |
+   | `pdlc-ship` / `pdlc-deploy` / `null` | `done` | 机械收敛已完成（review 通过），发布留人 |
+   | `pdlc-prd` / `pdlc-design` | `blocked` | 尚在 tdd 之前，需人工（超出循环范围） |
+   | 其它 | `blocked` | |
+
+6. 不写文件、不产任何 artifact。
 
 ## 参考 helper（供 usage-guide / 外层循环使用，含白名单校验）
 

@@ -39,7 +39,7 @@ recommended_effort: medium
    ```
 4. **找到测试** → 运行测试，确认**红灯**（失败）。若已全绿：
    - 交互模式：提示"测试已全部通过，可能代码已实现，请确认是否需要继续。"
-   - `--autonomous` 模式：视为流程性确认，默认**跳过实现直接收尾**（写 `auto_decisions[]` 留痕），`last_phase_result.advanced_to` 指向 `pdlc-review`
+   - `--autonomous` 模式：视为流程性确认，默认**跳过实现直接收尾**（写 `auto_decisions[]` 留痕），`current_stage` 推进为 `impl`、`next_step=pdlc-review`、`last_phase_result.advanced_to=review`（下一阶段短名，非命令名）
 5. 提取功能ID（从设计文档或 PRD），继续
 6. **任务状态关联**（如 `docs/06_tasks/` 存在任务文件）：
    - 匹配含功能ID的任务文件
