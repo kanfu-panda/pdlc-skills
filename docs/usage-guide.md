@@ -326,14 +326,16 @@ Claude 会自动：
 ```bash
 ID="F20260714-01"; MAX_STEPS=4
 for _ in $(seq 1 "$MAX_STEPS"); do
-  CMD=$(claude -p "/pdlc-loop-next $ID")
+  # 净化 loop-next 输出：去反引号/空白，再抽取白名单 token（防模型偶发代码块包裹）
+  RAW=$(claude -p "/pdlc-loop-next $ID")
+  CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '^(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)$' | tail -1)
   case "$CMD" in
     pdlc-tdd|pdlc-implement|pdlc-review)
       # 模型按 skill frontmatter recommended_model 选；--max-budget-usd 是预算硬护栏
       claude -p --max-budget-usd 5 "/$CMD $ID --autonomous" || break ;;
     done)    echo "✅ 已到 review_done，交人工决定是否 /pdlc-ship"; break ;;
     blocked) echo "⛔ 需人工介入"; break ;;
-    *)       echo "❌ 非法命令：$CMD"; exit 1 ;;
+    *)       echo "❌ 非法命令（原始输出：$RAW）"; exit 1 ;;
   esac
 done
 ```
