@@ -15,6 +15,9 @@ terminal_state: deploy_done
 # 创建部署文档
 
 <!-- @include templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/noninteractive.md -->
+
+> ⛔ **部署面向生产、不可逆·外发**：真实执行部署属破坏性范畴。**`--autonomous` 对涉及真实部署动作的环节无效**——仍必须人工显式确认。本命令默认只产出部署**文档**，不代表授权自动上线。
 
 为指定服务或应用创建部署手册。
 

@@ -10,11 +10,14 @@ produces:
 requires: []
 next_step: pdlc-ship
 terminal_state: review_done
+recommended_model: sonnet
+recommended_effort: medium
 ---
 
 # 代码评审
 
 <!-- @include templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/noninteractive.md -->
 
 对指定的服务或应用进行全面的代码评审。
 
@@ -136,9 +139,13 @@ terminal_state: review_done
   - [ ] 安全检查：X 项需人工确认
   ```
 
-6. **修复后验证**：自动修复完成后，重新运行全部测试，确认修复未引入新问题
+6. **修复后验证**：自动修复完成后，重新运行全部测试（命令取自 `docs/00_standards/test-commands.yml`），确认修复未引入新问题
    - 测试通过 → 评审完成
    - 测试失败 → 回滚修复，将问题标记为需人工处理
+   - **写 `last_phase_result`**：`checks` 取自真跑 test-commands 的 `unit`/`coverage`/`lint` 退出码，不用自检冒充
+7. **`--autonomous` 下的收尾判定**（呼应非交互契约）：
+   - 「需人工处理/需人工确认」表中存在**阻塞级**项 → 不推进：`last_phase_result.ok=false` + `blocked_reason="评审存在阻塞级待人工项"` + 输出 blocked 哨兵，交还人类
+   - 仅有非阻塞级人工项 → 记录在案并正常推进到 `review_done`
 
 ## 要求
 

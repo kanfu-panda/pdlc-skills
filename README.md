@@ -4,14 +4,14 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete Product Development Life Cycle workflow — **33 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
+**PDLC** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete Product Development Life Cycle workflow — **35 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
 
 Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
 
@@ -133,10 +133,10 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.1.0  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.2.0  Status: ✔ enabled
 ```
 
-In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 33 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
+In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 35 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
 
 ---
 
@@ -170,7 +170,7 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-retro` | Iteration retrospective with trend comparison |
 | `/pdlc-task` | In-stage task tracking |
 
-### Layer 3 · Tools (19)
+### Layer 3 · Tools (21)
 
 Specialized stages you can invoke explicitly.
 
@@ -179,6 +179,7 @@ Specialized stages you can invoke explicitly.
 - **🔧 Engineering (7):** `/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 Governance (2):** `/pdlc-standard` · `/pdlc-relate`
 - **🏗️ Project lifecycle (3):** `/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
+- **🔁 Loop tooling (2):** `/pdlc-loop-next` (prints the next mechanical-convergence command) · `/pdlc-loop-run` (convergence engine: auto-advances `tdd → implement → review` to `review_done`; release stays human) — [design](./docs/decisions/0001-loop-engineering-integration.md)
 
 ---
 
@@ -203,6 +204,12 @@ When a stage runs, it reads and writes these paths in your project:
 docs/ARCHITECTURE.md                                        # surface · whole-system overview (pdlc-arch, in-place)
 docs/GLOSSARY.md                                            # surface · project vocabulary
 docs/00_standards/                                          # surface · team conventions (pdlc-standard; read by prd / implement / tdd / code-gen / onboard)
+docs/00_standards/test-commands.yml                        # surface · single source of check commands (unit/coverage/lint/e2e) for tdd / implement / review + loop drivers
+```
+
+> The `check` commands in `test-commands.yml` are the objective source of truth for `last_phase_result.checks` (real exit codes, never model self-audit) — the foundation that lets `/pdlc-loop-*` drive PDLC autonomously. See `docs/decisions/0001-loop-engineering-integration.md`.
+
+```
 docs/01_requirements/prd/                                   # PRDs
 docs/02_design/{api,database,architecture,ui-ux}/           # technical design
 docs/03_development/                                        # developer manuals (onboard writes here)

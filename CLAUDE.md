@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-PDLC is a **Claude Code plugin**. It exposes 33 standardized "Product Development Life Cycle" stages as slash commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ..., `/pdlc-onboard`) covering PRD → Design → TDD → Implement → Review → Ship → Deploy → Retro and 19 specialized tools.
+PDLC is a **Claude Code plugin**. It exposes 35 standardized "Product Development Life Cycle" stages as slash commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ..., `/pdlc-onboard`) covering PRD → Design → TDD → Implement → Review → Ship → Deploy → Retro and 21 specialized tools.
 
 The repo is **both a plugin and a single-plugin marketplace** (so `claude plugin marketplace add github:kanfu-panda/pdlc-skills` registers it directly).
 
@@ -17,11 +17,11 @@ pdlc-skills/
 ├── .claude-plugin/
 │   ├── plugin.json                 ← plugin manifest (name, version, author, ...)
 │   └── marketplace.json            ← marketplace manifest (so the repo is also a marketplace)
-├── skills/                         ← 33 sub-skills (each = one slash command)
+├── skills/                         ← 35 sub-skills (each = one slash command)
 │   ├── pdlc-feature/SKILL.md       → /pdlc-feature
 │   ├── pdlc-prd/SKILL.md           → /pdlc-prd
 │   ├── pdlc-tdd/SKILL.md           → /pdlc-tdd
-│   └── ... (33 dirs total)
+│   └── ... (35 dirs total)
 ├── references/
 │   └── templates/
 │       ├── *-template.md           ← 9 user-facing document templates
@@ -39,7 +39,7 @@ pdlc-skills/
 
 Every sub-skill at `skills/pdlc-<name>/SKILL.md` becomes the slash command `/pdlc-<name>` in Claude Code. The `pdlc-` prefix is **part of the skill name**, not a namespace separator. We chose this over the colon namespace `/pdlc:<name>` for two reasons:
 
-1. Visual distinctiveness — typing `/pdlc-` filters cleanly to all 33 PDLC commands; suffix-only names (`/feature`, `/fix`) collide with built-in commands and other plugins.
+1. Visual distinctiveness — typing `/pdlc-` filters cleanly to all 35 PDLC commands; suffix-only names (`/feature`, `/fix`) collide with built-in commands and other plugins.
 2. Backwards compatibility — matches the v1 mental model of `/pdlc-feature`.
 
 The full plugin namespace is `pdlc:pdlc-<name>` formally, but Claude Code's autocomplete simplifies to `/pdlc-<name>` since the suffix is unique. Both invocations route to the same skill.
@@ -85,11 +85,13 @@ The `@include` mechanism is **not** preprocessed by Claude Code — it relies on
 
 ## Layer structure
 
-Sub-skills are grouped by `layer:` in frontmatter (the 33 names below all carry the `pdlc-` prefix):
+Sub-skills are grouped by `layer:` in frontmatter (the 35 names below all carry the `pdlc-` prefix):
 
 - **Layer 1 (3)**: `pdlc-feature`, `pdlc-fix`, `pdlc-status` — one-sentence-driven entry points
 - **Layer 2 (11)**: `pdlc-prd`, `pdlc-design`, `pdlc-tdd`, `pdlc-implement`, `pdlc-review`, `pdlc-e2e`, `pdlc-refactor`, `pdlc-ship`, `pdlc-deploy`, `pdlc-retro`, `pdlc-task` — single-stage fine control
-- **Layer 3 (19)**: specialized tools (`pdlc-ui-design`, `pdlc-db-design`, `pdlc-arch`, `pdlc-lint`, `pdlc-perf`, `pdlc-security`, `pdlc-code-gen`, `pdlc-add-service`, `pdlc-add-app`, `pdlc-api-mock`, `pdlc-db-migrate`, `pdlc-i18n`, `pdlc-changelog`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, `pdlc-onboard`, `pdlc-ui-design-pro`)
+- **Layer 3 (21)**: specialized tools (`pdlc-ui-design`, `pdlc-db-design`, `pdlc-arch`, `pdlc-lint`, `pdlc-perf`, `pdlc-security`, `pdlc-code-gen`, `pdlc-add-service`, `pdlc-add-app`, `pdlc-api-mock`, `pdlc-db-migrate`, `pdlc-i18n`, `pdlc-changelog`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, `pdlc-onboard`, `pdlc-ui-design-pro`, `pdlc-loop-next`, `pdlc-loop-run`)
+
+  `pdlc-loop-next` / `pdlc-loop-run` are loop tooling (Loop 工程 / autonomous drive): `loop-next` prints the next mechanical-convergence command for an outer loop; `loop-run` is the convergence engine that auto-advances `tdd → implement → review` to `review_done` or blocked (release always stays human). See `docs/decisions/0001-loop-engineering-integration.md`.
 
 ## Invariants enforced by the skills themselves
 
@@ -108,6 +110,7 @@ Skill bodies follow a four-phase skeleton (execute → self-check → one-shot r
 When the user invokes a `/pdlc-*` slash command in their project, the skill reads/writes these paths in that project:
 
 - `docs/00_standards/coding/` — coding standards (read by `pdlc-prd` / `pdlc-implement` / `pdlc-tdd` / `pdlc-code-gen` / `pdlc-onboard`; optional)
+- `docs/00_standards/test-commands.yml` — single source of the project's objective `check` commands (`unit` / `coverage` / `lint` / `e2e`), read by `pdlc-tdd` / `pdlc-implement` / `pdlc-review` and the loop drivers so `last_phase_result.checks` come from real exit codes, not model self-audit; template at `references/templates/test-commands-template.yml`; optional
 - `docs/01_requirements/prd/`
 - `docs/02_design/{api,database,architecture,ui-ux}/`
 - `docs/03_development/` — developer manuals (`pdlc-onboard` writes here)

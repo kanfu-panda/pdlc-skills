@@ -12,11 +12,14 @@ requires:
   - docs/02_design/
 next_step: pdlc-implement
 terminal_state: tdd_done
+recommended_model: sonnet
+recommended_effort: medium
 ---
 
 # TDD 测试先行
 
 <!-- @include templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/noninteractive.md -->
 
 根据设计文档，先编写测试用例，再实现代码。严格遵循 TDD 工作流。
 
@@ -89,7 +92,7 @@ terminal_state: tdd_done
        - [已修复] <问题描述>
      ```
 
-6. **确认测试失败**: 运行测试确认全部失败（红灯）
+6. **确认测试失败**: 运行测试确认全部失败（红灯）。运行命令取自 `docs/00_standards/test-commands.yml` 的 `unit`（不存在则回退项目约定）。收尾写 `last_phase_result.checks = { "red_verified": true }`（红灯已由真跑退出码验证，非模型自评）
 7. **实现代码**: 编写最少量的代码使测试通过
 8. **重构**: 在测试通过的前提下优化代码
 
