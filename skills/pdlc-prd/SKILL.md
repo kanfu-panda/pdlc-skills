@@ -85,7 +85,7 @@ terminal_state: prd_done
 
 **一致性**：
 - [ ] PDLC 追溯头所有字段齐全且日期是今天实际日期
-- [ ] 功能ID 格式正确（F<YYYYMMDD>-<NN>）
+- [ ] 功能ID 格式正确（F<YYYYMMDD>-<HHMMSS>，兼容旧 F<日期>-<NN>）
 - [ ] 文件路径符合规范
 
 ## 段三：修复（单次，不递归）

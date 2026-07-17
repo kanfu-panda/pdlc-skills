@@ -1,6 +1,6 @@
 {
   "name": "pdlc",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Product Development Life Cycle workflow for Claude Code — 35 standardized stages covering PRD, design, TDD, implementation, code review, release, deployment, and retrospective. Each stage enforces hard contracts (artifacts persisted to disk, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces auditable, real artifacts instead of chat-only output.",
   "author": {
     "name": "kanfu-panda"
