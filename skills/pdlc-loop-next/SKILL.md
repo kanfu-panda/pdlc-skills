@@ -18,14 +18,16 @@ terminal_state: null
 
 ## 输出契约（安全关键）
 
-输出**必须**是下列固定白名单中的**单个 token**，独占一行，**不含任何散文、标点或解释**：
+输出**必须**是下列固定白名单中的**单个 token**，独占一行，**不含任何散文、标点或解释，尤其不要用代码块（三反引号）或反引号包裹**：
 
 ```
 pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 ```
 
+- ✅ 正确：整个回复就是一行 `pdlc-implement`
+- ❌ 错误：用 ``` 包成代码块、用反引号包住、加 `下一步：` 前缀或任何解释——**任何包裹/前缀都会让下游 `case` 匹配失败**。
 - 本命令只覆盖**机械收敛段** `tdd → implement → review`。到达 `review_done` 或更后（发布属人工闸门）→ 输出 `done`，**绝不**输出 `pdlc-ship` / `pdlc-deploy`（发布永远留人）。
-- 下游 helper **必须**校验收到的 token 属于该白名单再执行，非法即中止（见下方参考脚本）。
+- 下游 helper **必须**先**净化**（去反引号/空白）再校验 token 属于白名单，非法即中止（见下方参考脚本）——这是防御模型偶发包裹的兜底。
 
 ## 执行流程
 
@@ -51,13 +53,15 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 ## 参考 helper（供 usage-guide / 外层循环使用，含白名单校验）
 
 ```bash
-CMD=$(claude -p "/pdlc-loop-next $ID")
+# 净化：去掉反引号/空白，再从输出里抽取白名单 token（防模型偶发用代码块包裹）
+RAW=$(claude -p "/pdlc-loop-next $ID")
+CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '^(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)$' | tail -1)
 case "$CMD" in
   pdlc-tdd|pdlc-implement|pdlc-review)
     claude -p "/$CMD $ID --autonomous" ;;
   done)    echo "✅ 已到 review_done，交人工决定是否 /pdlc-ship"; break ;;
   blocked) echo "⛔ 需人工介入"; break ;;
-  *)       echo "❌ 非法命令：$CMD"; exit 1 ;;
+  *)       echo "❌ 非法命令（原始输出：$RAW）"; exit 1 ;;
 esac
 ```
 

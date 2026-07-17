@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
@@ -133,7 +133,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.2.0  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.2.1  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 35 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-16
+
+Loop 工程在真安装环境端到端验证后的健壮性修复（真跑 `/pdlc-loop-run` 暴露的两点）。
+
+### Fixed
+
+- **loop-next 输出健壮性** — 明令输出裸 token、禁止代码块/反引号包裹；`/pdlc-loop-next` 参考 helper 与 usage-guide Runbook 加**净化**（去反引号/空白后按白名单抽取 token），防模型偶发包裹导致外部 bash 循环 `case` 匹配失败。
+- **autonomous sidecar 产物澄清** — `noninteractive.md` 明确：自主模式下创建缺失的 `CHANGELOG.md`、补全 PDLC-TRACE 时间戳等本阶段职责内、可安全默认的改动，直接做并记入 `auto_decisions[]`（非破坏性）。
+
 ## [1.2.0] - 2026-07-15
 
 Loop 工程可循环化：让 PDLC 从「人驱动」升级为「也能被自主循环驱动」的执行引擎。设计见 `docs/decisions/0001-loop-engineering-integration.md`。33 → 35 skills。

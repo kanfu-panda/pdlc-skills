@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > 作者：**kanfu-panda**
@@ -133,7 +133,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.2.0  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.2.1  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 35 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
