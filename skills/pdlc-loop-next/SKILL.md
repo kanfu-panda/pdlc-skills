@@ -34,7 +34,7 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 1. 从 `$ARGUMENTS` 取功能ID；读取 `docs/.pdlc-state/<功能ID>.json`。
 2. 文件不存在 / 无法解析 → 输出 `blocked`。
 3. `last_phase_result.blocked_reason` 非空 → 输出 `blocked`。
-4. `current_stage` 属终态（以 `_done` 结尾，如 `review_done` / `feature_done` / `fix_done`）→ 输出 `done`。
+4. `current_stage` 属终态（以 `_done` 结尾——实际由编排器写入的终态值为 `feature_done` / `fix_done`）→ 输出 `done`。（注：单阶段命令的 `current_stage` 用短名 `impl`/`review`，review 完成的判定靠下面第 5 步的 `next_step`，不靠此处。）
 5. 否则**以 `next_step`（状态机里存的下一跳命令名）为主键**判定并输出。
 
    > ⚠️ **必须用 `next_step` 判定，不要用 `current_stage` 字符串匹配**：现有状态机的 `current_stage` 用短名（`requirements` / `design` / `tdd` / `impl` / `review`，如 `pdlc-implement` 明写 `current_stage: impl`），格式不适合直接判阶段；而 `next_step` 是无歧义的命令名。
@@ -53,9 +53,9 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 ## 参考 helper（供 usage-guide / 外层循环使用，含白名单校验）
 
 ```bash
-# 净化：去掉反引号/空白，再从输出里抽取白名单 token（防模型偶发用代码块包裹）
+# 净化：去反引号后，从输出中抽取第一个白名单 token（容忍首尾空白/标点/前缀/代码块包裹）
 RAW=$(claude -p "/pdlc-loop-next $ID")
-CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '^(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)$' | tail -1)
+CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
 case "$CMD" in
   pdlc-tdd|pdlc-implement|pdlc-review)
     claude -p "/$CMD $ID --autonomous" ;;

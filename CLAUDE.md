@@ -118,7 +118,7 @@ When the user invokes a `/pdlc-*` slash command in their project, the skill read
 - `docs/05_deployment/`
 - `docs/06_tasks/`
 - `docs/07_reviews/{doc,code,design,retro}/`
-- `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<NN>`
+- `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<HHMMSS>` (creation-time, collision-safe under parallel work; legacy `-<NN>` still parses)
 
 Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.md` bodies AND the `Target-project contract` sections in README and `docs/usage-guide.md`.
 
