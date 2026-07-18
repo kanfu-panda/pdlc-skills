@@ -58,7 +58,7 @@ terminal_state: null
 
 `docs/06_tasks/<功能ID>-<功能名>-tasks.md`
 
-示例：`docs/06_tasks/F20260406-01-user-auth-tasks.md`
+示例：`docs/06_tasks/F20260406-093000-user-auth-tasks.md`
 
 若功能ID未知（如独立任务），使用：`docs/06_tasks/YYYYMMDD-<关键词>-tasks.md`
 
@@ -66,12 +66,12 @@ terminal_state: null
 
 ```markdown
 <!-- PDLC-TASKS -->
-<!-- 功能ID: F20260406-01 -->
+<!-- 功能ID: F20260406-093000 -->
 <!-- 功能名称: user-auth -->
-<!-- 关联PRD: docs/01_requirements/prd/F20260406-01-user-auth-prd.md -->
+<!-- 关联PRD: docs/01_requirements/prd/F20260406-093000-user-auth-prd.md -->
 <!-- 最后更新: 2026-04-06 -->
 
-# 任务清单：user-auth（F20260406-01）
+# 任务清单：user-auth（F20260406-093000）
 
 ## 总览
 - 总任务数：N
@@ -198,7 +198,7 @@ terminal_state: null
 ## 任务进度
 | 功能 | 总计 | 完成 | 进行中 | 阻塞 | 完成率 |
 |------|------|------|--------|------|--------|
-| F20260406-01 user-auth | 8 | 5 | 1 | 0 | 62% |
+| F20260406-093000 user-auth | 8 | 5 | 1 | 0 | 62% |
 ```
 
 $ARGUMENTS
