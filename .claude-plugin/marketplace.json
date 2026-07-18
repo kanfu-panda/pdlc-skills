@@ -4,7 +4,7 @@
     "name": "kanfu-panda"
   },
   "metadata": {
-    "description": "Marketplace for the PDLC plugin — Product Development Life Cycle workflow for Claude Code.",
+    "description": "Marketplace for pdlc-skills — Product Development Life Cycle workflow for Claude Code.",
     "version": "1.3.0"
   },
   "plugins": [

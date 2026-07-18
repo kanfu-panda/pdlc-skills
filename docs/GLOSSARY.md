@@ -2,7 +2,7 @@
 
 # Glossary
 
-Canonical vocabulary for the PDLC plugin. This is a **surface artifact**: edited in place, never versioned into `glossary-v2.md`. History lives in `git log docs/GLOSSARY.md`.
+Canonical vocabulary for pdlc-skills. This is a **surface artifact**: edited in place, never versioned into `glossary-v2.md`. History lives in `git log docs/GLOSSARY.md`.
 
 | Term | Definition |
 |------|------------|

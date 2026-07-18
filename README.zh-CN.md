@@ -1,4 +1,4 @@
-# PDLC Plugin
+# pdlc-skills
 
 **[English](./README.md)** · **中文**
 
@@ -11,7 +11,7 @@
 > 仓库：[github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上"产品开发生命周期"工作流——**35 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
+**pdlc-skills** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——**35 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
 
 每个阶段都强制硬契约（产物落到 `docs/`、每功能状态机、实现前必须有红灯测试、阶段交接前自检、自动修复仅一轮），让 AI 驱动的工程产出真实可审计的文件，而不是只活在对话里。
 

@@ -1,6 +1,6 @@
-# PDLC Plugin 使用手册
+# pdlc-skills 使用手册
 
-> 这是 PDLC plugin 唯一的用户文档。涵盖：怎么安装、怎么调用、有哪些工作流、状态机怎么看、典型场景、扩展方式。
+> 这是 pdlc-skills 唯一的用户文档。涵盖：怎么安装、怎么调用、有哪些工作流、状态机怎么看、典型场景、扩展方式。
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## 1. 5 分钟上手
 
-PDLC 是一个 Claude Code plugin，给 Claude 加上"产品开发生命周期"工作流——35 个标准化阶段，全部以斜杠命令暴露。
+pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——35 个标准化阶段，全部以斜杠命令暴露。
 
 最常用三件事：
 
@@ -97,7 +97,7 @@ bash install.sh --global
 
 ## 3. 怎么调用 PDLC
 
-PDLC 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，全部以 `/pdlc-` 开头：
+pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，全部以 `/pdlc-` 开头：
 
 ```
 /pdlc-feature      ← 一句话需求驱动全流程

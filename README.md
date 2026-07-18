@@ -1,4 +1,4 @@
-# PDLC Plugin
+# pdlc-skills
 
 **English** · **[中文](./README.zh-CN.md)**
 
@@ -11,7 +11,7 @@
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete Product Development Life Cycle workflow — **35 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
+**pdlc-skills** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete PDLC (Product Development Life Cycle) workflow — **35 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
 
 Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
 

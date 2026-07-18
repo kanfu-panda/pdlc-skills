@@ -6,11 +6,11 @@
 
 # Architecture
 
-System overview for the PDLC plugin. This is a **surface artifact** — edited in place by `/pdlc-arch`, history via `git log docs/ARCHITECTURE.md`. It is also the canonical worked example of the surface pattern this plugin introduced in v1.1.
+System overview for pdlc-skills. This is a **surface artifact** — edited in place by `/pdlc-arch`, history via `git log docs/ARCHITECTURE.md`. It is also the canonical worked example of the surface pattern this plugin introduced in v1.1.
 
 ## 1. What this repo is
 
-PDLC is a **Claude Code plugin** plus a **single-plugin marketplace**. It ships a set of slash-command skills that encode a staged software development lifecycle, where each stage enforces hard contracts (artifacts persisted to disk, a per-feature state machine, tests-before-code, mandatory self-audit, single-shot auto-repair).
+pdlc-skills is a **Claude Code plugin** plus a **single-plugin marketplace**. It ships a set of slash-command skills that encode a staged software development lifecycle, where each stage enforces hard contracts (artifacts persisted to disk, a per-feature state machine, tests-before-code, mandatory self-audit, single-shot auto-repair).
 
 Two manifests express the dual nature:
 
