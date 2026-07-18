@@ -27,7 +27,7 @@ recommended_effort: medium
 
 1. 从用户输入中提取功能名称关键词
 2. 在 `docs/02_design/` 的子目录（api/、architecture/、database/、ui-ux/）下搜索包含该关键词的设计文档
-   - 匹配新格式：`F<日期>-<NN>-*<关键词>*-<类型>.md`
+   - 匹配新格式：`F<日期>-<编号>-*<关键词>*-<类型>.md`
    - 匹配旧格式：`YYYYMMDD-*<关键词>*-<类型>.md`
    - 同时检查文件内容中是否包含该关键词
 3. **未找到任何设计文档** → 输出以下信息后**立即停止，不继续执行**：
@@ -36,7 +36,7 @@ recommended_effort: medium
    测试用例必须基于已有的设计文档。请先运行：
    👉 /pdlc-design <设计目标>
    ```
-4. **找到** → 提取功能ID（如 `F20260326-01`），读取设计文档内容，继续执行
+4. **找到** → 提取功能ID（如 `F20260326-090000`），读取设计文档内容，继续执行
 
 ## 工作流程
 
@@ -44,14 +44,14 @@ recommended_effort: medium
 2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 3. **编写测试计划**: 在 `docs/04_testing/unit-tests/` 下创建测试计划文档
    - **使用模板**: `templates/test-plan-template.md`
-   - **文件名格式**: `<功能ID>-<功能名>-test-plan.md`（如 `F20260326-01-user-auth-test-plan.md`）
+   - **文件名格式**: `<功能ID>-<功能名>-test-plan.md`（如 `F20260326-090000-user-auth-test-plan.md`）
    - **文档顶部必须包含 PDLC 追溯头**：
      ```
      <!-- PDLC-TRACE -->
-     <!-- 功能ID: F20260326-01 -->
+     <!-- 功能ID: F20260326-090000 -->
      <!-- 功能名称: user-auth -->
      <!-- 阶段: 测试 -->
-     <!-- 前置文档: docs/02_design/api/F20260326-01-user-auth-api.md -->
+     <!-- 前置文档: docs/02_design/api/F20260326-090000-user-auth-api.md -->
      ```
 4. **编写测试代码**: 在对应服务/应用的测试目录下编写测试用例
    - 后端: `backend/services/<服务名>/src/test/` 或 `backend/services/<服务名>/tests/`

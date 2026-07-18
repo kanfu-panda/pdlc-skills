@@ -134,15 +134,16 @@ PDLC 天生具备 Loop 工程最稀缺的三样东西：**精准 spec**（PRD / 
   pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
   ```
   只覆盖机械收敛段；到达 `review_done` 或更后 → 输出 `done`，**绝不**输出 `pdlc-ship` / `pdlc-deploy`（发布永远留人）。下游 helper **必须校验** `$CMD` 属于该白名单再执行，否则中止——避免模型多打散文把脏东西拼进命令行。
-- 参考 helper（写进 §5.F Runbook 与 usage-guide，含校验）：
+- 参考 helper（写进 §5.F Runbook 与 usage-guide，含校验）。**注**：v1.2.1 起净化步骤已加固（去反引号 + 抽取白名单 token，容忍空白/标点/包裹），以最新实现 `skills/pdlc-loop-next/SKILL.md` 为准：
   ```bash
-  CMD=$(claude -p "/pdlc-loop-next $ID")
+  RAW=$(claude -p "/pdlc-loop-next $ID")
+  CMD=$(printf '%s' "$RAW" | tr '`' ' ' | tr -s ' \t' '\n' | grep -xE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
   case "$CMD" in
     pdlc-tdd|pdlc-implement|pdlc-review)
       claude -p "/$CMD $ID --autonomous" ;;
     done)    echo "✅ 已到 review_done，交人工决定是否 /pdlc-ship"; break ;;
     blocked) echo "⛔ 需人工介入"; break ;;
-    *)       echo "❌ 非法命令：$CMD"; exit 1 ;;
+    *)       echo "❌ 非法命令（原始输出：$RAW）"; exit 1 ;;
   esac
   ```
 - `produces: []`（只读）；自身不改状态，不含 `--autonomous` 语义。

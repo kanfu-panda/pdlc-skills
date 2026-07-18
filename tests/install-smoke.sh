@@ -133,7 +133,7 @@ assert_contains "--help mentions /pdlc-feature"     "/pdlc-feature"             
 assert_contains "--help mentions one-liner"         "raw.githubusercontent.com"       "$help_out"
 
 version_out="$(bash install.sh --version 2>&1)"
-assert_contains "--version shows version status"    "PDLC plugin version status"      "$version_out"
+assert_contains "--version shows version status"    "pdlc-skills version status"      "$version_out"
 assert_contains "--version shows local clone"       "Local clone:"                    "$version_out"
 
 bogus_out="$(bash install.sh --bogus 2>&1 || true)"

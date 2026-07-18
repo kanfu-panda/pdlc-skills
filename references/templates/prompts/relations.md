@@ -11,7 +11,7 @@ PDLC 用扁平 feature ID 空间。关系链在 5 个位置冗余表达，本文
 | `extends` | A 是 B 的增量增强 | 有向（A→B） | `user-auth-otp` extends `user-auth-phone` |
 | `depends_on` | A 需要 B 存在 | 有向（A→B） | `user-profile` depends_on `user-base` |
 | `supersedes` | A 替代 B（B 进入废弃/待机） | 有向（A→B） | `auth-v2` supersedes `auth-v1` |
-| `resolves` | A 修复缺陷 B | 有向（A→B） | `F20260603-01` resolves `B20260520-03` |
+| `resolves` | A 修复缺陷 B | 有向（A→B） | `F20260603-090000` resolves `B20260520-110000` |
 | `conflicts_with` | A 与 B 互斥 | 对称 | `payment-stripe` conflicts_with `payment-paypal` |
 | `relates_to` | 弱耦合，应一起考虑 | 对称 | `password-policy` relates_to `otp-policy` |
 
@@ -24,7 +24,7 @@ PDLC 用扁平 feature ID 空间。关系链在 5 个位置冗余表达，本文
 在 PDLC-TRACE 头加一行（无关系时整行省略）：
 
 ```
-<!-- 关系: extends=F20260510-02; depends_on=F20260501-01,F20260415-03; resolves=B20260520-03 -->
+<!-- 关系: extends=F20260510-100000; depends_on=F20260501-090000,F20260415-110000; resolves=B20260520-110000 -->
 ```
 
 语法：`type=id` 对，多 id 用 `,` 分隔，多对用 `; ` 分隔。

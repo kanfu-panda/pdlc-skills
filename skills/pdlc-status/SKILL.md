@@ -37,15 +37,15 @@ terminal_state: null
 📊 PDLC 状态总览（共 <N> 个功能）
 
 🚧 进行中（<M> 个）
-  - F20260419-01 user-auth      当前：design       下一步：/pdlc-tdd
-  - F20260419-02 pwd-reset      当前：impl         下一步：/pdlc-review
-  - B20260418-01 login-crash    当前：fix_done     下一步：（完成）
+  - F20260419-090000 user-auth      当前：design       下一步：/pdlc-tdd
+  - F20260419-100000 pwd-reset      当前：impl         下一步：/pdlc-review
+  - B20260418-090000 login-crash    当前：fix_done     下一步：（完成）
 
 ✅ 已完成（<K> 个）
-  - F20260415-03 feature-xyz    完成于 2026-04-16
+  - F20260415-110000 feature-xyz    完成于 2026-04-16
 
 ⚠️ 待办建议
-  - F20260419-01 停留在 design 超过 2 天，建议推进 /pdlc-tdd
+  - F20260419-090000 停留在 design 超过 2 天，建议推进 /pdlc-tdd
 ```
 
 ### 3.5 关系树视图（RFC#6）
@@ -54,11 +54,11 @@ terminal_state: null
 
 ```
 🔗 关系链
-  F20260419-01 user-auth
-    ├─ extends → F20260415-03 feature-xyz
-    └─ ← depended_on_by F20260419-02 pwd-reset
+  F20260419-090000 user-auth
+    ├─ extends → F20260415-110000 feature-xyz
+    └─ ← depended_on_by F20260419-100000 pwd-reset
 
-  🧩 孤立 feature（无任何关系）：F20260420-05
+  🧩 孤立 feature（无任何关系）：F20260420-130000
 ```
 
 - 出边用 `→`，入边用 `← <反向类型>`

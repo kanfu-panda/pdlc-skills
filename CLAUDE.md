@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository purpose
 
-PDLC is a **Claude Code plugin**. It exposes 35 standardized "Product Development Life Cycle" stages as slash commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ..., `/pdlc-onboard`) covering PRD → Design → TDD → Implement → Review → Ship → Deploy → Retro and 21 specialized tools.
+pdlc-skills is a **Claude Code plugin**. It exposes 35 standardized "Product Development Life Cycle" stages as slash commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ..., `/pdlc-onboard`) covering PRD → Design → TDD → Implement → Review → Ship → Deploy → Retro and 21 specialized tools.
 
 The repo is **both a plugin and a single-plugin marketplace** (so `claude plugin marketplace add github:kanfu-panda/pdlc-skills` registers it directly).
 
@@ -118,7 +118,7 @@ When the user invokes a `/pdlc-*` slash command in their project, the skill read
 - `docs/05_deployment/`
 - `docs/06_tasks/`
 - `docs/07_reviews/{doc,code,design,retro}/`
-- `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<NN>`
+- `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<HHMMSS>` (creation-time, collision-safe under parallel work; legacy `-<NN>` still parses)
 
 Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.md` bodies AND the `Target-project contract` sections in README and `docs/usage-guide.md`.
 

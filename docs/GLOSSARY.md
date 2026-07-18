@@ -2,7 +2,7 @@
 
 # Glossary
 
-Canonical vocabulary for the PDLC plugin. This is a **surface artifact**: edited in place, never versioned into `glossary-v2.md`. History lives in `git log docs/GLOSSARY.md`.
+Canonical vocabulary for pdlc-skills. This is a **surface artifact**: edited in place, never versioned into `glossary-v2.md`. History lives in `git log docs/GLOSSARY.md`.
 
 | Term | Definition |
 |------|------------|
@@ -15,7 +15,7 @@ Canonical vocabulary for the PDLC plugin. This is a **surface artifact**: edited
 | **`artifact_type`** | SKILL.md frontmatter field marking a skill's output as `surface` or `ledger` (default). Introduced in v1.1. |
 | **PDLC-TRACE** | The traceability header comment block every numbered document carries (feature ID, stage, predecessor, timestamp, optional relations). |
 | **State machine** | Per-feature JSON at `docs/.pdlc-state/<feature-id>.json` tracking `current_stage`, `history`, and `relations`. |
-| **Feature ID** | `F<YYYYMMDD>-<NN>` identifier assigned at PRD/feature start, threaded through all downstream artifacts. Defects use `B<YYYYMMDD>-<NN>`. |
+| **Feature ID** | `F<YYYYMMDD>-<HHMMSS>` identifier (creation-time; e.g. `F20260717-122801`) assigned at PRD/feature start, threaded through all downstream artifacts. Defects use `B<YYYYMMDD>-<HHMMSS>`. Time-based to avoid collisions under parallel/multi-agent work; legacy `-<NN>` sequence IDs still parse. |
 | **Relation chain** | The graph of typed edges between features (v1.1). Six types: `extends`, `depends_on`, `supersedes`, `resolves`, `conflicts_with`, `relates_to`. |
 | **`_relations.json`** | Auto-generated reverse index of all feature relations, rebuilt by `/pdlc-relate rebuild`. Stores nodes + flat edges + precomputed inbound/outbound per node. |
 | **`_graph.md`** | Auto-generated mermaid visualization of the relation chain. Do not hand-edit. |

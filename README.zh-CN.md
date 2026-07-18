@@ -1,17 +1,17 @@
-# PDLC Plugin
+# pdlc-skills
 
 **[English](./README.md)** · **中文**
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.1-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > 作者：**kanfu-panda**
 > 仓库：[github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上"产品开发生命周期"工作流——**35 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
+**pdlc-skills** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——**35 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
 
 每个阶段都强制硬契约（产物落到 `docs/`、每功能状态机、实现前必须有红灯测试、阶段交接前自检、自动修复仅一轮），让 AI 驱动的工程产出真实可审计的文件，而不是只活在对话里。
 
@@ -49,22 +49,22 @@
 $ # 在 Claude Code 里：
 $ /pdlc-feature 给用户登录加手机号验证
 
-→ 分配功能 ID F20260502-01（user-auth-phone）
+→ 分配功能 ID F20260502-090000（user-auth-phone）
 → 阶段一：生成 PRD
-   ✓ docs/01_requirements/prd/F20260502-01-user-auth-phone-prd.md
+   ✓ docs/01_requirements/prd/F20260502-090000-user-auth-phone-prd.md
    ✓ 自检 8/8 通过
 → 阶段二：技术设计
-   ✓ docs/02_design/api/F20260502-01-user-auth-phone-api.md
-   ✓ docs/02_design/database/F20260502-01-user-auth-phone-db.md
+   ✓ docs/02_design/api/F20260502-090000-user-auth-phone-api.md
+   ✓ docs/02_design/database/F20260502-090000-user-auth-phone-db.md
 → 阶段三：TDD 红灯
    ✓ 写了 14 条测试，全部预期失败
 → 阶段四：实现
    ✓ 14/14 测试转绿
 → 阶段五：代码评审 + 自动修复
    ✓ 自动修复 3 个 lint 问题
-   ✓ docs/07_reviews/code/F20260502-01-user-auth-phone-review.md
+   ✓ docs/07_reviews/code/F20260502-090000-user-auth-phone-review.md
 → 阶段六：交接
-   📦 docs/.pdlc-state/F20260502-01.json 已更新
+   📦 docs/.pdlc-state/F20260502-090000.json 已更新
    👉 下一步：/pdlc-ship
 ```
 
@@ -133,7 +133,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.2.1  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.3.0  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 35 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -206,7 +206,7 @@ docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   ← 测试与缺
 docs/05_deployment/                  ← 部署
 docs/06_tasks/                       ← 任务跟踪
 docs/07_reviews/{doc,code,design,retro}/   ← 评审 + 复盘
-docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-01.json）
+docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-090000.json）
 ```
 
 ---

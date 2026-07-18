@@ -1,17 +1,17 @@
-# PDLC Plugin
+# pdlc-skills
 
 **English** · **[中文](./README.zh-CN.md)**
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.1-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**PDLC** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete Product Development Life Cycle workflow — **35 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
+**pdlc-skills** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete PDLC (Product Development Life Cycle) workflow — **35 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
 
 Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
 
@@ -49,22 +49,22 @@ A typical end-to-end flow looks like this:
 $ # In Claude Code:
 $ /pdlc-feature add phone-number verification to user login
 
-→ Allocating feature ID F20260502-01 (user-auth-phone)
+→ Allocating feature ID F20260502-090000 (user-auth-phone)
 → Stage 1: writing PRD
-   ✓ docs/01_requirements/prd/F20260502-01-user-auth-phone-prd.md
+   ✓ docs/01_requirements/prd/F20260502-090000-user-auth-phone-prd.md
    ✓ self-check 8/8 passed
 → Stage 2: technical design
-   ✓ docs/02_design/api/F20260502-01-user-auth-phone-api.md
-   ✓ docs/02_design/database/F20260502-01-user-auth-phone-db.md
+   ✓ docs/02_design/api/F20260502-090000-user-auth-phone-api.md
+   ✓ docs/02_design/database/F20260502-090000-user-auth-phone-db.md
 → Stage 3: TDD red light
    ✓ 14 tests written, all failing as expected
 → Stage 4: implementation
    ✓ 14/14 tests now passing
 → Stage 5: code review + auto-repair
    ✓ 3 lint issues auto-fixed
-   ✓ docs/07_reviews/code/F20260502-01-user-auth-phone-review.md
+   ✓ docs/07_reviews/code/F20260502-090000-user-auth-phone-review.md
 → Stage 6: handoff
-   📦 docs/.pdlc-state/F20260502-01.json updated
+   📦 docs/.pdlc-state/F20260502-090000.json updated
    👉 Next: /pdlc-ship
 ```
 
@@ -133,7 +133,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.2.1  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.3.0  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 35 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -217,7 +217,7 @@ docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   # tests & defect
 docs/05_deployment/                                         # deployment docs
 docs/06_tasks/                                              # in-stage task tracking
 docs/07_reviews/{doc,code,design,retro}/                    # review records
-docs/.pdlc-state/<feature-id>.json                          # state machine + relations (one per feature, e.g. F20260419-01.json)
+docs/.pdlc-state/<feature-id>.json                          # state machine + relations (one per feature, e.g. F20260419-090000.json)
 docs/.pdlc-state/_relations.json                            # auto · reverse index of feature relations (pdlc-relate)
 docs/.pdlc-state/_graph.md                                  # auto · mermaid relation graph
 ```
