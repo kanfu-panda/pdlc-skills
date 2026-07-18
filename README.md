@@ -245,13 +245,14 @@ docs/.pdlc-state/_graph.md                                  # auto · mermaid re
 
 ## The Iron Law
 
-Every Layer 1 / Layer 2 stage **that produces artifacts** enforces five invariants. Read-only stages (such as `/pdlc-status`) are exempt.
+Every Layer 1 / Layer 2 stage **that produces artifacts** enforces six invariants. Read-only stages (such as `/pdlc-status`) are exempt.
 
 1. **Persist to disk** — every artifact is a real file, not just chat output
 2. **Update the state machine** — every completed stage writes `docs/.pdlc-state/<feature-id>.json`
 3. **Tests first** — code cannot be implemented until a failing test exists (TDD red light)
 4. **Self-check** — every stage runs a self-audit before handing off
 5. **One-shot repair** — auto-fix loops run at most once; stubborn failures get flagged for humans
+6. **State must advance** — a successful stage must change `current_stage`; a stage that didn't advance fails loudly instead of returning silently (so autonomous loops can't spin on stale state) — the exception is a deliberate human-block, which stays put but records `blocked_reason`
 
 ---
 

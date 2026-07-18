@@ -107,6 +107,7 @@ Every Layer 1/2 sub-skill **that produces artifacts** (i.e. `produces: []` is em
 3. Tests must exist (and be red) before implementation
 4. A self-check runs before handoff
 5. Auto-repair runs at most once
+6. State must advance — a successful stage must change `current_stage`; a stalled stage fails loudly instead of returning silently (so autonomous loops can't spin on stale state), except for a deliberate human-block which records `blocked_reason` (added in v1.2)
 
 Skill bodies follow a four-phase skeleton (execute → self-check → one-shot repair → handoff), with `next_step:` in frontmatter declaring the next stage so multi-stage flows are command-driven, not memorized.
 
