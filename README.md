@@ -4,14 +4,14 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**pdlc-skills** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete PDLC (Product Development Life Cycle) workflow — **35 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
+**pdlc-skills** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete PDLC (Product Development Life Cycle) workflow — **36 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
 
 Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
 
@@ -133,10 +133,10 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.3.0  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.4.0  Status: ✔ enabled
 ```
 
-In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 35 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
+In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 36 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
 
 ---
 
@@ -170,7 +170,7 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-retro` | Iteration retrospective with trend comparison |
 | `/pdlc-task` | In-stage task tracking |
 
-### Layer 3 · Tools (21)
+### Layer 3 · Tools (22)
 
 Specialized stages you can invoke explicitly.
 
@@ -180,6 +180,7 @@ Specialized stages you can invoke explicitly.
 - **🔗 Governance (2):** `/pdlc-standard` · `/pdlc-relate`
 - **🏗️ Project lifecycle (3):** `/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
 - **🔁 Loop tooling (2):** `/pdlc-loop-next` (prints the next mechanical-convergence command) · `/pdlc-loop-run` (convergence engine: auto-advances `tdd → implement → review` to `review_done`; release stays human) — [design](./docs/decisions/0001-loop-engineering-integration.md)
+- **⚙️ Settings (1):** `/pdlc-settings` (interactive config; currently the optional PDLC statusline — enable/disable/display items) — [design](./docs/decisions/0002-statusline-pdlc-status.md)
 
 ---
 

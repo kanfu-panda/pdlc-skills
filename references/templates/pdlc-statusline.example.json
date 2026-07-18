@@ -1,0 +1,25 @@
+{
+  "_help": {
+    "_about": "PDLC 状态栏展示配置。拷到 ~/.claude/pdlc-statusline.json（全局），或项目内 docs/.pdlc-state/statusline.json（项目级，覆盖全局）。用 /pdlc-settings 可交互生成，无需手改。",
+    "_note": "JSON 不支持注释，本 _help 块会被脚本忽略（只读已知键）。删掉 _help 也不影响。",
+    "show_progress_bar": "迷你进度条 PRD·设计·TDD·[实现]·评审·发布（true/false，默认 true）",
+    "show_next": "下一步 →评审（true/false，默认 true）",
+    "show_run_icon": "运行态图标 👤手动 / 🤖autonomous（true/false，默认 true）",
+    "show_checks": "检查结果 ✓unit ✓lint ✓cov。auto=仅 autonomous 显示 / true=总显 / false=不显（默认 auto）",
+    "show_elapsed": "当前阶段停留时长 ⏱12m。auto=blocked 或 autonomous 显示 / true=总显 / false=不显（默认 auto）",
+    "show_full_id": "显示完整 F20260718-094301 而非仅功能名（true/false，默认 false）",
+    "pick_feature": "多 feature 时选谁：auto=非终态+blocked 优先 / latest=最近修改 / 具体 ID（默认 auto）",
+    "color": "ANSI 颜色与图标（true/false，默认 true；NO_COLOR 环境变量也会关闭）",
+    "window": "懒解析窗口：只扫最近 N 个状态文件（默认 5）"
+  },
+
+  "show_progress_bar": true,
+  "show_next": true,
+  "show_run_icon": true,
+  "show_checks": "auto",
+  "show_elapsed": "auto",
+  "show_full_id": false,
+  "pick_feature": "auto",
+  "color": true,
+  "window": 5
+}

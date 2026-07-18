@@ -9,7 +9,8 @@
 1. [5 分钟上手](#1-5-分钟上手)
 2. [安装 / 升级 / 卸载](#2-安装升级卸载)
 3. [怎么调用 PDLC](#3-怎么调用-pdlc)
-4. [35 个内置阶段（按层）](#4-35-个内置阶段按层)
+4. [36 个内置阶段（按层）](#4-36-个内置阶段按层)
+   - [在状态栏显示 PDLC 状态（可选）](#45-在状态栏显示-pdlc-状态可选)
 5. [状态机文件](#5-状态机文件)
 6. [目标项目目录契约](#6-目标项目目录契约)
 7. [典型场景](#7-典型场景)
@@ -22,7 +23,7 @@
 
 ## 1. 5 分钟上手
 
-pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——35 个标准化阶段，全部以斜杠命令暴露。
+pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——36 个标准化阶段，全部以斜杠命令暴露。
 
 最常用三件事：
 
@@ -32,7 +33,7 @@ pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产
 | 修一个 bug | `/pdlc-fix 修分页器在 0 条时崩溃` |
 | 看当前 PDLC 进展 | `/pdlc-status` |
 
-输入 `/pdlc-` 后下拉菜单会列出全部 35 个阶段，按 Tab 补全或直接挑。
+输入 `/pdlc-` 后下拉菜单会列出全部 36 个阶段，按 Tab 补全或直接挑。
 
 ---
 
@@ -82,7 +83,7 @@ ls /path/to/my-project/.claude/plugins/pdlc/     # 项目级
 
 应能看到 `.claude-plugin/` / `skills/` / `references/` / `VERSION` 等。
 
-在 Claude Code 里输入 `/pdlc-`，下拉框出现 35 个阶段就说明 plugin 已生效。
+在 Claude Code 里输入 `/pdlc-`，下拉框出现 36 个阶段就说明 plugin 已生效。
 
 ### 想自定义模板的高级用户
 
@@ -97,7 +98,7 @@ bash install.sh --global
 
 ## 3. 怎么调用 PDLC
 
-pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，全部以 `/pdlc-` 开头：
+pdlc-skills 是 Claude Code plugin，**36 个阶段都是独立斜杠命令**，全部以 `/pdlc-` 开头：
 
 ```
 /pdlc-feature      ← 一句话需求驱动全流程
@@ -107,7 +108,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 /pdlc-implement    ← 实现代码
 /pdlc-review       ← 代码评审
 /pdlc-ship         ← 发布
-... 共 35 个
+... 共 36 个
 ```
 
 输入 `/` 然后开始打 `pdlc-`，Claude Code 会自动补全。
@@ -130,7 +131,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 
 ---
 
-## 4. 35 个内置阶段（按层）
+## 4. 36 个内置阶段（按层）
 
 ### Layer 1 · 入口（3 个，新手只看这层）
 
@@ -158,7 +159,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 | `/pdlc-retro` | 迭代复盘（趋势对比） | — |
 | `/pdlc-task` | 阶段内任务跟踪 | — |
 
-### Layer 3 · 工具（21 个，专项叠加）
+### Layer 3 · 工具（22 个，专项叠加）
 
 **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
 **🔍 质量（3）**：`/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
@@ -166,6 +167,54 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
 **🔁 循环工具（2）**：`/pdlc-loop-next`（打印下一条机械收敛命令）· `/pdlc-loop-run`（收敛引擎：自动推进 `tdd → implement → review` 到 `review_done`，发布留人）。见 `docs/decisions/0001-loop-engineering-integration.md`
+**⚙️ 设置（1）**：`/pdlc-settings`（交互式配置，当前含状态栏 statusline 的启用/停用/展示项）。见下方「在状态栏显示 PDLC 状态」及 `docs/decisions/0002-statusline-pdlc-status.md`
+
+---
+
+## 4.5 在状态栏显示 PDLC 状态（可选）
+
+pdlc-skills 可在 Claude Code 底部状态栏**独占一行**显示当前 PDLC 运行状态——功能名、阶段进度条、下一步、检查结果、blocked。**默认关闭**，用 `/pdlc-settings` 一步开启，无需手改配置文件。
+
+```
+● PDLC auth · PRD·设计·TDD·[实现]·评审·发布 · →评审 · 👤          ← 手动开发中
+● PDLC payment · TDD·[实现]·评审 · →评审 · 🤖 ✓unit ✓lint ⏱3m   ← loop 自主收敛中
+⛔ PDLC search blocked: PRD 取舍需人工 · ⏱12m                     ← 卡住等人（全行最醒目）
+```
+
+### 开启
+
+```
+/pdlc-settings statusline
+```
+
+选「启用」，它会：建稳定链接 `~/.claude/pdlc-statusline` → **追加**到你现有的 `statusLine.command` 后（幂等、绝不覆盖你已有的状态栏/HUD）→ 备份 + 展示 diff + 你确认后写入。
+
+> ⚠️ **机制**：Claude Code 只有一个 `statusLine.command` 槽。PDLC 段是**追加**进这条命令（多输出一行），**不是**新增第二个 statusLine——所以不会覆盖你现有的状态栏。写全局 `~/.claude/settings.json` 可能被安全层拦截，届时 `/pdlc-settings` 会给出「算好的那一行 + 手动粘贴位置」，不会谎报已启用。
+>
+> ℹ️ **和会排空 stdin 的状态栏（如 claude-hud）组合时**：`your-hud.sh; ~/.claude/pdlc-statusline` 里前一条命令会读掉 stdin，PDLC 段拿到空输入——此时它**自动回退用终端当前目录**（Claude Code 会把状态栏命令的 cwd 设为你的项目），照常识别 PDLC 状态。无需你做额外处理。
+
+### 展示项与配置
+
+`/pdlc-settings` 的「展示项」交互勾选下列开关，写入 `~/.claude/pdlc-statusline.json`（或项目级 `docs/.pdlc-state/statusline.json` 覆盖）；模板见 `references/templates/pdlc-statusline.example.json`：
+
+| 键 | 默认 | 说明 |
+|---|---|---|
+| `show_progress_bar` | on | 迷你进度条 |
+| `show_next` | on | 下一步 |
+| `show_run_icon` | on | 👤手动 / 🤖autonomous |
+| `show_checks` | auto | 检查结果，auto=仅 autonomous 显 |
+| `show_elapsed` | auto | 停留时长，auto=blocked/autonomous 显 |
+| `show_full_id` | off | 显示完整 ID 而非仅功能名 |
+| `pick_feature` | auto | 多 feature 选谁：非终态+blocked 优先 |
+| `color` | on | ANSI 颜色（`NO_COLOR` 也会关） |
+
+非 PDLC 项目 / 无状态文件时该行**自动为空**，不干扰其它项目。
+
+### 停用
+
+```
+/pdlc-settings statusline   # 选「停用」——只摘掉 PDLC 段，不动你其它状态栏配置
+```
 
 ---
 
@@ -349,13 +398,13 @@ done
 
 ### 三层分层心智
 
-PDLC 把 35 个阶段按使用频率分 3 层暴露：
+PDLC 把 36 个阶段按使用频率分 3 层暴露：
 
 - **Layer 1（3 个）**：高频入口，新手只学这层即可完成 80% 工作
 - **Layer 2（11 个）**：单阶段精细控制
-- **Layer 3（21 个）**：专项工具，按需叠加（含循环工具 `/pdlc-loop-next` · `/pdlc-loop-run`）
+- **Layer 3（22 个）**：专项工具，按需叠加（含循环工具 `/pdlc-loop-next` · `/pdlc-loop-run`、设置 `/pdlc-settings`）
 
-**你的心智**：做功能用 `feature`，修 bug 用 `fix`，看状态用 `status`——三个动词级指令。其他 28 个阶段需要时再用。
+**你的心智**：做功能用 `feature`，修 bug 用 `fix`，看状态用 `status`——三个动词级指令。其他 29 个阶段需要时再用。
 
 ### IRON LAW：硬门禁不可协商
 
