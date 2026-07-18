@@ -49,22 +49,22 @@
 $ # 在 Claude Code 里：
 $ /pdlc-feature 给用户登录加手机号验证
 
-→ 分配功能 ID F20260502-01（user-auth-phone）
+→ 分配功能 ID F20260502-090000（user-auth-phone）
 → 阶段一：生成 PRD
-   ✓ docs/01_requirements/prd/F20260502-01-user-auth-phone-prd.md
+   ✓ docs/01_requirements/prd/F20260502-090000-user-auth-phone-prd.md
    ✓ 自检 8/8 通过
 → 阶段二：技术设计
-   ✓ docs/02_design/api/F20260502-01-user-auth-phone-api.md
-   ✓ docs/02_design/database/F20260502-01-user-auth-phone-db.md
+   ✓ docs/02_design/api/F20260502-090000-user-auth-phone-api.md
+   ✓ docs/02_design/database/F20260502-090000-user-auth-phone-db.md
 → 阶段三：TDD 红灯
    ✓ 写了 14 条测试，全部预期失败
 → 阶段四：实现
    ✓ 14/14 测试转绿
 → 阶段五：代码评审 + 自动修复
    ✓ 自动修复 3 个 lint 问题
-   ✓ docs/07_reviews/code/F20260502-01-user-auth-phone-review.md
+   ✓ docs/07_reviews/code/F20260502-090000-user-auth-phone-review.md
 → 阶段六：交接
-   📦 docs/.pdlc-state/F20260502-01.json 已更新
+   📦 docs/.pdlc-state/F20260502-090000.json 已更新
    👉 下一步：/pdlc-ship
 ```
 
@@ -206,7 +206,7 @@ docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   ← 测试与缺
 docs/05_deployment/                  ← 部署
 docs/06_tasks/                       ← 任务跟踪
 docs/07_reviews/{doc,code,design,retro}/   ← 评审 + 复盘
-docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-01.json）
+docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-090000.json）
 ```
 
 ---

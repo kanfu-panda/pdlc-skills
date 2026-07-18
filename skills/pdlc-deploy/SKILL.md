@@ -34,7 +34,7 @@ terminal_state: deploy_done
    部署文档必须基于已完成评审的代码。请先运行：
    👉 /pdlc-review <评审目标>
    ```
-4. **找到** → 提取功能ID（如 `F20260326-01`），读取评审记录内容，继续执行
+4. **找到** → 提取功能ID（如 `F20260326-090000`），读取评审记录内容，继续执行
 
 ## 工作流程
 
@@ -43,15 +43,15 @@ terminal_state: deploy_done
 3. 阅读评审记录，确认功能状态
 4. **【必须创建文件】** 在 `docs/05_deployment/guides/` 下创建部署手册
    - **使用模板**: `templates/deploy-doc-template.md`（结构完整、章节齐全）
-   - **文件名格式**: `<功能ID>-<功能名>-deploy.md`（如 `F20260326-01-user-auth-deploy.md`）
+   - **文件名格式**: `<功能ID>-<功能名>-deploy.md`（如 `F20260326-090000-user-auth-deploy.md`）
      - 若无功能ID，则使用旧格式 `YYYYMMDD-<服务名>-deploy.md`
    - **文档顶部必须包含 PDLC 追溯头**：
      ```
      <!-- PDLC-TRACE -->
-     <!-- 功能ID: F20260326-01 -->
+     <!-- 功能ID: F20260326-090000 -->
      <!-- 功能名称: user-auth -->
      <!-- 阶段: 部署 -->
-     <!-- 前置文档: docs/07_reviews/code/F20260326-01-user-auth-review.md -->
+     <!-- 前置文档: docs/07_reviews/code/F20260326-090000-user-auth-review.md -->
      ```
 
 ## 文档内容

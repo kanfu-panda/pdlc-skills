@@ -31,7 +31,7 @@ terminal_state: null
    数据库设计必须基于已有的 PRD。请先运行：
    👉 /pdlc-prd <需求描述>
    ```
-4. **找到** → 提取功能ID（如 `F20260326-01`），读取该 PRD 内容，继续执行
+4. **找到** → 提取功能ID（如 `F20260326-090000`），读取该 PRD 内容，继续执行
 
 ## 工作流程
 
@@ -45,15 +45,15 @@ terminal_state: null
 
 ## 文档内容
 
-- **文件名格式**: `<功能ID>-<功能名>-db.md`（如 `F20260326-01-user-auth-db.md`）
+- **文件名格式**: `<功能ID>-<功能名>-db.md`（如 `F20260326-090000-user-auth-db.md`）
   - 若 PRD 为旧格式无功能ID，则使用旧格式 `YYYYMMDD-<模块名>-db.md`
 - **文档顶部必须包含 PDLC 追溯头**：
   ```
   <!-- PDLC-TRACE -->
-  <!-- 功能ID: F20260326-01 -->
+  <!-- 功能ID: F20260326-090000 -->
   <!-- 功能名称: user-auth -->
   <!-- 阶段: 设计 -->
-  <!-- 前置文档: docs/01_requirements/prd/F20260326-01-user-auth-prd.md -->
+  <!-- 前置文档: docs/01_requirements/prd/F20260326-090000-user-auth-prd.md -->
   ```
 
 ### ER 图格式

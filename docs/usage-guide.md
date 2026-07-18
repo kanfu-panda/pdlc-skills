@@ -117,7 +117,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 ```
 /pdlc-feature 给用户登录加手机号验证（P0）
 /pdlc-prd 只生成 PRD：登录加验证码
-/pdlc-tdd 给 F20260502-01 写测试用例
+/pdlc-tdd 给 F20260502-090000 写测试用例
 /pdlc-fix 分页器在结果列表为 0 条时崩溃
 ```
 
@@ -177,7 +177,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 
 ```json
 {
-  "feature_id": "F20260502-01",
+  "feature_id": "F20260502-090000",
   "feature_name": "user-auth",
   "created_at": "2026-05-02T10:00:00+08:00",
   "current_stage": "review",
@@ -185,7 +185,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
     {
       "stage": "requirements",
       "done_at": "2026-05-02T10:05:00+08:00",
-      "produced": ["docs/01_requirements/prd/F20260502-01-user-auth-prd.md"],
+      "produced": ["docs/01_requirements/prd/F20260502-090000-user-auth-prd.md"],
       "self_audit": { "passed": 8, "failed": 0, "manual": 0 }
     }
   ],
@@ -197,7 +197,7 @@ pdlc-skills 是 Claude Code plugin，**35 个阶段都是独立斜杠命令**，
 ### 怎么用
 
 - `/pdlc-status` → 列所有功能的当前阶段、待办建议
-- `/pdlc-status F20260502-01` → 单功能完整 history
+- `/pdlc-status F20260502-090000` → 单功能完整 history
 - `/pdlc-status --stale 3` → 列出停 3 天以上的功能
 - `/pdlc-retro --range 30d` → 月度复盘趋势报告
 
@@ -230,7 +230,7 @@ docs/.pdlc-state/<feature-id>.json                          # 状态机（每功
 
 ```html
 <!-- PDLC-TRACE -->
-<!-- 功能ID: F20260502-01 -->
+<!-- 功能ID: F20260502-090000 -->
 <!-- 功能名称: user-auth -->
 <!-- 阶段: requirements -->
 <!-- 前置文档: 无 -->
@@ -256,7 +256,7 @@ docs/.pdlc-state/<feature-id>.json                          # 状态机（每功
 ```
 
 Claude 会自动：
-1. 分配功能 ID `F20260502-01`，创建 PRD
+1. 分配功能 ID `F20260502-090000`，创建 PRD
 2. 设计 API、数据模型、前端页面
 3. 生成失败的测试用例（红灯）
 4. 实现代码到测试绿灯
@@ -267,11 +267,11 @@ Claude 会自动：
 
 ```
 /pdlc-prd 登录加手机号验证      # 停在 PRD
-# 你审 docs/01_requirements/prd/F20260502-01-*.md，调整后：
-/pdlc-design F20260502-01
-/pdlc-tdd F20260502-01
-/pdlc-implement F20260502-01
-/pdlc-review F20260502-01
+# 你审 docs/01_requirements/prd/F20260502-090000-*.md，调整后：
+/pdlc-design F20260502-090000
+/pdlc-tdd F20260502-090000
+/pdlc-implement F20260502-090000
+/pdlc-review F20260502-090000
 /pdlc-ship
 ```
 
@@ -281,7 +281,7 @@ Claude 会自动：
 /pdlc-fix 分页器在 0 条时崩溃
 ```
 
-自动：分配缺陷 ID `B20260502-01` → 定位根因 → 写回归测试（红） → 修代码（绿） → 跑全量测试 → 更新 CHANGELOG 和缺陷记录。
+自动：分配缺陷 ID `B20260502-090000` → 定位根因 → 写回归测试（红） → 修代码（绿） → 跑全量测试 → 更新 CHANGELOG 和缺陷记录。
 
 ### 场景 D：发布版本
 
@@ -316,7 +316,7 @@ Claude 会自动：
 **插件内（便捷，适合短收敛）**：
 
 ```
-/pdlc-loop-run F20260714-01
+/pdlc-loop-run F20260714-090000
 ```
 
 每个 stage 派发一个 fresh Task subagent，遇 `blocked` 或状态未推进即停，默认迭代上限 4。
@@ -324,7 +324,7 @@ Claude 会自动：
 **外部 bash Runbook（真进程隔离，推荐长跑 / 过夜）**：每轮独立进程 = 真 fresh context，必须配预算护栏防烧 token：
 
 ```bash
-ID="F20260714-01"; MAX_STEPS=4
+ID="F20260714-090000"; MAX_STEPS=4
 for _ in $(seq 1 "$MAX_STEPS"); do
   # 净化 loop-next 输出：去反引号后抽取第一个白名单 token（容忍空白/标点/前缀/代码块包裹）
   RAW=$(claude -p "/pdlc-loop-next $ID")
@@ -389,7 +389,7 @@ PDLC 把 35 个阶段按使用频率分 3 层暴露：
 
 ```
 段一：生成 PRD
-  └→ docs/01_requirements/prd/F20260502-01-user-auth-prd.md
+  └→ docs/01_requirements/prd/F20260502-090000-user-auth-prd.md
 
 段二：自检
   ✓ 背景与目标清晰
@@ -406,7 +406,7 @@ PDLC 把 35 个阶段按使用频率分 3 层暴露：
   ✅ PRD 已创建
   📊 自检：8/8 通过
   📦 状态机已更新
-  👉 下一步：/pdlc-design F20260502-01
+  👉 下一步：/pdlc-design F20260502-090000
 ```
 
 ---
