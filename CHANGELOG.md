@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **功能/缺陷 ID 从「当日序号」改为「创建时刻时分秒」** — `F<YYYYMMDD>-<HHMMSS>` / `B<YYYYMMDD>-<HHMMSS>`（如 `F20260717-122801`）。各工作副本零协调也几乎不撞号（仅同一秒创建才可能，撞了本地自动 +1 秒），合并时状态机文件名互异、git 自动合并，不再需要手工重编号。旧的 2 位序号 ID（`F<日期>-NN`）向后兼容、仍可解析；派生的 `_relations.json` 等聚合文件照旧 `pdlc-relate rebuild` 重建、不手合。
+- **任务 ID 收敛到 feature 内编号** — `T<YYYYMMDD>-<NN>` 的 `NN` 改为在**本功能任务文件内**递增（不再扫全局 `docs/06_tasks/` 取当日 max），并行开发不同 feature 时任务号互不干扰。任务 ID 保留序号（而非时分秒）是刻意的：任务在拆解时成批同秒创建、且收敛在唯一命名的 feature 任务文件内，序号才是正解。
 
 ## [1.2.1] - 2026-07-16
 
