@@ -30,7 +30,7 @@ terminal_state: design_done
 1. 若输入为文件路径，直接读取文件内容作为需求，提取功能名和功能ID（如有），跳到步骤 4
 2. 从用户输入中提取功能名称关键词
 3. 在 `docs/01_requirements/prd/` 目录下搜索包含该关键词的 PRD 文档
-   - 匹配新格式：`F<日期>-<NN>-*<关键词>*-prd.md`
+   - 匹配新格式：`F<日期>-<编号>-*<关键词>*-prd.md`
    - 匹配旧格式：`YYYYMMDD-*<关键词>*-prd.md`
    - 同时检查文件内容中是否包含该关键词
 3. **未找到** → 输出以下信息后**立即停止，不继续执行**：
@@ -39,7 +39,7 @@ terminal_state: design_done
    设计文档必须基于已有的 PRD。请先运行：
    👉 /pdlc-prd <需求描述>
    ```
-4. **找到** → 提取功能ID（如 `F20260326-01`），读取该 PRD 内容，继续执行
+4. **找到** → 提取功能ID（如 `F20260326-090000`），读取该 PRD 内容，继续执行
 
 ## 输出位置
 
@@ -52,15 +52,15 @@ terminal_state: design_done
 1. 先阅读找到的 PRD 文档，全面理解需求
 2. 参考 `templates/api-design-template.md` 获取 API 设计模板格式
 3. 参考 `docs/00_standards/` 目录了解项目规范（未命中 → 提示 `consider /pdlc-standard add <category>/<topic>`）
-4. **文件名格式**: `<功能ID>-<功能名>-<类型>.md`（如 `F20260326-01-user-auth-api.md`），类型可以是 api / arch / db
+4. **文件名格式**: `<功能ID>-<功能名>-<类型>.md`（如 `F20260326-090000-user-auth-api.md`），类型可以是 api / arch / db
    - 若 PRD 为旧格式无功能ID，则使用旧格式 `YYYYMMDD-<功能名>-<类型>.md`
 5. **文档顶部必须包含 PDLC 追溯头**：
    ```
    <!-- PDLC-TRACE -->
-   <!-- 功能ID: F20260326-01 -->
+   <!-- 功能ID: F20260326-090000 -->
    <!-- 功能名称: user-auth -->
    <!-- 阶段: 设计 -->
-   <!-- 前置文档: docs/01_requirements/prd/F20260326-01-user-auth-prd.md -->
+   <!-- 前置文档: docs/01_requirements/prd/F20260326-090000-user-auth-prd.md -->
    ```
 <!-- @include templates/prompts/output-language.md -->
 7. 必须包含：概述、接口/架构/表结构定义、错误码/异常处理、数据模型

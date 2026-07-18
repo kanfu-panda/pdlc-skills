@@ -42,9 +42,9 @@
 
 | 类型 | 目标 ID | 目标名称 | 原因 |
 |------|---------|----------|------|
-| extends | F20260510-02 | user-auth-phone | 在其上加 OTP 增强层 |
-| depends_on | F20260415-03 | user-base | 需要 user 模型 |
-| resolves | B20260520-03 | - | 修复 SMS 投递失败 |
+| extends | F20260510-100000 | user-auth-phone | 在其上加 OTP 增强层 |
+| depends_on | F20260415-110000 | user-base | 需要 user 模型 |
+| resolves | B20260520-110000 | - | 修复 SMS 投递失败 |
 
 > 填写后 `/pdlc-relate set <本功能ID> <type> <目标ID>` 同步到状态机；或由 `/pdlc-prd` / `/pdlc-feature` 自动写入。
 

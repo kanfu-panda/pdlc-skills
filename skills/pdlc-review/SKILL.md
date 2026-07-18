@@ -104,14 +104,14 @@ recommended_effort: medium
 > ⚠️ **必须创建文件，不可仅在对话中输出。**
 
 **【必须创建文件】** 在 `docs/07_reviews/code/` 下创建评审记录：
-- **文件名格式**: `<功能ID>-<功能名>-review.md`（如 `F20260326-01-user-auth-review.md`）
+- **文件名格式**: `<功能ID>-<功能名>-review.md`（如 `F20260326-090000-user-auth-review.md`）
 - **文档顶部必须包含 PDLC 追溯头**：
   ```
   <!-- PDLC-TRACE -->
-  <!-- 功能ID: F20260326-01 -->
+  <!-- 功能ID: F20260326-090000 -->
   <!-- 功能名称: user-auth -->
   <!-- 阶段: 评审 -->
-  <!-- 前置文档: docs/02_design/api/F20260326-01-user-auth-api.md -->
+  <!-- 前置文档: docs/02_design/api/F20260326-090000-user-auth-api.md -->
   <!-- 创建时间: 2026-03-26T10:30:00 -->
   ```
 - **报告内容格式**：

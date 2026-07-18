@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# PDLC plugin installer for Claude Code.
+# pdlc-skills installer for Claude Code.
 #
 # Thin wrapper around `claude plugin marketplace add` + `claude plugin install`.
-# Lets users install/upgrade/uninstall the PDLC plugin with a single curl
+# Lets users install/upgrade/uninstall pdlc-skills with a single curl
 # one-liner; falls back to the local clone as a marketplace source when run
 # from a checkout (so contributors can test their changes locally).
 set -euo pipefail
@@ -37,7 +37,7 @@ require_claude_cli() {
     cat >&2 <<'EOF'
 Error: `claude` CLI not found in PATH.
 
-PDLC is a Claude Code plugin and requires the Claude Code CLI for install.
+pdlc-skills is a Claude Code plugin and requires the Claude Code CLI for install.
 Get Claude Code: https://docs.anthropic.com/claude-code
 EOF
     exit 1
@@ -46,7 +46,7 @@ EOF
 
 usage() {
   cat <<EOF
-PDLC plugin installer for Claude Code
+pdlc-skills installer for Claude Code
 
 Usage:
   bash install.sh --global                       Install for current user
@@ -86,7 +86,7 @@ do_version() {
   fi
   : "${latest_ver:=unable to fetch}"
 
-  echo "PDLC plugin version status"
+  echo "pdlc-skills version status"
   echo "──────────────────────────────────────"
   if [[ "$IS_LOCAL_CLONE" -eq 1 ]]; then
     echo "  Local clone:  $(head -1 "$SCRIPT_DIR/VERSION" 2>/dev/null || echo unknown)"
