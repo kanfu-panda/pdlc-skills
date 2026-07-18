@@ -53,9 +53,10 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 ## 参考 helper（供 usage-guide / 外层循环使用，含白名单校验）
 
 ```bash
-# 净化：去反引号后，从输出中抽取第一个白名单 token（容忍首尾空白/标点/前缀/代码块包裹）
+# 净化：把输出切成 token（去反引号、按空白分行）再用 grep -x 整 token 匹配白名单——
+# 容忍空白/代码块包裹，又避免从 done_at / blocked_reason 等子串里误抽 done/blocked
 RAW=$(claude -p "/pdlc-loop-next $ID")
-CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
+CMD=$(printf '%s' "$RAW" | tr '`' ' ' | tr -s ' \t' '\n' | grep -xE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
 case "$CMD" in
   pdlc-tdd|pdlc-implement|pdlc-review)
     claude -p "/$CMD $ID --autonomous" ;;

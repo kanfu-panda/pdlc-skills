@@ -137,7 +137,7 @@ PDLC 天生具备 Loop 工程最稀缺的三样东西：**精准 spec**（PRD / 
 - 参考 helper（写进 §5.F Runbook 与 usage-guide，含校验）。**注**：v1.2.1 起净化步骤已加固（去反引号 + 抽取白名单 token，容忍空白/标点/包裹），以最新实现 `skills/pdlc-loop-next/SKILL.md` 为准：
   ```bash
   RAW=$(claude -p "/pdlc-loop-next $ID")
-  CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
+  CMD=$(printf '%s' "$RAW" | tr '`' ' ' | tr -s ' \t' '\n' | grep -xE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
   case "$CMD" in
     pdlc-tdd|pdlc-implement|pdlc-review)
       claude -p "/$CMD $ID --autonomous" ;;

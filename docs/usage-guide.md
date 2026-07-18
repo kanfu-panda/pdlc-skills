@@ -326,9 +326,10 @@ Claude 会自动：
 ```bash
 ID="F20260714-090000"; MAX_STEPS=4
 for _ in $(seq 1 "$MAX_STEPS"); do
-  # 净化 loop-next 输出：去反引号后抽取第一个白名单 token（容忍空白/标点/前缀/代码块包裹）
+  # 净化：切成 token（去反引号、按空白分行）再用 grep -x 整 token 匹配白名单
+  # ——容忍空白/代码块包裹，又避免 done_at / blocked_reason 等子串被误抽成 done/blocked
   RAW=$(claude -p "/pdlc-loop-next $ID")
-  CMD=$(printf '%s' "$RAW" | tr -d '`' | grep -oE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
+  CMD=$(printf '%s' "$RAW" | tr '`' ' ' | tr -s ' \t' '\n' | grep -xE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
   case "$CMD" in
     pdlc-tdd|pdlc-implement|pdlc-review)
       # 模型按 skill frontmatter recommended_model 选；--max-budget-usd 是预算硬护栏
