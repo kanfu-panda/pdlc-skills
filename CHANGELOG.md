@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-18
+
+在 Claude Code 状态栏显示 PDLC 运行状态（可选、默认关）。设计见 `docs/decisions/0002-statusline-pdlc-status.md`。35 → 36 skills。
+
+### Added
+
+- **`bin/pdlc-statusline.sh`** — 自包含状态栏片段：读 stdin 的 Claude Code JSON、扫当前项目 `docs/.pdlc-state/`，独占一行显示「功能名 + 迷你进度条 + 下一步 + 运行图标 + 检查 + 停留时长」。**默认关闭、零副作用**；非 PDLC 项目 / 无状态文件 / 缺 jq 一律**静默吐空**、退出码 0；渲染只读本地、无网络。`blocked` 做成全行最醒目；多 feature 时**非终态 + blocked 优先**并**懒解析**（只扫最近 N 个，保 <10ms）。兼容 macOS 自带 bash 3.2。
+- **`/pdlc-settings`** (Layer 3) — 交互式设置命令，当前含状态栏一节：启用 / 停用 / 展示项 / 状态。启用走**稳定路径符号链接** `~/.claude/pdlc-statusline`（升级不断）+ **幂等追加**到用户唯一的 `statusLine.command`（绝不覆盖现有 HUD）。改全局 `~/.claude/settings.json` **强制备份 + diff + 确认**；写入被安全层拦截时**优雅降级**为「算好那一行 + 用户手动粘贴」，绝不谎报已启用。
+- **`references/templates/pdlc-statusline.example.json`** — 展示项配置样例（含各键说明）；全局 `~/.claude/pdlc-statusline.json` 可被项目级 `docs/.pdlc-state/statusline.json` 覆盖。
+- **`tests/statusline-check.sh`** — 7 场景回归（impl 交互 / loop autonomous / blocked / review_done / 多 feature 抢权 / 窗口外旧 blocked 不抢权 / 非 PDLC 吐空）。
+
 ## [1.3.0] - 2026-07-17
 
 分布式友好的 feature/defect 编号：解决多人 / 多 AI 并行开发时的编号冲突。

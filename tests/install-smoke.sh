@@ -68,9 +68,9 @@ echo "Test: skills/ layout"
 assert_exists "skills/ directory exists" "skills"
 
 skill_count=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-assert_eq "exactly 35 sub-skill directories" "35" "$skill_count"
+assert_eq "exactly 36 sub-skill directories" "36" "$skill_count"
 
-for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate pdlc-loop-next pdlc-loop-run; do
+for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate pdlc-loop-next pdlc-loop-run pdlc-settings; do
     assert_exists "skills/$name/SKILL.md exists" "skills/$name/SKILL.md"
 done
 
@@ -122,6 +122,20 @@ assert_contains "state-update schema includes last_phase_result" "last_phase_res
 assert_contains "iron-law has 6th law (状态必推进)" "状态必推进" "$(cat references/templates/prompts/iron-law.md)"
 assert_contains "pdlc-implement @includes noninteractive" "noninteractive.md" "$(cat skills/pdlc-implement/SKILL.md)"
 assert_contains "pdlc-ship states autonomous does not bypass" "对本命令无效" "$(cat skills/pdlc-ship/SKILL.md)"
+
+# ─── statusline (v1.4) invariants ───
+assert_exists "bin/pdlc-statusline.sh exists" "bin/pdlc-statusline.sh"
+assert_exists "pdlc-statusline.sh is executable" "bin/pdlc-statusline.sh"
+if [[ -x "bin/pdlc-statusline.sh" ]]; then
+    echo "  ✓ pdlc-statusline.sh has +x bit"; pass=$((pass + 1))
+else
+    echo "  ✗ pdlc-statusline.sh missing +x bit"; fail=$((fail + 1))
+fi
+assert_exists "pdlc-settings skill exists" "skills/pdlc-settings/SKILL.md"
+assert_exists "statusline config example exists" "references/templates/pdlc-statusline.example.json"
+assert_exists "statusline scenario test exists" "tests/statusline-check.sh"
+assert_contains "pdlc-settings degrades when settings.json write is gated" "被安全层拦截" "$(cat skills/pdlc-settings/SKILL.md)"
+assert_contains "statusline script exits empty for non-PDLC dirs" "非 PDLC 项目 → 立即吐空" "$(cat bin/pdlc-statusline.sh)"
 
 # ─── Test 4: install.sh without claude CLI ───
 echo ""

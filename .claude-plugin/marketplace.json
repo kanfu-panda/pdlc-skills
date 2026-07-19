@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Marketplace for pdlc-skills — Product Development Life Cycle workflow for Claude Code.",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "plugins": [
     {
       "name": "pdlc",
       "source": "./",
-      "description": "Product Development Life Cycle workflow — 35 standardized stages (PRD, design, TDD, implement, review, ship, deploy, retro) with hard contracts: artifacts persisted to disk, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair.",
+      "description": "Product Development Life Cycle workflow — 36 standardized stages (PRD, design, TDD, implement, review, ship, deploy, retro) with hard contracts: artifacts persisted to disk, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair.",
       "category": "workflow",
       "tags": ["pdlc", "workflow", "tdd", "engineering", "ai-coding", "claude-code"]
     }

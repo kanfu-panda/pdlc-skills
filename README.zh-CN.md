@@ -4,14 +4,14 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > 作者：**kanfu-panda**
 > 仓库：[github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**pdlc-skills** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——**35 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
+**pdlc-skills** 是一个 [Claude Code plugin](https://docs.anthropic.com/)，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——**36 个标准化阶段**，全部以斜杠命令暴露：`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-ship` 等。
 
 每个阶段都强制硬契约（产物落到 `docs/`、每功能状态机、实现前必须有红灯测试、阶段交接前自检、自动修复仅一轮），让 AI 驱动的工程产出真实可审计的文件，而不是只活在对话里。
 
@@ -133,10 +133,10 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.3.0  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.4.0  Status: ✔ enabled
 ```
 
-在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 35 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
+在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 36 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
 
 ---
 
@@ -168,7 +168,7 @@ claude plugin list | grep pdlc
 | `/pdlc-retro` | 迭代复盘（趋势对比） |
 | `/pdlc-task` | 阶段内任务跟踪 |
 
-### Layer 3 · 工具（21 个，专项叠加）
+### Layer 3 · 工具（22 个，专项叠加）
 
 - **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
 - **🔍 质量（3）**：`/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
@@ -176,6 +176,7 @@ claude plugin list | grep pdlc
 - **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 - **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
 - **🔁 循环工具（2）**：`/pdlc-loop-next`（打印下一条机械收敛命令）· `/pdlc-loop-run`（收敛引擎：自动推进 `tdd → implement → review` 到 `review_done`，发布留人）——[设计文档](./docs/decisions/0001-loop-engineering-integration.md)
+- **⚙️ 设置（1）**：`/pdlc-settings`（交互式配置，当前含可选的 PDLC 状态栏 statusline——启用/停用/展示项）——[设计文档](./docs/decisions/0002-statusline-pdlc-status.md)
 
 ---
 
@@ -223,13 +224,14 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 
 ## 执行铁律（IRON LAW）
 
-每个**产出文件**的 Layer 1/2 阶段都强制五条规则（`/pdlc-status` 这种只读阶段豁免）：
+每个**产出文件**的 Layer 1/2 阶段都强制六条规则（`/pdlc-status` 这种只读阶段豁免）：
 
 1. **必须落盘**：所有产出必须作为真实文件写入磁盘，不可仅在对话中显示
 2. **必须更新状态机**：每个阶段完成后写入 `docs/.pdlc-state/<feature-id>.json`
 3. **必须有测试**：代码实现前测试必须已存在且失败（TDD 红灯）
 4. **必须自检**：每阶段结束前运行 self-check
 5. **修复仅一次**：自动修复循环最多一轮，失败则记录为待人工处理
+6. **状态必推进**：成功执行阶段后 `current_stage` 必须变更，未推进即报错、不静默返回（防自主循环拿滞后状态空转烧额度）；唯一例外是主动 block，此时状态不变但必须写 `blocked_reason`
 
 ---
 
