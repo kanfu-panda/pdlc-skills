@@ -177,7 +177,7 @@ pdlc-skills 可在 Claude Code 底部状态栏**独占一行**显示当前 PDLC 
 
 ```
 ● PDLC auth · PRD·设计·TDD·[实现]·评审·发布 · →评审 · 👤          ← 手动开发中
-● PDLC payment · TDD·[实现]·评审 · →评审 · 🤖 ✓unit ✓lint ⏱3m   ← loop 自主收敛中
+● PDLC payment · PRD·设计·TDD·[实现]·评审·发布 · →评审 · 🤖 ✓unit ✓lint ⏱3m   ← loop 自主收敛中
 ⛔ PDLC search blocked: PRD 取舍需人工 · ⏱12m                     ← 卡住等人（全行最醒目）
 ```
 
@@ -335,7 +335,7 @@ Claude 会自动：
 ### 场景 D：发布版本
 
 ```
-/pdlc-ship --version 1.5.0
+/pdlc-ship --version <目标版本号>   # 如 1.5.0
 ```
 
 自动：检测未完成功能 → 询问是否跑测试 → bump VERSION → 汇总 CHANGELOG → git tag → 触发 CI。

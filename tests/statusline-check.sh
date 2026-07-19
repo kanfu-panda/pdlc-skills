@@ -171,6 +171,21 @@ assert_not_contains "窗口外旧 blocked 不抢权" "old-blocked" "$out"
 assert_not_contains "不渲染为 blocked 行" "⛔" "$out"
 assert_contains "显示的是窗口内的活跃 feature" "fresh-" "$out"
 
+# ─── 场景 6.5：B 前缀原子 fix 流程（非 F 流水线阶段）不伪造 F 轨 ───
+echo "场景 6.5：B fix 阶段只显阶段名、不伪造进度条"
+clear_state
+write_state "B20260718-140000.json" "$(cat <<JSON
+{"feature_id":"B20260718-140000","feature_name":"login-crash","current_stage":"fix",
+ "run_mode":"autonomous","next_step":null,
+ "last_phase_result":{"checks":{"tests_pass":true},"blocked_reason":null,"at":"$(now_iso)"}}
+JSON
+)"
+out="$(render)"
+assert_not_contains "非 F 阶段不显 PRD 段" "PRD" "$out"
+assert_not_contains "非 F 阶段不显设计段" "设计" "$out"
+assert_not_contains "非终态不误显 done" "done" "$out"
+assert_contains "显示当前阶段名 fix" "fix" "$out"
+
 # ─── 场景 7：非 PDLC 项目 / 无状态文件（吐空、退出 0） ───
 echo "场景 7：非 PDLC 项目"
 NONPDLC="$(mktemp -d)"

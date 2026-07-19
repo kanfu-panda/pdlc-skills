@@ -10,6 +10,7 @@
 # 设计契约（见 docs/decisions/0002-statusline-pdlc-status.md）：
 #   - 默认关闭：只有用户把本脚本追加进其唯一的 statusLine.command 才生效
 #   - 渲染 <10ms：非 PDLC 项目 / 无状态文件 → 立即吐空退出（快路径）
+#   - 子进程节流：配置一把 jq、状态文件一把 jq、字段用 builtin read —— 全程 ≤3 个 jq
 #   - 永不阻塞终端：任何异常（无 jq / 文件损坏 / 权限）→ 静默吐空，退出码 0
 #   - 只读本地状态文件，绝不发起网络请求
 #   - 多 feature 懒解析：按 mtime 只解析最近 N 个，blocked 只在窗口内抢显示权
@@ -64,6 +65,8 @@ esac
 # jq 是软依赖：缺失即静默吐空（不给用户强加安装负担）
 command -v jq >/dev/null 2>&1 || exit 0
 
+US=$'\037'   # Unit Separator：非空白分隔符，read 拆分时能保留空字段（tab 会被折叠）
+
 # 读 stdin JSON，取当前目录；读失败 / 无输入 → 回退到 $PWD
 input="$(cat 2>/dev/null || true)"
 cwd=""
@@ -74,39 +77,38 @@ fi
 
 state_dir="$cwd/docs/.pdlc-state"
 
-# 快路径：非 PDLC 项目 → 立即吐空
+# 快路径：非 PDLC 项目 → 立即吐空（绝大多数刷新走这条，0 个 jq）
 [[ -d "$state_dir" ]] || exit 0
 
-# ─── 读配置（全局 + 项目级覆盖），解析一次 ───
+# ─── 读配置（全局 + 项目级覆盖），一把 jq 解析完 → builtin read 进变量 ───
 CFG_GLOBAL="${HOME}/.claude/pdlc-statusline.json"
 CFG_PROJECT="$state_dir/statusline.json"
 
-# 合并配置：项目级覆盖全局；缺省用内置默认。全部一次 jq 解析完。
-read_config() {
-    local merged='{}'
-    [[ -f "$CFG_GLOBAL" ]]  && merged="$(jq -s '.[0] * .[1]' <(echo "$merged") "$CFG_GLOBAL" 2>/dev/null || echo "$merged")"
-    [[ -f "$CFG_PROJECT" ]] && merged="$(jq -s '.[0] * .[1]' <(echo "$merged") "$CFG_PROJECT" 2>/dev/null || echo "$merged")"
-    printf '%s' "$merged"
-}
-CONFIG="$(read_config)"
+# 默认值（无配置文件时零 jq）
+C_PROGRESS=true; C_NEXT=true; C_ICON=true; C_CHECKS=auto; C_ELAPSED=auto
+C_FULLID=false;  C_PICK=auto; C_COLOR=true; C_WINDOW=5
 
-cfg() {
-    # cfg <key> <default>
-    local v
-    v="$(printf '%s' "$CONFIG" | jq -r --arg k "$1" '.[$k] // empty' 2>/dev/null || true)"
-    [[ -z "$v" ]] && v="$2"
-    printf '%s' "$v"
-}
-
-C_PROGRESS="$(cfg show_progress_bar true)"
-C_NEXT="$(cfg show_next true)"
-C_ICON="$(cfg show_run_icon true)"
-C_CHECKS="$(cfg show_checks auto)"
-C_ELAPSED="$(cfg show_elapsed auto)"
-C_FULLID="$(cfg show_full_id false)"
-C_PICK="$(cfg pick_feature auto)"
-C_COLOR="$(cfg color true)"
-C_WINDOW="$(cfg window 5)"
+cfg_files=()
+[[ -f "$CFG_GLOBAL" ]]  && cfg_files+=("$CFG_GLOBAL")
+[[ -f "$CFG_PROJECT" ]] && cfg_files+=("$CFG_PROJECT")
+if [[ ${#cfg_files[@]} -gt 0 ]]; then
+    # 一次 jq：合并（项目级覆盖全局）+ 取全部 9 个键（用 has 判在场，正确处理值为 false 的键）
+    cfg_rec="$(jq -rs '
+        def pick(o; k; dflt): if (o|has(k)) then (o[k]|tostring) else dflt end;
+        (reduce .[] as $x ({}; . * $x)) as $c
+        | [ pick($c;"show_progress_bar";"true"),
+            pick($c;"show_next";"true"),
+            pick($c;"show_run_icon";"true"),
+            pick($c;"show_checks";"auto"),
+            pick($c;"show_elapsed";"auto"),
+            pick($c;"show_full_id";"false"),
+            pick($c;"pick_feature";"auto"),
+            pick($c;"color";"true"),
+            pick($c;"window";"5") ] | join("")' "${cfg_files[@]}" 2>/dev/null || true)"
+    if [[ -n "$cfg_rec" ]]; then
+        IFS="$US" read -r C_PROGRESS C_NEXT C_ICON C_CHECKS C_ELAPSED C_FULLID C_PICK C_COLOR C_WINDOW <<< "$cfg_rec"
+    fi
+fi
 
 # 颜色关闭条件：配置 color=false 或环境 NO_COLOR
 use_color=1
@@ -129,104 +131,80 @@ while IFS= read -r f; do
 done < <(ls -t "$state_dir"/*.json 2>/dev/null)
 [[ ${#files[@]} -eq 0 ]] && exit 0
 
-# 每个文件解析成一行 TSV：id / name / stage / next / run_mode / blocked / unit / lint / cov / at
-# 注意：布尔字段不能用 `// ""`——jq 的 `//` 把 false 也当空，会让「检查未通过」消失；
-# 故对 tests_pass / lint_clean / coverage_pass 显式判 null。
-parse_line() {
-    jq -r '
-        [ (.feature_id // ""),
-          (.feature_name // ""),
-          (.current_stage // ""),
-          (.next_step // ""),
-          (.run_mode // "interactive"),
-          (.last_phase_result.blocked_reason // ""),
-          (.last_phase_result.checks.tests_pass    | if . == null then "" else tostring end),
-          (.last_phase_result.checks.lint_clean    | if . == null then "" else tostring end),
-          (.last_phase_result.checks.coverage_pass | if . == null then "" else tostring end),
-          (.last_phase_result.at // "")
-        ] | @tsv' "$1" 2>/dev/null || true
-}
+# ─── 一把 jq 解析全部窗口内文件 → 每行一条 US 分隔记录 ───
+# 字段：id / name / stage / next / run_mode / blocked / unit / lint / cov / at
+# 关键点：
+#   - 布尔字段（checks）不能用 `// ""`——jq 的 `//` 把 false 也当空，会让「检查未通过」消失；用 b() 显式判 null
+#   - 字符串字段去掉换行/制表，保证一条记录一行、可被 read 逐行取
+declare -a rows=()
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    rows+=("$line")
+done < <(jq -r '
+    def s(x): (x // "") | tostring | gsub("[\r\n\t]"; " ");
+    def b(x): if x == null then "" else (x|tostring) end;
+    [ s(.feature_id), s(.feature_name), s(.current_stage), s(.next_step),
+      (.run_mode // "interactive"),
+      s(.last_phase_result.blocked_reason),
+      b(.last_phase_result.checks.tests_pass),
+      b(.last_phase_result.checks.lint_clean),
+      b(.last_phase_result.checks.coverage_pass),
+      s(.last_phase_result.at)
+    ] | join("")' "${files[@]}" 2>/dev/null)
+[[ ${#rows[@]} -eq 0 ]] && exit 0
 
-is_terminal() { # <stage> <next>
+# 展示层的「终态」= current_stage 以 _done 结尾（feature_done / fix_done）。
+# 不把 next_step==null 当终态：原子 fix 流程 next 恒为 null 却未完成，误判会显示「✅ done」。
+is_terminal() { # <stage>
     case "$1" in *_done) return 0 ;; esac
-    [[ -z "$2" || "$2" == "null" ]] && return 0
     return 1
 }
 
-# ─── 选择要显示的 feature（§5.4 优先级） ───
-pick=""          # 命中的 TSV 行
-declare -a rows=()
-for f in "${files[@]}"; do
-    line="$(parse_line "$f")"
-    [[ -z "$line" ]] && continue
-    rows+=("$line")
-done
-[[ ${#rows[@]} -eq 0 ]] && exit 0
-
+# ─── 选择要显示的 feature（§5.4 优先级），字段用 builtin read 取，不起子进程 ───
+pick=""
 if [[ "$C_PICK" != "auto" && "$C_PICK" != "latest" ]]; then
-    # 指定 ID
     for r in "${rows[@]}"; do
-        id="$(printf '%s' "$r" | cut -f1)"
-        [[ "$id" == "$C_PICK" ]] && { pick="$r"; break; }
+        IFS="$US" read -r rid _ _ _ _ _ _ _ _ _ <<< "$r"
+        [[ "$rid" == "$C_PICK" ]] && { pick="$r"; break; }
     done
 elif [[ "$C_PICK" == "latest" ]]; then
     pick="${rows[0]}"
 fi
-
 if [[ -z "$pick" ]]; then
-    # auto：blocked（窗口内）优先 → 非终态最近 → 否则最近（终态，渲染 ✅）
+    # auto 第一优先：blocked（窗口内）抢显示权
     for r in "${rows[@]}"; do
-        blocked="$(printf '%s' "$r" | cut -f6)"
-        [[ -n "$blocked" ]] && { pick="$r"; break; }
+        IFS="$US" read -r _ _ _ _ _ rblocked _ _ _ _ <<< "$r"
+        [[ -n "$rblocked" ]] && { pick="$r"; break; }
     done
 fi
 if [[ -z "$pick" ]]; then
+    # auto 第二优先：最近的非终态
     for r in "${rows[@]}"; do
-        stage="$(printf '%s' "$r" | cut -f3)"
-        nxt="$(printf '%s' "$r" | cut -f4)"
-        if ! is_terminal "$stage" "$nxt"; then pick="$r"; break; fi
+        IFS="$US" read -r _ _ rstage _ _ _ _ _ _ _ <<< "$r"
+        if ! is_terminal "$rstage"; then pick="$r"; break; fi
     done
 fi
-[[ -z "$pick" ]] && pick="${rows[0]}"
+[[ -z "$pick" ]] && pick="${rows[0]}"   # 全终态 → 最近一个（渲染 ✅）
 
-# ─── 解出字段 ───
-# 用 cut 而非 `IFS=$'\t' read`：tab 属空白字符，read 会把连续 tab（空字段）折叠、导致列错位。
-F_ID="$(printf '%s' "$pick"    | cut -f1)"
-F_NAME="$(printf '%s' "$pick"  | cut -f2)"
-F_STAGE="$(printf '%s' "$pick" | cut -f3)"
-F_NEXT="$(printf '%s' "$pick"  | cut -f4)"
-F_MODE="$(printf '%s' "$pick"  | cut -f5)"
-F_BLOCKED="$(printf '%s' "$pick" | cut -f6)"
-F_UNIT="$(printf '%s' "$pick"  | cut -f7)"
-F_LINT="$(printf '%s' "$pick"  | cut -f8)"
-F_COV="$(printf '%s' "$pick"   | cut -f9)"
-F_AT="$(printf '%s' "$pick"    | cut -f10)"
+# ─── 解出字段（一次 read；US 非空白，空字段不折叠） ───
+IFS="$US" read -r F_ID F_NAME F_STAGE F_NEXT F_MODE F_BLOCKED F_UNIT F_LINT F_COV F_AT <<< "$pick"
 
-# 归一化 jq 的 "null"/"true"/"false"
-norm() { [[ "$1" == "null" ]] && echo "" || echo "$1"; }
-F_NEXT="$(norm "$F_NEXT")"
-F_BLOCKED="$(norm "$F_BLOCKED")"
+# 当前时刻只取一次（elapsed 复用，省 date 子进程）
+NOW_EPOCH="$(date +%s)"
 
-# 停留时长（分钟），解析失败则空
+# 停留时长，解析失败则空
 elapsed_str() {
-    local at="$1" epoch now diff
+    local at="$1" epoch diff
     [[ -z "$at" ]] && return 0
-    # 取 YYYY-MM-DDTHH:MM:SS 部分
-    at="${at:0:19}"
-    epoch=""
-    if epoch="$(date -d "$at" +%s 2>/dev/null)"; then :
+    at="${at:0:19}"   # 取 YYYY-MM-DDTHH:MM:SS
+    if   epoch="$(date -d "$at" +%s 2>/dev/null)"; then :
     elif epoch="$(date -j -f '%Y-%m-%dT%H:%M:%S' "$at" +%s 2>/dev/null)"; then :
     else return 0; fi
-    now="$(date +%s)"
-    diff=$(( now - epoch ))
+    diff=$(( NOW_EPOCH - epoch ))
     (( diff < 0 )) && diff=0
-    if (( diff < 3600 )); then
-        printf '⏱%dm' $(( diff / 60 ))
-    elif (( diff < 86400 )); then
-        printf '⏱%dh' $(( diff / 3600 ))
-    else
-        printf '⏱%dd' $(( diff / 86400 ))
-    fi
+    if   (( diff < 3600 ));  then printf '⏱%dm' $(( diff / 60 ))
+    elif (( diff < 86400 )); then printf '⏱%dh' $(( diff / 3600 ))
+    else                          printf '⏱%dd' $(( diff / 86400 )); fi
 }
 
 # 显示名：默认 feature_name，配置 show_full_id 则用完整 ID
@@ -249,33 +227,38 @@ fi
 line="$(col '36' "● PDLC")"
 line="$line $(col '1' "$label")"
 
-# 进度条
-progress_done=0   # 进度条是否已渲染「✅ done」（终态），用于去掉运行图标里重复的 ✅
+# 进度条：固定「功能流水线」轨（PRD·设计·TDD·实现·评审·发布），高亮当前段。
+# 诚实化：当前阶段不在该轨内时（如 fix 原子流程、自定义阶段）→ 只显阶段名，绝不硬套误导性 F 轨。
+progress_done=0
 if [[ "$C_PROGRESS" == "true" ]]; then
-    # 阶段序（短名 → 展示名）
-    stages_key=(requirements design tdd impl review ship)
-    stages_lbl=(PRD 设计 TDD 实现 评审 发布)
-    if is_terminal "$F_STAGE" "$F_NEXT"; then
+    if is_terminal "$F_STAGE"; then
         line="$line · $(col '32' '✅ done')"
         progress_done=1
     else
-        bar=""
+        stages_key=(requirements design tdd impl review ship)
+        stages_lbl=(PRD 设计 TDD 实现 评审 发布)
+        idx=-1
         for i in "${!stages_key[@]}"; do
-            seg="${stages_lbl[$i]}"
-            if [[ "${stages_key[$i]}" == "$F_STAGE" ]]; then
-                seg="[$(col '1;36' "$seg")]"
-            else
-                seg="$(col '90' "$seg")"
-            fi
-            [[ -n "$bar" ]] && bar="$bar$(col '90' '·')"
-            bar="$bar$seg"
+            [[ "${stages_key[$i]}" == "$F_STAGE" ]] && { idx="$i"; break; }
         done
-        line="$line · $bar"
+        if (( idx >= 0 )); then
+            bar=""
+            for i in "${!stages_key[@]}"; do
+                seg="${stages_lbl[$i]}"
+                if (( i == idx )); then seg="[$(col '1;36' "$seg")]"; else seg="$(col '90' "$seg")"; fi
+                [[ -n "$bar" ]] && bar="$bar$(col '90' '·')"
+                bar="$bar$seg"
+            done
+            line="$line · $bar"
+        elif [[ -n "$F_STAGE" ]]; then
+            # 非 F 流水线阶段（如 fix 流程）：只显当前阶段名，不伪造进度条
+            line="$line · $(col '1;36' "$F_STAGE")"
+        fi
     fi
 fi
 
 # 下一步
-if [[ "$C_NEXT" == "true" && -n "$F_NEXT" ]]; then
+if [[ "$C_NEXT" == "true" && -n "$F_NEXT" && "$F_NEXT" != "null" ]]; then
     nxt_short="${F_NEXT#pdlc-}"
     case "$nxt_short" in
         tdd)       nxt_lbl="TDD" ;;
@@ -293,7 +276,7 @@ fi
 # 运行图标（终态且进度条已显示「✅ done」时省略，避免重复 ✅）
 if [[ "$C_ICON" == "true" ]]; then
     icon=""
-    if is_terminal "$F_STAGE" "$F_NEXT"; then
+    if is_terminal "$F_STAGE"; then
         [[ "$progress_done" == "1" ]] || icon="✅"
     elif [[ "$F_MODE" == "autonomous" ]]; then
         icon="🤖"
@@ -312,7 +295,7 @@ esac
 if [[ "$show_checks" == "1" ]]; then
     chk=""
     mark() { # <label> <value>
-        if [[ "$2" == "true" ]]; then col '32' "✓$1"
+        if   [[ "$2" == "true" ]];  then col '32' "✓$1"
         elif [[ "$2" == "false" ]]; then col '31' "✗$1"
         else printf ''; fi
     }
