@@ -28,7 +28,7 @@
     "stage": "<本次阶段名>",
     "ok": true,
     "advanced_to": "<推进到的下一阶段 | null>",
-    "checks": { "tests_pass": true, "coverage_pass": true, "lint_clean": true },
+    "checks": {},
     "self_audit": { "failed": 0 },
     "blocked_reason": null,
     "run_mode": "interactive | autonomous",
@@ -61,7 +61,8 @@
 
 顶层 `last_phase_result` 是循环判停的**唯一真源**，外层只需 `jq '.last_phase_result.ok'` 即可决定 继续 / 停止 / 交还人类。规则：
 
-1. **`checks` 必须客观**：`tests_pass` / `coverage_pass` / `lint_clean` 全部来自**真跑命令的退出码**（命令取自 `docs/00_standards/test-commands.yml`，见 `test-commands-template.yml`），**绝不用模型自评**。退出码 0 记 `true`，非 0 记 `false`。stage 语义不同则用对应键（如 tdd 段用 `{ "red_verified": true }` 表示红灯已验证）。
+1. **`checks` 必须客观、真跑得来**：只放**真跑命令的退出码**结果（命令取自 `docs/00_standards/test-commands.yml`，见 `test-commands-template.yml`），**绝不用模型自评、绝不填占位**。有测试的阶段用 `tests_pass` / `coverage_pass` / `lint_clean`（退出码 0 → `true`，非 0 → `false`）；stage 语义不同用对应键（如 tdd 段 `{ "red_verified": true }` 表示红灯已验证）。
+   > ⚠️ **没有检查命令可跑的阶段（如 requirements/design 只产文档，或项目无 `test-commands.yml`）→ `checks: {}` 留空。绝不因为「本阶段成功」就把 `tests_pass`/`lint_clean` 等填 `true`——那是虚报，会污染跨工具共用的状态机、误导自主循环判停。** 上面 schema 示例里 `checks` 就是空的，正是这个原因。
 2. **`self_audit` 单列**：只放自检未通过数，**仅供参考，不作循环判停依据**。
 3. **`ok` 的定义**：本阶段全部 `checks` 通过且未命中 `blocked_reason` → `true`；否则 `false`。
 4. **命名空间**：`advanced_to` = **下一阶段的短名**（= `next_step` 命令去掉 `pdlc-` 前缀，如 `next_step=pdlc-review` → `advanced_to=review`），**不是命令名、也不是本阶段的 `current_stage`**。三者关系：`stage`=本阶段短名、`current_stage`=本阶段完成后的当前短名、`advanced_to`=下一阶段短名、`next_step`=下一跳命令名。

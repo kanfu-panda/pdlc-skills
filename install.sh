@@ -57,16 +57,17 @@ Usage:
   bash install.sh --help                         Show this message
   bash install.sh                                Interactive mode
 
-  bash install.sh --target codex                 Install pdlc as Codex CLI prompts
-  bash install.sh --target codex --uninstall     Remove the Codex prompts
+  bash install.sh --target codex                 Install pdlc as Codex skills
+  bash install.sh --target codex --uninstall     Remove the Codex skills
 
 After install, restart Claude Code and type \`/pdlc-\`. You should see 36
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
 
---target codex builds the platform-neutral adapter (see
-docs/decisions/0003-multi-platform-adapters.md) and installs 34 /pdlc-*
-prompts into ~/.codex/prompts/ (the 2 Claude Code-only skills are skipped).
-Requires a local clone + python3.
+--target codex builds the adapter (see
+docs/decisions/0003-multi-platform-adapters.md) and installs 34 pdlc skills
+into ~/.codex/skills/ (the 2 Claude Code-only skills are skipped). Codex skills
+are description-triggered — after restarting Codex, drive PDLC in natural
+language ("用 pdlc 写个 PRD"), not slash commands. Requires a local clone + python3.
 
 Remote (no clone) install one-liner:
   curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/install.sh | bash -s -- --global
@@ -117,13 +118,25 @@ do_version() {
 }
 
 # ─── Target: codex (multi-platform adapter, see docs/decisions/0003) ───
-CODEX_PROMPTS_DIR="${HOME}/.codex/prompts"
+# Target Codex is a Claude-Code-compatible distribution: it reads native skills at
+# ~/.codex/skills/<name>/SKILL.md (description-triggered, NOT slash commands).
+# Verified on real Codex (gpt-5.6-sol matched pdlc-prd by description and ran it).
+CODEX_SKILLS_DIR="${HOME}/.codex/skills"
+CODEX_PROMPTS_DIR="${HOME}/.codex/prompts"   # legacy (v1.5.0 wrongly installed here) — cleaned on install/uninstall
 CODEX_PDLC_DIR="${HOME}/.codex/pdlc"
 
 require_python3() {
   if ! command -v python3 >/dev/null 2>&1; then
     echo "Error: python3 not found — required to build the Codex adapter." >&2
     exit 1
+  fi
+}
+
+# Remove the v1.5.0 mistaken prompts install so upgraders don't keep dead files.
+clean_legacy_codex_prompts() {
+  if compgen -G "${CODEX_PROMPTS_DIR}/pdlc-*.md" >/dev/null 2>&1; then
+    echo "Cleaning legacy v1.5.0 prompts from ${CODEX_PROMPTS_DIR} ..."
+    rm -f "${CODEX_PROMPTS_DIR}"/pdlc-*.md
   fi
 }
 
@@ -142,30 +155,37 @@ EOF
   echo "Building Codex adapter from skills/ ..."
   python3 "$SCRIPT_DIR/adapters/build_codex.py" "$build_dir"
 
+  clean_legacy_codex_prompts
+
   echo ""
-  echo "Installing Codex prompts → ${CODEX_PROMPTS_DIR}"
-  mkdir -p "$CODEX_PROMPTS_DIR" "$CODEX_PDLC_DIR/templates"
-  cp "$build_dir"/prompts/*.md "$CODEX_PROMPTS_DIR"/
+  echo "Installing Codex skills → ${CODEX_SKILLS_DIR}"
+  mkdir -p "$CODEX_SKILLS_DIR" "$CODEX_PDLC_DIR/templates"
+  # Refresh our skill dirs (remove old copies first so renamed/removed files don't linger).
+  # No trailing slash on the source glob: BSD cp -R copies each dir itself, not its contents.
+  rm -rf "${CODEX_SKILLS_DIR}"/pdlc-*/
+  cp -R "$build_dir"/skills/pdlc-* "$CODEX_SKILLS_DIR"/
   cp "$build_dir"/templates/*  "$CODEX_PDLC_DIR/templates"/
   cp "$build_dir/pdlc-methodology.md" "$CODEX_PDLC_DIR"/
 
   local n
-  n=$(find "$build_dir/prompts" -name '*.md' | wc -l | tr -d ' ')
+  n=$(find "$build_dir/skills" -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
   echo ""
-  echo "✅ Done. ${n} /pdlc-* prompts installed for Codex."
-  echo "   In Codex, type /pdlc- to see them (e.g. /pdlc-feature, /pdlc-prd)."
+  echo "✅ Done. ${n} pdlc skills installed for Codex."
+  echo "   Restart Codex, then drive PDLC in natural language (skills are description-triggered,"
+  echo "   NOT slash commands), e.g.:  用 pdlc 写个 PRD：<一句话需求>"
   echo "   Methodology + templates: ${CODEX_PDLC_DIR}"
   echo "   Note: the statusline and the autonomous loop engine are Claude Code-only (not ported)."
 }
 
 do_codex_uninstall() {
   # Only ever touches our own namespaced paths under ~/.codex.
-  echo "Removing pdlc prompts from ${CODEX_PROMPTS_DIR} ..."
-  rm -f "$CODEX_PROMPTS_DIR"/pdlc-*.md
+  echo "Removing pdlc skills from ${CODEX_SKILLS_DIR} ..."
+  rm -rf "${CODEX_SKILLS_DIR}"/pdlc-*/
+  clean_legacy_codex_prompts
   if [[ "$CODEX_PDLC_DIR" == "${HOME}/.codex/pdlc" && -d "$CODEX_PDLC_DIR" ]]; then
     rm -rf "$CODEX_PDLC_DIR"
   fi
-  echo "✅ Removed pdlc from Codex."
+  echo "✅ Removed pdlc from Codex. Restart Codex to drop the skills."
 }
 
 # ─── Argument parsing ───

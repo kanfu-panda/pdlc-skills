@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Codex 适配器产物回归测试。
 #
-# 跑 adapters/build_codex.py 到临时目录，断言投影产物的结构：
-#   - 33 个 prompt（36 skill − 3 denylist），denylist 确实缺席
-#   - 无残留 @include 指令；无 Claude 术语（Layer 1/2 命令）泄漏
-#   - frontmatter 只留 description（+ 可选 argument-hint），Claude 内部字段被剥离
-#   - next_step 已物化进正文
-#   - 文档模板引用改写到 ~/.codex/pdlc/templates/
+# 跑 adapters/build_codex.py 到临时目录，断言投影出的 Codex skills 结构：
+#   - 34 个 skill 目录（36 skill − 2 denylist），denylist 确实缺席，loop-next 已投影
+#   - 每个 skill 是 skills/<name>/SKILL.md，frontmatter 为 Codex skill 格式 name + description
+#   - 无残留 @include；无 Claude 术语（Layer 1/2 命令）泄漏；adapter:claude-only 哨兵块被剥掉
+#   - Claude 内部 frontmatter 字段（layer/produces/allowed-tools）被剥离
+#   - next_step 已物化进正文（自然语言措辞，非斜杠命令）
+#   - 文档模板引用改写到 ~/.codex/pdlc/templates/，无路径腐蚀
 #   - 方法论 + 模板一并落地
 set -uo pipefail
 
@@ -23,6 +24,9 @@ fi
 
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
+
+# skill SKILL.md 路径
+sk() { echo "$OUT/skills/$1/SKILL.md"; }
 
 assert_contains() {
     local desc="$1" needle="$2" hay="$3"
@@ -66,58 +70,62 @@ build_out="$(python3 adapters/build_codex.py "$OUT" 2>&1)"
 assert_eq "构建退出码 0" "0" "$?"
 assert_contains "报告 denylist 跳过 2 个" "denylist 跳过 2" "$build_out"
 
-# ─── prompt 数量与 denylist ───
+# ─── skill 数量与 denylist ───
 echo ""
-echo "Test: prompt 数量与 denylist"
-n=$(find "$OUT/prompts" -name 'pdlc-*.md' | wc -l | tr -d ' ')
-assert_eq "投影 34 个 prompt（36 − 2 denylist）" "34" "$n"
-assert_absent "pdlc-settings 未投影（真·Claude-only）"   "$OUT/prompts/pdlc-settings.md"
-assert_absent "pdlc-loop-run 未投影（Task 版耦合子代理派发）" "$OUT/prompts/pdlc-loop-run.md"
-assert_exists "pdlc-loop-next 已投影（逻辑平台中立）" "$OUT/prompts/pdlc-loop-next.md"
-assert_exists "pdlc-feature 已投影"  "$OUT/prompts/pdlc-feature.md"
-assert_exists "pdlc-prd 已投影"      "$OUT/prompts/pdlc-prd.md"
-assert_exists "pdlc-review 已投影"   "$OUT/prompts/pdlc-review.md"
+echo "Test: skill 数量与 denylist"
+n=$(find "$OUT/skills" -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
+assert_eq "投影 34 个 skill（36 − 2 denylist）" "34" "$n"
+assert_absent "pdlc-settings 未投影（真·Claude-only）"       "$OUT/skills/pdlc-settings"
+assert_absent "pdlc-loop-run 未投影（Task 版耦合子代理派发）" "$OUT/skills/pdlc-loop-run"
+assert_exists "pdlc-loop-next 已投影（逻辑平台中立）"        "$(sk pdlc-loop-next)"
+assert_exists "pdlc-feature 已投影"  "$(sk pdlc-feature)"
+assert_exists "pdlc-prd 已投影"      "$(sk pdlc-prd)"
+assert_exists "pdlc-review 已投影"   "$(sk pdlc-review)"
 
 # ─── 自包含：无残留 @include，无 Claude 术语泄漏 ───
 echo ""
 echo "Test: 自包含 / 无 Claude 术语泄漏"
-leftover_include="$(grep -rl '@include' "$OUT/prompts/" 2>/dev/null || true)"
+leftover_include="$(grep -rl '@include' "$OUT/skills/" 2>/dev/null || true)"
 assert_eq "无残留 @include 指令" "" "$leftover_include"
-leaked_layer="$(grep -rl 'Layer 1/2 命令\|Layer 2 命令' "$OUT/prompts/" 2>/dev/null || true)"
+leaked_layer="$(grep -rl 'Layer 1/2 命令\|Layer 2 命令' "$OUT/skills/" 2>/dev/null || true)"
 assert_eq "无 'Layer 1/2 命令' 术语泄漏" "" "$leaked_layer"
-# IRON LAW 确实被内联进产出（自包含证据）
-assert_contains "pdlc-prd 内联了 IRON LAW" "IRON LAW" "$(cat "$OUT/prompts/pdlc-prd.md")"
+assert_contains "pdlc-prd 内联了 IRON LAW" "IRON LAW" "$(cat "$(sk pdlc-prd)")"
 # adapter:claude-only 哨兵块被剥掉：loop-next 的 claude 专属驱动 helper 不应残留
-loopnext="$(cat "$OUT/prompts/pdlc-loop-next.md")"
+loopnext="$(cat "$(sk pdlc-loop-next)")"
 assert_eq "loop-next 剥掉 claude -p 驱动 helper" "" "$(grep -c 'claude -p' <<< "$loopnext" | sed 's/0//')"
-sentinel_left="$(grep -rl 'adapter:claude-only' "$OUT/prompts/" 2>/dev/null || true)"
+sentinel_left="$(grep -rl 'adapter:claude-only' "$OUT/skills/" 2>/dev/null || true)"
 assert_eq "无 adapter:claude-only 哨兵残留" "" "$sentinel_left"
 
-# ─── frontmatter 剥离 ───
+# ─── frontmatter：Codex skill 格式 name + description，剥离 Claude 内部字段 ───
 echo ""
-echo "Test: frontmatter 剥离 Claude 内部字段"
-fm="$(awk '/^---$/{c++; next} c==1{print} c==2{exit}' "$OUT/prompts/pdlc-prd.md")"
-assert_contains "保留 description" "description:" "$fm"
+echo "Test: skill frontmatter（name + description，剥离内部字段）"
+fm="$(awk '/^---$/{c++; next} c==1{print} c==2{exit}' "$(sk pdlc-prd)")"
+assert_contains "保留 name 字段（skill 格式）" "name: pdlc-prd" "$fm"
+assert_contains "保留 description 字段" "description:" "$fm"
+assert_contains "description 含 pdlc 触发提示" "用 pdlc" "$fm"
 assert_eq "剥离 layer 字段"        "" "$(grep -c '^layer:' <<< "$fm" | tr -d ' ' | sed 's/0//')"
 assert_eq "剥离 produces 字段"     "" "$(grep -c '^produces:' <<< "$fm" | tr -d ' ' | sed 's/0//')"
 assert_eq "剥离 allowed-tools 字段" "" "$(grep -c '^allowed-tools:' <<< "$fm" | tr -d ' ' | sed 's/0//')"
+assert_eq "剥离 argument-hint 字段" "" "$(grep -c '^argument-hint:' <<< "$fm" | tr -d ' ' | sed 's/0//')"
 
-# ─── next_step 物化 ───
+# ─── next_step 物化（自然语言措辞，非斜杠命令）───
 echo ""
 echo "Test: next_step 物化进正文"
-assert_contains "pdlc-tdd 正文含下一步区块" "下一步（PDLC 链式推进）" "$(cat "$OUT/prompts/pdlc-tdd.md")"
-assert_contains "pdlc-tdd 下一步指向 pdlc-implement" "/pdlc-implement" "$(cat "$OUT/prompts/pdlc-tdd.md")"
+tdd="$(cat "$(sk pdlc-tdd)")"
+assert_contains "pdlc-tdd 正文含下一步区块" "下一步（PDLC 链式推进）" "$tdd"
+assert_contains "pdlc-tdd 下一步指向 pdlc-implement 技能" "pdlc-implement" "$tdd"
+assert_contains "下一步措辞用自然语言（非斜杠命令）" "按 pdlc implement" "$tdd"
 
 # ─── 模板引用改写 ───
 echo ""
 echo "Test: 文档模板引用改写"
 # 这里的 ~ 是产物里的字面文本（转译改写目标），不是待展开路径
 # shellcheck disable=SC2088
-assert_contains "pdlc-prd 模板引用（templates/ 形态）改写正确" "~/.codex/pdlc/templates/prd-template.md" "$(cat "$OUT/prompts/pdlc-prd.md")"
+assert_contains "pdlc-prd 模板引用（templates/ 形态）改写正确" "~/.codex/pdlc/templates/prd-template.md" "$(cat "$(sk pdlc-prd)")"
 # shellcheck disable=SC2088
-assert_contains "pdlc-adopt 模板引用（.claude/templates/pdlc/ 形态）改写正确" "~/.codex/pdlc/templates/adopt-report-template.md" "$(cat "$OUT/prompts/pdlc-adopt.md")"
+assert_contains "pdlc-adopt 模板引用（.claude/templates/pdlc/ 形态）改写正确" "~/.codex/pdlc/templates/adopt-report-template.md" "$(cat "$(sk pdlc-adopt)")"
 # 防回归：全局 templates/ 替换曾把 .claude/templates/pdlc/ 腐蚀成 .claude/~/.codex/...（Copilot 评审）
-leak="$(grep -rl '\.claude/~\|templates/pdlc/templates' "$OUT/prompts/" 2>/dev/null || true)"
+leak="$(grep -rl '\.claude/~\|templates/pdlc/templates' "$OUT/skills/" 2>/dev/null || true)"
 assert_eq "无 .claude/ 模板路径腐蚀泄漏" "" "$leak"
 
 # ─── 附带产物 ───

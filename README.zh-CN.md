@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.5.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.1-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > 作者：**kanfu-panda**
@@ -133,7 +133,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.5.0  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.5.1  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 36 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -145,12 +145,12 @@ claude plugin list | grep pdlc
 Claude Code 是**一等公民**——36 个斜杠命令 + 状态栏 + 自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
 
 - **任意工具**（Codex / Cursor / Windsurf / Copilot / Cline …）：把平台中立方法论文档 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 作为项目规则（`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …），然后用**自然语言**驱动（「按 pdlc 跑评审」→ agent 照文档执行）。
-- **Codex CLI**（原生 `/pdlc-*` prompts）：
+- **Codex**（原生 skills——面向兼容 Claude Code 生态的 Codex 发行版）：
   ```bash
   git clone https://github.com/kanfu-panda/pdlc-skills.git
   cd pdlc-skills && bash install.sh --target codex
   ```
-  构建适配器并把 34 个 `/pdlc-*` prompt 装到 `~/.codex/prompts/`（2 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+  构建适配器并把 34 个 pdlc skill 装到 `~/.codex/skills/`（2 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
 
 Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路线：[ADR 0003](./docs/decisions/0003-multi-platform-adapters.md)。
 

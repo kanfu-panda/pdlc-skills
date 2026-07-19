@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-07-19
+
+Codex 适配器**真机验证后的重大更正**：v1.5.0 假设 Codex 靠 `~/.codex/prompts/*.md` 斜杠命令，未验证就发版——实测目标 Codex 是**兼容 Claude Code 生态的发行版**，用 `~/.codex/skills/<name>/SKILL.md`（description 触发、非斜杠命令）。gpt-5.6-sol 自然语言触发 `pdlc-prd` 成功、写出 schema 正确的状态机（Claude Code 可无缝读）。
+
+### Changed
+
+- **Codex 适配器改到 `skills/` 布局**：`build_codex.py` 现输出 `dist/codex/skills/pdlc-*/SKILL.md`（Codex skill 格式 frontmatter `name` + `description`，description 追加 pdlc 触发提示；`next_step` 物化措辞改为自然语言、非斜杠命令）。`install.sh --target codex` 装到 `~/.codex/skills/`，并**自动清理 v1.5.0 误装的 `~/.codex/prompts/pdlc-*.md`**。安装提示改为「重启 Codex + 自然语言驱动」。
+- **README / README.zh-CN / usage-guide / adapters/README / ARCHITECTURE / ADR 0003**：Codex 接入说明从「prompts 斜杠命令」更正为「skills description 触发」，含真机验证纪要。
+
+### Fixed
+
+- **`checks` 虚报诱导坑（跨工具状态可信的命门）**：`state-update.md` 的 schema 示例此前把 `checks` 写死 `{tests_pass:true, coverage_pass:true, lint_clean:true}`，诱导模型在 requirements/design 等**无测试可跑**的阶段照抄假 `true`（真机实测 gpt-5.6-sol 确实照抄了）。改为示例 `checks: {}` + 显式规则「无检查命令可跑的阶段留空 `{}`，绝不因阶段成功就填 true」。对 Claude Code 也是净收益。
+
 ## [1.5.0] - 2026-07-19
 
 多平台支持第一步：把 PDLC 方法论内核平台中立化，并交付 Codex CLI 适配器。设计见 `docs/decisions/0003-multi-platform-adapters.md`。Claude Code 仍是一等公民、不降级。
