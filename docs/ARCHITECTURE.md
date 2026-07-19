@@ -116,3 +116,11 @@ Automated checks, run locally (no CI by default):
 - `tests/install-smoke.sh` — skill / template / fragment counts, manifest fields, key invariants.
 - `tests/statusline-check.sh` — `pdlc-statusline.sh` render scenarios (interactive / autonomous / blocked / terminal / multi-feature pick / non-PDLC empty).
 
+## 10. Platform-neutral core (multi-platform, planned)
+
+The PDLC methodology, state-machine contract, doc layout, and objective-check discipline are **tool-agnostic** — nothing in them requires Claude Code. `docs/pdlc-methodology.md` distills this **Tier 1 core** as a self-contained, platform-neutral spec so any AI coding agent (Codex, Cursor, Windsurf, Copilot, Cline, …) can drive PDLC via natural language, with the same `docs/.pdlc-state/` shared across tools.
+
+Claude Code stays the **Tier 2 first-class citizen** (this whole document). **Tier 3** — transpiling the SKILL bodies into each platform's native command files from a single source — is planned per-platform on real demand, starting with Codex.
+
+Design: `docs/decisions/0003-multi-platform-adapters.md`.
+
