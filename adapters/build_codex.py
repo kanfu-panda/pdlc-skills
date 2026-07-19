@@ -27,11 +27,15 @@ PROMPTS_SRC = REPO / "references" / "templates" / "prompts"
 TEMPLATES_SRC = REPO / "references" / "templates"
 METHODOLOGY = REPO / "docs" / "pdlc-methodology.md"
 
-# Claude-Code-only：不投影到 Codex
-#   pdlc-settings   —— 状态栏 / 全局 settings.json 配置，Codex 无等价机制
-#   pdlc-loop-next  —— 为 Claude Code bash 外层循环打印下一跳命令
-#   pdlc-loop-run   —— 自主收敛引擎，深度耦合 Claude Code 执行模型
-# 其它平台靠手动逐阶段驱动达到同样产物（见 pdlc-methodology.md §9）。
+# 本 PoC 暂不投影。区分两类原因，别一概说成「Claude 绑死」：
+#   pdlc-settings   —— 真·Claude-only：配状态栏 / 改全局 settings.json，Codex 无等价机制。
+#   pdlc-loop-run   —— 部分耦合：默认「Task 版」用 Claude Code 的 Task 子代理派发（Codex 无直接等价）；
+#                      「外部 Runbook 版」原理可移植（bash 循环换 claude→codex），但需 Codex 驱动脚本 +
+#                      过 ADR 0003 §6.1 状态完整性准入闸后才敢放行（防 --autonomous 下写脏共用状态）。
+#   pdlc-loop-next  —— 逻辑本身平台中立（只读状态机、按 next_step 打印下一跳 token），并非绑死；
+#                      但它是 loop-run 的低层 helper，单独投影是个无引擎消费的孤儿命令，
+#                      故随整套「循环工程」系统一起留后续，不拆散。
+# 其它平台可手动逐阶段驱动达到同样产物（见 pdlc-methodology.md §9）。
 DENYLIST = {"pdlc-settings", "pdlc-loop-next", "pdlc-loop-run"}
 
 # 模板在 Codex 侧的安装位置（install.sh --target codex 会把模板拷到这里）
