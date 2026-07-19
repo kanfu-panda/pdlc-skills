@@ -128,6 +128,18 @@ assert_contains "pdlc-adopt 模板引用（.claude/templates/pdlc/ 形态）改�
 leak="$(grep -rl '\.claude/~\|templates/pdlc/templates' "$OUT/skills/" 2>/dev/null || true)"
 assert_eq "无 .claude/ 模板路径腐蚀泄漏" "" "$leak"
 
+# ─── 升级路径：输出目录含 v1.5.0 旧 prompts/ 不应阻断重建（Copilot 评审）───
+echo ""
+echo "Test: 从 v1.5.0（旧 prompts/）升级重建"
+UPG="$(mktemp -d)"
+mkdir -p "$UPG/prompts"
+printf 'stale\n' > "$UPG/prompts/pdlc-prd.md"   # 模拟 v1.5.0 遗留产物
+python3 adapters/build_codex.py "$UPG" >/dev/null 2>&1; upg_rc=$?
+assert_eq "含旧 prompts/ 的目录重建成功（不被守卫误拒）" "0" "$upg_rc"
+assert_exists "重建后产出 skills/ 布局" "$UPG/skills/pdlc-prd/SKILL.md"
+assert_absent "旧 prompts/ 被清掉" "$UPG/prompts"
+rm -rf "$UPG"
+
 # ─── 附带产物 ───
 echo ""
 echo "Test: 方法论 + 模板落地"

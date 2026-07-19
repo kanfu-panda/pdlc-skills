@@ -136,7 +136,9 @@ def main():
 
     # 全新构建：清掉旧产物。但 out 是 CLI 传入的任意路径——只删「看起来纯是本脚本产物」的目录，
     # 含任何非产物条目即拒绝，防用户手滑指向 ~/.codex 等真实目录被递归删除（Copilot 评审）。
-    known_outputs = {"skills", "templates", "pdlc-methodology.md"}
+    # "prompts" 是 v1.5.0 的旧产物名（当时投影到 prompts/）——保留在白名单里，否则从 v1.5.0
+    # 升级时旧的 dist/codex/prompts/ 会让本守卫误判、install.sh --target codex 硬失败（Copilot 评审）。
+    known_outputs = {"skills", "templates", "pdlc-methodology.md", "prompts"}
     if out.exists() and any(out.iterdir()):
         foreign = sorted(p.name for p in out.iterdir() if p.name not in known_outputs)
         if foreign:
