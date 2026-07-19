@@ -215,6 +215,12 @@ docs/usage-guide.md（新增一节）                ← 「在 Codex 里用 pdl
    来自真实退出码」这条）？这是 §2 假设成立与否的关键，PoC 必须验证。
 5. **命名 / 品牌**：跨平台后是否仍叫 pdlc-skills（"skills" 是 Claude Code 术语）？还是仓库名
    保持、对外描述改为「PDLC 方法论 + 多平台适配」？倾向仓库名不动、描述调整——待定。
+6. **常驻规则的 token 成本（Phase 2 接平台时定）**：Tier 1 方法论文档 `docs/pdlc-methodology.md`
+   约 275 行。在 Claude Code 里它是「底层规格、按需读」，无常驻开销；但 Cursor / Copilot / Cline
+   会把项目规则文件（`.cursor/rules` / `copilot-instructions.md` / `.clinerules`）**每轮常驻加载**——
+   整份进上下文 = 每轮吃 token。适配器接这类平台时倾向：**常驻只放精简核**（IRON LAW + 状态机契约 +
+   §7 客观检查命门 + §8 触发映射），完整方法论文档**按需引用**。拆分点与精简核边界待 Codex / Cursor
+   PoC 实测后定——这也印证 §9#2「单一源 + 各平台投影」：投影时按平台的加载模型裁剪常驻量。
 
 ---
 
