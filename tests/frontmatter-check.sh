@@ -92,6 +92,25 @@ else
     fi
 fi
 
+# ─── 0b. Marketplace manifest version must also equal VERSION ───
+# (plugin.json and marketplace.json版本锁步 bump；只校验 plugin.json 会让 marketplace 每次发版漏改)
+marketplace_json=".claude-plugin/marketplace.json"
+if [[ ! -f "$marketplace_json" ]]; then
+    echo "  ✗ $marketplace_json not found"
+    fail=$((fail + 1))
+else
+    marketplace_version=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' "$marketplace_json" \
+        | sed -E 's/.*"([^"]+)"$/\1/')
+    file_version=$(head -1 VERSION 2>/dev/null || echo unknown)
+    if [[ "$marketplace_version" == "$file_version" ]]; then
+        echo "  ✓ marketplace.json version ($marketplace_version) matches VERSION file"
+        pass=$((pass + 1))
+    else
+        echo "  ✗ marketplace.json version ($marketplace_version) ≠ VERSION file ($file_version)"
+        fail=$((fail + 1))
+    fi
+fi
+
 # ─── 1-6. Per-sub-skill checks ───
 for f in skills/*/SKILL.md; do
     skill_dir="$(dirname "$f")"

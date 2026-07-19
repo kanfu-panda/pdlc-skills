@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`install.sh` 陈旧计数** — Claude Code 提示里「33 sub-commands」更正为 36（settings/loop-next/loop-run 加入后未同步）。
+- **`marketplace.json` 版本同步 + 校验兜底** — marketplace.json 版本随 VERSION 一起 bump（此前只 bump plugin.json，marketplace 连续两版漏改）；`frontmatter-check.sh` 新增「marketplace 版本 == VERSION」断言，以后自动兜住、不再靠人肉盯。
 
 ## [1.4.0] - 2026-07-18
 

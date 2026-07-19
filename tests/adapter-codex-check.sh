@@ -113,7 +113,12 @@ echo ""
 echo "Test: 文档模板引用改写"
 # 这里的 ~ 是产物里的字面文本（转译改写目标），不是待展开路径
 # shellcheck disable=SC2088
-assert_contains "pdlc-prd 模板引用改写到 ~/.codex/pdlc/templates" "~/.codex/pdlc/templates/prd-template.md" "$(cat "$OUT/prompts/pdlc-prd.md")"
+assert_contains "pdlc-prd 模板引用（templates/ 形态）改写正确" "~/.codex/pdlc/templates/prd-template.md" "$(cat "$OUT/prompts/pdlc-prd.md")"
+# shellcheck disable=SC2088
+assert_contains "pdlc-adopt 模板引用（.claude/templates/pdlc/ 形态）改写正确" "~/.codex/pdlc/templates/adopt-report-template.md" "$(cat "$OUT/prompts/pdlc-adopt.md")"
+# 防回归：全局 templates/ 替换曾把 .claude/templates/pdlc/ 腐蚀成 .claude/~/.codex/...（Copilot 评审）
+leak="$(grep -rl '\.claude/~\|templates/pdlc/templates' "$OUT/prompts/" 2>/dev/null || true)"
+assert_eq "无 .claude/ 模板路径腐蚀泄漏" "" "$leak"
 
 # ─── 附带产物 ───
 echo ""

@@ -47,6 +47,11 @@ CLAUDE_ONLY_RE = re.compile(
     r"[ \t]*<!--\s*adapter:claude-only-start\s*-->.*?<!--\s*adapter:claude-only-end\s*-->\n?",
     re.DOTALL,
 )
+# 模板引用有两种形态，都归一到 Codex 安装位置。单次 re.sub（输出不回扫，替换串里的 templates/ 不会被二次替换）：
+#   .claude/templates/pdlc/<f>  —— 已安装的 Claude Code 路径（pdlc-adopt / pdlc-db-migrate 用）
+#   templates/<f>               —— 插件相对路径（多数 skill 用）
+# bare `templates/` 用 (?<!/) 负向后顾防误伤 `.claude/templates/` 那段（后者整体由前一分支命中）。
+TEMPLATE_REF_RE = re.compile(r"\.claude/templates/pdlc/|(?<!/)templates/")
 
 
 def parse_frontmatter(text):
@@ -82,8 +87,8 @@ def inline_includes(body):
 
 
 def rewrite_template_refs(body):
-    """@include 已内联，剩余的 templates/ 一律指文档模板，改写到 Codex 安装位置。"""
-    return body.replace("templates/", f"{CODEX_TEMPLATES}/")
+    """@include 已内联，剩余的模板引用（两种形态）改写到 Codex 安装位置 CODEX_TEMPLATES。"""
+    return TEMPLATE_REF_RE.sub(f"{CODEX_TEMPLATES}/", body)
 
 
 def next_step_note(fm):
@@ -121,8 +126,16 @@ def main():
     prompts_out = out / "prompts"
     templates_out = out / "templates"
 
-    # 全新构建：清掉旧产物
-    if out.exists():
+    # 全新构建：清掉旧产物。但 out 是 CLI 传入的任意路径——只删「看起来纯是本脚本产物」的目录，
+    # 含任何非产物条目即拒绝，防用户手滑指向 ~/.codex 等真实目录被递归删除（Copilot 评审）。
+    known_outputs = {"prompts", "templates", "pdlc-methodology.md"}
+    if out.exists() and any(out.iterdir()):
+        foreign = sorted(p.name for p in out.iterdir() if p.name not in known_outputs)
+        if foreign:
+            sys.exit(
+                f"错误：输出目录 {out} 含非构建产物（{', '.join(foreign)}）——拒绝删除，防误删真实数据。\n"
+                f"      请指向空目录或专用构建目录（默认 dist/codex）。"
+            )
         shutil.rmtree(out)
     prompts_out.mkdir(parents=True)
     templates_out.mkdir(parents=True)
