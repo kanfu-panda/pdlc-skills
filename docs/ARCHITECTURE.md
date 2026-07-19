@@ -122,7 +122,7 @@ The PDLC methodology, state-machine contract, doc layout, and objective-check di
 
 Claude Code stays the **Tier 2 first-class citizen** (this whole document). **Tier 3** transpiles the SKILL bodies into a platform's native command files from a single source (`adapters/build_<platform>.py`, projecting to `dist/<platform>/`):
 
-- **Codex — implemented** (`adapters/build_codex.py` + `install.sh --target codex`): projects 34 `/pdlc-*` prompts into `~/.codex/prompts/`. The `adapter:claude-only` sentinel strips Claude-specific example blocks; the denylist skips 2 Claude-only skills (statusline config, autonomous loop engine).
+- **Codex — implemented** (`adapters/build_codex.py` + `install.sh --target codex`): projects 34 pdlc skills into `~/.codex/skills/<name>/SKILL.md` for Claude-Code-compatible Codex distributions (description-triggered, verified on gpt-5.6-sol). The `adapter:claude-only` sentinel strips Claude-specific example blocks; the denylist skips 2 Claude-only skills (statusline config, autonomous loop engine).
 - **Cursor / Windsurf / Copilot — planned** per real demand.
 
 Design: `docs/decisions/0003-multi-platform-adapters.md`.

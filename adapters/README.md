@@ -20,7 +20,7 @@
 
 | 适配器 | 目标 | 脚本 | 产物 |
 |---|---|---|---|
-| Codex | Codex CLI 自定义 prompts（`~/.codex/prompts/*.md`） | `build_codex.py` | `dist/codex/`（prompts + templates + 方法论） |
+| Codex | Codex 原生 skills（`~/.codex/skills/<name>/SKILL.md`，description 触发） | `build_codex.py` | `dist/codex/`（skills + templates + 方法论） |
 
 ### Codex（`build_codex.py`）
 
@@ -32,12 +32,14 @@ bash install.sh --target codex --uninstall   # 移除
 ```
 
 - **语言**：python3 **标准库**（零 pip 依赖）。选 python 而非 bash：markdown 文本变换（frontmatter 解析、内联、改写）用 bash 的 sed/awk 脆弱易错，python 稳健得多；且这是**构建期专用**、不进运行时。
-- **denylist**（本 PoC 暂不投影，2 个）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）。`pdlc-loop-next` **已投影**（逻辑平台中立，作独立只读查询），其正文里 `claude -p` 驱动 helper 由 `adapter:claude-only` 哨兵剥掉。其余共 34 个 skill 投影为 `/pdlc-*` prompt。详见 `build_codex.py` 里 `DENYLIST` 的注释。
+- **目标机制（已在真机验证）**：目标 Codex 是**兼容 Claude Code 生态的发行版**，读 `~/.codex/skills/<name>/SKILL.md`（frontmatter `name` + `description`，靠 description 触发、**非斜杠命令**）。gpt-5.6-sol 实测能按 description 匹配到 `pdlc-prd` 并执行。**不是** vanilla Codex 的 `~/.codex/prompts/*.md` 斜杠命令（那个假设早期错了，已纠正）。
+- **frontmatter**：输出 Codex skill 格式 `name` + `description`，description 追加「用 pdlc …」触发提示，便于模型按描述匹配。Claude 内部字段（`layer`/`produces`/`allowed-tools`/`next_step`…）剥离；`next_step` 物化进正文（自然语言措辞）。
+- **语言**：python3 **标准库**（零 pip 依赖）。选 python 而非 bash：markdown 文本变换（frontmatter 解析、内联、改写）用 bash 的 sed/awk 脆弱易错，python 稳健得多；且这是**构建期专用**、不进运行时。
+- **denylist**（本 PoC 暂不投影，2 个）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）。`pdlc-loop-next` **已投影**（逻辑平台中立，作独立只读查询），其正文里 `claude -p` 驱动 helper 由 `adapter:claude-only` 哨兵剥掉。共 34 个 skill 投影为 `~/.codex/skills/pdlc-*/SKILL.md`。详见 `build_codex.py` 里 `DENYLIST` 的注释。
 - **`adapter:claude-only` 哨兵**：源里被 `<!-- adapter:claude-only-start -->` / `<!-- adapter:claude-only-end -->` 包裹的块是 Claude 专属内容（如用 `claude -p` 驱动的示例管线），投影到其它平台时整段剥掉；Claude Code 看不见 HTML 注释、行为不变。这是「单一源、按目标裁剪」的通用手段。
-- **模板**：`references/templates/*-template.*` 拷到 `dist/codex/templates/`，正文里 `templates/X.md` 引用改写到 `~/.codex/pdlc/templates/X.md`。
-- **frontmatter 假设**：Codex 自定义 prompt 支持 `description` / `argument-hint` frontmatter。若你的 Codex 版本不解析 frontmatter，仅头部多几行文本、不影响正文（正文自包含）。
+- **模板**：`references/templates/*-template.*` 拷到 `dist/codex/templates/`（安装到 `~/.codex/pdlc/templates/`），正文里 `templates/X.md` 引用改写到 `~/.codex/pdlc/templates/X.md`。
 
-> ⚠️ Codex 的 prompt 是**按需调用**（像 Claude 斜杠命令），非常驻，所以自包含内联无常驻 token 成本。
+> ⚠️ Codex skill 靠 description **按需触发**、非常驻，所以自包含内联无常驻 token 成本。
 > Cursor / Copilot / Cline 会把项目规则**每轮常驻**——那类适配器（Phase 3/4）需按 [ADR 0003 §9#6](../docs/decisions/0003-multi-platform-adapters.md) 常驻只放精简核、完整文档按需引用。
 
 ## 新增一个平台适配器

@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""Codex 适配器：把 skills/*/SKILL.md 投影为 Codex CLI 自定义 prompts。
+"""Codex 适配器：把 skills/*/SKILL.md 投影为 Codex 原生 skills。
 
-单一源 = skills/*/SKILL.md；本脚本按 ADR 0003 §5 的四步做「构建期投影」：
-  1. 内联 @include 片段 → 每个 prompt 自包含（不依赖 Claude 的运行时约定）
-  2. 重写 frontmatter → 只留 Codex 认的 description / argument-hint
-  3. 物化命名空间 → 把 next_step 写成正文里的「下一步」指令
+目标 Codex 是「兼容 Claude Code 生态的定制版」——用 `~/.codex/skills/<name>/SKILL.md`
+（frontmatter name + description，靠 description 触发，非斜杠命令），而**不是** vanilla Codex 的
+`~/.codex/prompts/*.md` 斜杠命令。这套机制已在真机验证（gpt-5.6-sol 自然语言触发 pdlc-prd 成功）。
+
+单一源 = skills/*/SKILL.md；本脚本按 ADR 0003 §5 做「构建期投影」：
+  1. 内联 @include 片段 → 每个 skill 自包含（不依赖 Claude 的运行时约定）
+  2. 重写 frontmatter → Codex skill 格式 name + description（description 追加 pdlc 触发提示）
+  3. 物化命名空间 → 把 next_step 写成正文里的「下一步」指令（自然语言，非斜杠命令）
   4. 丢弃 Claude-Code-only 能力（statusline 配置、自主收敛引擎）
 
 用法：
   python3 adapters/build_codex.py [输出目录]   # 默认 dist/codex
 产物：
-  <out>/prompts/pdlc-*.md      转译后的 Codex prompts（拷到 ~/.codex/prompts/）
-  <out>/templates/             文档模板（拷到 ~/.codex/pdlc/templates/）
-  <out>/pdlc-methodology.md    平台中立方法论（供自然语言路径按需引用）
+  <out>/skills/pdlc-*/SKILL.md  转译后的 Codex skills（拷到 ~/.codex/skills/）
+  <out>/templates/              文档模板（拷到 ~/.codex/pdlc/templates/）
+  <out>/pdlc-methodology.md     平台中立方法论（供自然语言路径按需引用）
 
 详见 adapters/README.md 与 docs/decisions/0003-multi-platform-adapters.md。
 """
@@ -96,13 +100,19 @@ def next_step_note(fm):
     nxt = fm.get("next_step", "").strip().strip("'\"")
     if not nxt or nxt in ("null", "~"):
         return ""
+    short = nxt.replace("pdlc-", "")
     return (
         f"\n\n---\n\n"
         f"## 下一步（PDLC 链式推进）\n\n"
-        f"本阶段收尾后，下一跳是 **`/{nxt}`**。在 Codex 里可直接调用 `/{nxt}` prompt，"
-        f"或用自然语言「按 pdlc {nxt.replace('pdlc-', '')}」继续。链式推进以状态机 "
+        f"本阶段收尾后，下一跳是 **{nxt}** 技能。用自然语言「按 pdlc {short}」继续即可"
+        f"（本 Codex 的 skill 靠描述触发，不是斜杠命令）。链式推进以状态机 "
         f"`docs/.pdlc-state/<feature-id>.json` 的 `next_step` 为准。\n"
     )
+
+
+# 追加到 description 的 pdlc 触发提示——Codex skill 靠 description 匹配，这句帮模型把
+# 「用 pdlc …」「按 pdlc …」的自然语言关联到本技能。
+TRIGGER_SUFFIX = " 当用户用自然语言要求执行该 PDLC 阶段（如「用 pdlc …」「按 pdlc …」）时使用。"
 
 
 def transpile(text):
@@ -111,24 +121,24 @@ def transpile(text):
     body = inline_includes(body)
     body = rewrite_template_refs(body)
 
-    # Codex 认的 frontmatter：description + 可选 argument-hint
-    head = ["---", f"description: {fm.get('description', '').strip()}"]
-    hint = fm.get("argument-hint", "").strip()
-    if hint:
-        head.append(f"argument-hint: {hint}")
-    head.append("---")
+    # Codex skill frontmatter：name + description（description 追加 pdlc 触发提示）
+    name = fm.get("name", "").strip()
+    desc = fm.get("description", "").strip() + TRIGGER_SUFFIX
+    head = ["---", f"name: {name}", f"description: {desc}", "---"]
 
     return "\n".join(head) + "\n" + body.lstrip("\n") + next_step_note(fm)
 
 
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "dist" / "codex"
-    prompts_out = out / "prompts"
+    skills_out = out / "skills"
     templates_out = out / "templates"
 
     # 全新构建：清掉旧产物。但 out 是 CLI 传入的任意路径——只删「看起来纯是本脚本产物」的目录，
     # 含任何非产物条目即拒绝，防用户手滑指向 ~/.codex 等真实目录被递归删除（Copilot 评审）。
-    known_outputs = {"prompts", "templates", "pdlc-methodology.md"}
+    # "prompts" 是 v1.5.0 的旧产物名（当时投影到 prompts/）——保留在白名单里，否则从 v1.5.0
+    # 升级时旧的 dist/codex/prompts/ 会让本守卫误判、install.sh --target codex 硬失败（Copilot 评审）。
+    known_outputs = {"skills", "templates", "pdlc-methodology.md", "prompts"}
     if out.exists() and any(out.iterdir()):
         foreign = sorted(p.name for p in out.iterdir() if p.name not in known_outputs)
         if foreign:
@@ -137,7 +147,7 @@ def main():
                 f"      请指向空目录或专用构建目录（默认 dist/codex）。"
             )
         shutil.rmtree(out)
-    prompts_out.mkdir(parents=True)
+    skills_out.mkdir(parents=True)
     templates_out.mkdir(parents=True)
 
     ported, skipped = [], []
@@ -152,7 +162,8 @@ def main():
         result = transpile(src.read_text(encoding="utf-8"))
         if INCLUDE_RE.search(result):
             sys.exit(f"错误：{name} 转译后仍残留 @include（片段缺失？）")
-        (prompts_out / f"{name}.md").write_text(result, encoding="utf-8")
+        (skills_out / name).mkdir(parents=True)
+        (skills_out / name / "SKILL.md").write_text(result, encoding="utf-8")
         ported.append(name)
 
     # 拷文档模板（供改写后的 templates/ 引用解析）
@@ -164,7 +175,7 @@ def main():
         shutil.copy2(METHODOLOGY, out / "pdlc-methodology.md")
 
     print(f"✅ Codex 适配器构建完成 → {out}")
-    print(f"   prompts: {len(ported)} 个（denylist 跳过 {len(skipped)}：{', '.join(skipped)}）")
+    print(f"   skills: {len(ported)} 个（denylist 跳过 {len(skipped)}：{', '.join(skipped)}）")
     print(f"   templates: {len(list(templates_out.glob('*')))} 个")
     return 0
 

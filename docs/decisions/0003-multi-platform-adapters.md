@@ -75,6 +75,8 @@ AI 编程工具驱动，且**单一源、无分叉维护**。
 
 > ⚠️ 上表是**待评审阶段的调研快照**，各平台机制在快速演进，实现前需逐一复核官方文档
 > （尤其 frontmatter 字段与调用命名空间）。**不要**把此表当成永久契约。
+>
+> 📌 **实现纪要（v1.5.1，真机验证后更正）**：上表「Codex CLI → `~/.codex/prompts/*.md` → `/name` 斜杠命令」的假设**未在真机验证就发了 v1.5.0，是错的**。实测目标 Codex 是**兼容 Claude Code 生态的发行版**，用 `~/.codex/skills/<name>/SKILL.md`（frontmatter `name`+`description`，靠 **description 触发、非斜杠命令**）；gpt-5.6-sol 按描述匹配到 `pdlc-prd` 并正确执行、写出 schema 正确的状态机。v1.5.1 已把适配器改到 `skills/` 布局。教训：**§6.1 的准入闸必须在真机上跑**——这次栽在没验证就发版。（vanilla OpenAI Codex 是否用 `prompts/` 仍未验证，留待有该环境的用户复核。）
 
 ---
 
