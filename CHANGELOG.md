@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-19
+
+多平台支持第一步：把 PDLC 方法论内核平台中立化，并交付 Codex CLI 适配器。设计见 `docs/decisions/0003-multi-platform-adapters.md`。Claude Code 仍是一等公民、不降级。
+
+### Added
+
+- **`docs/pdlc-methodology.md`** — 平台中立的 PDLC 方法论内核（Tier 1「地板」）：IRON LAW 六条、状态机契约、目标项目目录契约、功能/缺陷 ID 分配、四段式骨架、`test-commands.yml` 客观检查、自然语言 → 阶段映射，并诚实标注哪些能力仅 Claude Code。任何 AI 编程工具（Codex / Cursor / Windsurf / Copilot / Cline …）可据此用自然语言驱动 PDLC，共享同一份 `docs/.pdlc-state/`。
+- **`adapters/build_codex.py`** — Codex 适配器：把 `skills/*/SKILL.md` **构建期投影**为 Codex CLI 自定义 prompts。四步转译——内联 `@include`（自包含、剥离 Claude 术语）、剥离 Claude 内部 frontmatter、物化 `next_step` 进正文、denylist 3 个 Claude-Code-only skill（`pdlc-settings` / `pdlc-loop-next` / `pdlc-loop-run`）。产出 33 个 `/pdlc-*` prompt + 文档模板 + 方法论。python3 标准库、零 pip 依赖、仅构建期。
+- **`install.sh --target codex`** — 一步构建并安装 Codex prompts 到 `~/.codex/prompts/`（模板 + 方法论到 `~/.codex/pdlc/`）；`--target codex --uninstall` 移除。需本地克隆 + python3。
+- **`adapters/README.md`** — 适配器架构 + 转译四步 + 如何新增一个平台（含状态完整性准入闸）。
+- **`tests/adapter-codex-check.sh`** — Codex 产物回归（21 断言）：33 prompt / denylist 缺席 / 无 `@include` 残留 / 无 Claude 术语泄漏 / frontmatter 剥离 / `next_step` 物化 / 模板引用改写 / 方法论落地。
+
+### Fixed
+
+- **`install.sh` 陈旧计数** — Claude Code 提示里「33 sub-commands」更正为 36（settings/loop-next/loop-run 加入后未同步）。
+
 ## [1.4.0] - 2026-07-18
 
 在 Claude Code 状态栏显示 PDLC 运行状态（可选、默认关）。设计见 `docs/decisions/0002-statusline-pdlc-status.md`。35 → 36 skills。

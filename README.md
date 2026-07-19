@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
@@ -15,7 +15,7 @@
 
 Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
 
-Currently **Claude Code only**. The plugin lives at `~/.claude/plugins/pdlc/` after install.
+**Claude Code is the first-class citizen** (the plugin lives at `~/.claude/plugins/pdlc/` after install). The PDLC methodology itself is **platform-neutral**, so other AI coding tools can drive it too — **Codex CLI** via a native adapter today; Cursor / Windsurf / Copilot planned. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
 
@@ -133,10 +133,26 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.4.0  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.5.0  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 36 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
+
+---
+
+## Multi-platform (other AI coding tools)
+
+Claude Code is the **first-class citizen** — 36 slash commands + statusline + autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
+
+- **Any tool** (Codex, Cursor, Windsurf, Copilot, Cline, …): use the platform-neutral methodology doc [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) as your project rules (`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …), then drive PDLC in natural language ("run the PDLC review stage" → the agent follows the doc).
+- **Codex CLI** (native `/pdlc-*` prompts):
+  ```bash
+  git clone https://github.com/kanfu-panda/pdlc-skills.git
+  cd pdlc-skills && bash install.sh --target codex
+  ```
+  Builds the adapter and installs 33 `/pdlc-*` prompts into `~/.codex/prompts/` (the 3 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
+
+Cursor / Windsurf / Copilot native adapters are planned per real demand. Design & roadmap: [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md).
 
 ---
 

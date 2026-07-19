@@ -137,6 +137,17 @@ assert_exists "statusline scenario test exists" "tests/statusline-check.sh"
 assert_contains "pdlc-settings degrades when settings.json write is gated" "被安全层拦截" "$(cat skills/pdlc-settings/SKILL.md)"
 assert_contains "statusline script exits empty for non-PDLC dirs" "非 PDLC 项目 → 立即吐空" "$(cat bin/pdlc-statusline.sh)"
 
+# ─── multi-platform adapters (v1.5) invariants ───
+assert_exists "docs/pdlc-methodology.md (Tier 1 core) exists" "docs/pdlc-methodology.md"
+assert_exists "adapters/ directory exists" "adapters"
+assert_exists "adapters/README.md exists" "adapters/README.md"
+assert_exists "Codex adapter build_codex.py exists" "adapters/build_codex.py"
+assert_exists "adapter-codex scenario test exists" "tests/adapter-codex-check.sh"
+assert_exists "ADR 0003 multi-platform exists" "docs/decisions/0003-multi-platform-adapters.md"
+assert_contains "install.sh supports --target codex" "target codex" "$(cat install.sh)"
+assert_contains "methodology declares platform-neutral core" "平台中立" "$(cat docs/pdlc-methodology.md)"
+assert_contains "build_codex denylists Claude-only skills" "pdlc-loop-run" "$(cat adapters/build_codex.py)"
+
 # ─── Test 4: install.sh without claude CLI ───
 echo ""
 echo "Test: install.sh (claude CLI not required for these subcommands)"

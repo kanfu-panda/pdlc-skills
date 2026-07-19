@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > 作者：**kanfu-panda**
@@ -15,7 +15,7 @@
 
 每个阶段都强制硬契约（产物落到 `docs/`、每功能状态机、实现前必须有红灯测试、阶段交接前自检、自动修复仅一轮），让 AI 驱动的工程产出真实可审计的文件，而不是只活在对话里。
 
-**当前仅支持 Claude Code**。安装后 plugin 在 `~/.claude/plugins/pdlc/`。
+**Claude Code 是一等公民**（安装后 plugin 在 `~/.claude/plugins/pdlc/`）。PDLC 方法论本身**平台中立**，其它 AI 编程工具也能驱动——**Codex CLI** 今天已有原生适配器；Cursor / Windsurf / Copilot 在规划中。见[多平台](#多平台其它-ai-编程工具)。
 
 ---
 
@@ -133,10 +133,26 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.4.0  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.5.0  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 36 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
+
+---
+
+## 多平台（其它 AI 编程工具）
+
+Claude Code 是**一等公民**——36 个斜杠命令 + 状态栏 + 自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
+
+- **任意工具**（Codex / Cursor / Windsurf / Copilot / Cline …）：把平台中立方法论文档 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 作为项目规则（`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …），然后用**自然语言**驱动（「按 pdlc 跑评审」→ agent 照文档执行）。
+- **Codex CLI**（原生 `/pdlc-*` prompts）：
+  ```bash
+  git clone https://github.com/kanfu-panda/pdlc-skills.git
+  cd pdlc-skills && bash install.sh --target codex
+  ```
+  构建适配器并把 33 个 `/pdlc-*` prompt 装到 `~/.codex/prompts/`（3 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+
+Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路线：[ADR 0003](./docs/decisions/0003-multi-platform-adapters.md)。
 
 ---
 

@@ -57,8 +57,16 @@ Usage:
   bash install.sh --help                         Show this message
   bash install.sh                                Interactive mode
 
-After install, restart Claude Code and type \`/pdlc-\`. You should see 33
+  bash install.sh --target codex                 Install pdlc as Codex CLI prompts
+  bash install.sh --target codex --uninstall     Remove the Codex prompts
+
+After install, restart Claude Code and type \`/pdlc-\`. You should see 36
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
+
+--target codex builds the platform-neutral adapter (see
+docs/decisions/0003-multi-platform-adapters.md) and installs 33 /pdlc-*
+prompts into ~/.codex/prompts/ (the 3 Claude Code-only skills are skipped).
+Requires a local clone + python3.
 
 Remote (no clone) install one-liner:
   curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/install.sh | bash -s -- --global
@@ -108,15 +116,69 @@ do_version() {
   fi
 }
 
+# ─── Target: codex (multi-platform adapter, see docs/decisions/0003) ───
+CODEX_PROMPTS_DIR="${HOME}/.codex/prompts"
+CODEX_PDLC_DIR="${HOME}/.codex/pdlc"
+
+require_python3() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "Error: python3 not found — required to build the Codex adapter." >&2
+    exit 1
+  fi
+}
+
+do_codex_install() {
+  if [[ "$IS_LOCAL_CLONE" -ne 1 ]]; then
+    cat >&2 <<EOF
+Error: --target codex must run from a local clone of pdlc-skills.
+  git clone https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git
+  cd ${GITHUB_REPO} && bash install.sh --target codex
+EOF
+    exit 1
+  fi
+  require_python3
+
+  local build_dir="$SCRIPT_DIR/dist/codex"
+  echo "Building Codex adapter from skills/ ..."
+  python3 "$SCRIPT_DIR/adapters/build_codex.py" "$build_dir"
+
+  echo ""
+  echo "Installing Codex prompts → ${CODEX_PROMPTS_DIR}"
+  mkdir -p "$CODEX_PROMPTS_DIR" "$CODEX_PDLC_DIR/templates"
+  cp "$build_dir"/prompts/*.md "$CODEX_PROMPTS_DIR"/
+  cp "$build_dir"/templates/*  "$CODEX_PDLC_DIR/templates"/
+  cp "$build_dir/pdlc-methodology.md" "$CODEX_PDLC_DIR"/
+
+  local n
+  n=$(find "$build_dir/prompts" -name '*.md' | wc -l | tr -d ' ')
+  echo ""
+  echo "✅ Done. ${n} /pdlc-* prompts installed for Codex."
+  echo "   In Codex, type /pdlc- to see them (e.g. /pdlc-feature, /pdlc-prd)."
+  echo "   Methodology + templates: ${CODEX_PDLC_DIR}"
+  echo "   Note: the statusline and the autonomous loop engine are Claude Code-only (not ported)."
+}
+
+do_codex_uninstall() {
+  # Only ever touches our own namespaced paths under ~/.codex.
+  echo "Removing pdlc prompts from ${CODEX_PROMPTS_DIR} ..."
+  rm -f "$CODEX_PROMPTS_DIR"/pdlc-*.md
+  if [[ "$CODEX_PDLC_DIR" == "${HOME}/.codex/pdlc" && -d "$CODEX_PDLC_DIR" ]]; then
+    rm -rf "$CODEX_PDLC_DIR"
+  fi
+  echo "✅ Removed pdlc from Codex."
+}
+
 # ─── Argument parsing ───
 ACTION="install"
 SCOPE=""
 PROJECT=""
+TARGET="claude"   # claude (default) | codex
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --global)      SCOPE="user"; shift ;;
     --project)     SCOPE="project"; PROJECT="${2:-}"; shift 2 ;;
+    --target)      TARGET="${2:-}"; shift 2 ;;
     --uninstall)   ACTION="uninstall"; shift ;;
     --upgrade)     ACTION="upgrade"; shift ;;
     --version)     ACTION="version"; shift ;;
@@ -128,6 +190,18 @@ done
 case "$ACTION" in
   version) do_version; exit 0 ;;
 esac
+
+# Codex target bypasses the claude CLI (it copies files, not a plugin install).
+if [[ "$TARGET" == "codex" ]]; then
+  case "$ACTION" in
+    install)   do_codex_install; exit 0 ;;
+    uninstall) do_codex_uninstall; exit 0 ;;
+    *) echo "Error: --target codex supports install / --uninstall only." >&2; exit 1 ;;
+  esac
+elif [[ "$TARGET" != "claude" ]]; then
+  echo "Error: unknown --target '$TARGET' (supported: claude, codex)." >&2
+  exit 1
+fi
 
 require_claude_cli
 
@@ -173,7 +247,7 @@ case "$ACTION" in
     echo ""
     echo "✅ Done."
     echo ""
-    echo "Restart Claude Code, then type /pdlc- to see all 33 sub-commands."
+    echo "Restart Claude Code, then type /pdlc- to see all 36 sub-commands."
     ;;
   upgrade)
     echo "Updating ${PLUGIN_NAME}@${MARKETPLACE_NAME}..."

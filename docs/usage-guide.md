@@ -218,6 +218,34 @@ pdlc-skills 可在 Claude Code 底部状态栏**独占一行**显示当前 PDLC 
 
 ---
 
+## 4.6 在其它工具里用 PDLC（多平台）
+
+Claude Code 是**一等公民**（本手册前面全部内容）。但 PDLC 的方法论、状态机、模板是**平台中立**的——同一份 `docs/.pdlc-state/` 谁都能推，换工具不丢状态。设计与路线见 `docs/decisions/0003-multi-platform-adapters.md`。
+
+**两种用法：**
+
+1. **任意工具（Codex / Cursor / Windsurf / Copilot / Cline …）· 自然语言驱动**
+   把平台中立方法论文档 `docs/pdlc-methodology.md` 作为你项目的规则文件（`AGENTS.md` / `.cursor/rules/` / `.github/copilot-instructions.md` / `.clinerules/` 等），然后用自然语言驱动：
+   ```
+   按 pdlc 给这个功能跑一遍需求分析     → 走 PRD 阶段
+   按 pdlc 跑 TDD / 做实现 / 评审        → 对应阶段
+   按 pdlc 看状态                        → 只读状态视图
+   ```
+   agent 读到指令后按方法论文档执行：读/建状态机 → 四段式 → 客观检查 → 更新状态机并交接。
+
+2. **Codex CLI · 原生 `/pdlc-*` prompts**
+   ```bash
+   git clone https://github.com/kanfu-panda/pdlc-skills.git
+   cd pdlc-skills && bash install.sh --target codex
+   ```
+   构建适配器（`adapters/build_codex.py`）并把 33 个 `/pdlc-*` prompt 装到 `~/.codex/prompts/`、模板与方法论到 `~/.codex/pdlc/`。在 Codex 里打 `/pdlc-` 即可看到。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+
+> **哪些能力仅 Claude Code**：状态栏（§4.5）、自主收敛引擎（`/pdlc-loop-*`）、`/pdlc-settings`——这 3 个 skill 不投影到其它平台。其它平台靠手动逐阶段驱动达到同样产物。
+>
+> **跨工具状态延续的前提**：每个平台都老实遵守 IRON LAW 与「客观检查不虚报」（`checks` 来自真实退出码，不用模型自评）。任一平台写脏状态就污染所有平台共用的那份——这也是新平台接入前要过「状态完整性准入闸」的原因（ADR 0003 §6.1）。
+
+---
+
 ## 5. 状态机文件
 
 每个功能在你的项目里对应一个 `docs/.pdlc-state/<feature-id>.json`，记录该功能走过的阶段、产物、自检结果、下一跳建议。
