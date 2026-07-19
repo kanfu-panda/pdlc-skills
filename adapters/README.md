@@ -32,7 +32,8 @@ bash install.sh --target codex --uninstall   # 移除
 ```
 
 - **语言**：python3 **标准库**（零 pip 依赖）。选 python 而非 bash：markdown 文本变换（frontmatter 解析、内联、改写）用 bash 的 sed/awk 脆弱易错，python 稳健得多；且这是**构建期专用**、不进运行时。
-- **denylist**（本 PoC 暂不投影）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）；`pdlc-loop-next`（逻辑平台中立，但作为 loop-run 的 helper 随整套循环工程一起留后续，不拆散）。其余 33 个 skill 投影为 `/pdlc-*` prompt。详见 `build_codex.py` 里 `DENYLIST` 的注释。
+- **denylist**（本 PoC 暂不投影，2 个）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）。`pdlc-loop-next` **已投影**（逻辑平台中立，作独立只读查询），其正文里 `claude -p` 驱动 helper 由 `adapter:claude-only` 哨兵剥掉。其余共 34 个 skill 投影为 `/pdlc-*` prompt。详见 `build_codex.py` 里 `DENYLIST` 的注释。
+- **`adapter:claude-only` 哨兵**：源里被 `<!-- adapter:claude-only-start -->` / `<!-- adapter:claude-only-end -->` 包裹的块是 Claude 专属内容（如用 `claude -p` 驱动的示例管线），投影到其它平台时整段剥掉；Claude Code 看不见 HTML 注释、行为不变。这是「单一源、按目标裁剪」的通用手段。
 - **模板**：`references/templates/*-template.*` 拷到 `dist/codex/templates/`，正文里 `templates/X.md` 引用改写到 `~/.codex/pdlc/templates/X.md`。
 - **frontmatter 假设**：Codex 自定义 prompt 支持 `description` / `argument-hint` frontmatter。若你的 Codex 版本不解析 frontmatter，仅头部多几行文本、不影响正文（正文自包含）。
 

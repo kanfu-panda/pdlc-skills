@@ -150,7 +150,7 @@ Claude Code is the **first-class citizen** — 36 slash commands + statusline + 
   git clone https://github.com/kanfu-panda/pdlc-skills.git
   cd pdlc-skills && bash install.sh --target codex
   ```
-  Builds the adapter and installs 33 `/pdlc-*` prompts into `~/.codex/prompts/` (the 3 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
+  Builds the adapter and installs 34 `/pdlc-*` prompts into `~/.codex/prompts/` (the 2 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
 
 Cursor / Windsurf / Copilot native adapters are planned per real demand. Design & roadmap: [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md).
 

@@ -50,6 +50,7 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 
 6. 不写文件、不产任何 artifact。
 
+<!-- adapter:claude-only-start -->
 ## 参考 helper（供 usage-guide / 外层循环使用，含白名单校验）
 
 ```bash
@@ -65,5 +66,6 @@ case "$CMD" in
   *)       echo "❌ 非法命令（原始输出：$RAW）"; exit 1 ;;
 esac
 ```
+<!-- adapter:claude-only-end -->
 
 功能ID: $ARGUMENTS

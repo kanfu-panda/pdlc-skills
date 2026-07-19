@@ -14,10 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`docs/pdlc-methodology.md`** — 平台中立的 PDLC 方法论内核（Tier 1「地板」）：IRON LAW 六条、状态机契约、目标项目目录契约、功能/缺陷 ID 分配、四段式骨架、`test-commands.yml` 客观检查、自然语言 → 阶段映射，并诚实标注哪些能力仅 Claude Code。任何 AI 编程工具（Codex / Cursor / Windsurf / Copilot / Cline …）可据此用自然语言驱动 PDLC，共享同一份 `docs/.pdlc-state/`。
-- **`adapters/build_codex.py`** — Codex 适配器：把 `skills/*/SKILL.md` **构建期投影**为 Codex CLI 自定义 prompts。四步转译——内联 `@include`（自包含、剥离 Claude 术语）、剥离 Claude 内部 frontmatter、物化 `next_step` 进正文、denylist 3 个 Claude-Code-only skill（`pdlc-settings` / `pdlc-loop-next` / `pdlc-loop-run`）。产出 33 个 `/pdlc-*` prompt + 文档模板 + 方法论。python3 标准库、零 pip 依赖、仅构建期。
+- **`adapters/build_codex.py`** — Codex 适配器：把 `skills/*/SKILL.md` **构建期投影**为 Codex CLI 自定义 prompts。转译——内联 `@include`（自包含、剥离 Claude 术语）、剥离 Claude 内部 frontmatter、物化 `next_step` 进正文、剥掉 `adapter:claude-only` 哨兵块（Claude 专属示例管线）、denylist 2 个 Claude-Code-only skill（`pdlc-settings` 状态栏、`pdlc-loop-run` 自主收敛引擎）。产出 34 个 `/pdlc-*` prompt + 文档模板 + 方法论。`pdlc-loop-next` 逻辑平台中立、作为独立只读查询投影（其 `claude -p` 驱动 helper 由哨兵剥掉）。python3 标准库、零 pip 依赖、仅构建期。
 - **`install.sh --target codex`** — 一步构建并安装 Codex prompts 到 `~/.codex/prompts/`（模板 + 方法论到 `~/.codex/pdlc/`）；`--target codex --uninstall` 移除。需本地克隆 + python3。
-- **`adapters/README.md`** — 适配器架构 + 转译四步 + 如何新增一个平台（含状态完整性准入闸）。
-- **`tests/adapter-codex-check.sh`** — Codex 产物回归（21 断言）：33 prompt / denylist 缺席 / 无 `@include` 残留 / 无 Claude 术语泄漏 / frontmatter 剥离 / `next_step` 物化 / 模板引用改写 / 方法论落地。
+- **`adapters/README.md`** — 适配器架构 + 转译步骤（含 `adapter:claude-only` 哨兵机制）+ 如何新增一个平台（含状态完整性准入闸）。
+- **`tests/adapter-codex-check.sh`** — Codex 产物回归：34 prompt / denylist 缺席 / loop-next 已投影且 claude 专属 helper 被哨兵剥掉 / 无 `@include` 残留 / 无 Claude 术语泄漏 / frontmatter 剥离 / `next_step` 物化 / 模板引用改写 / 方法论落地。
 
 ### Fixed
 

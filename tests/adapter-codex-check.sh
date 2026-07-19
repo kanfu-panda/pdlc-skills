@@ -64,16 +64,16 @@ assert_absent() {
 echo "Test: 构建 Codex 适配器"
 build_out="$(python3 adapters/build_codex.py "$OUT" 2>&1)"
 assert_eq "构建退出码 0" "0" "$?"
-assert_contains "报告 denylist 跳过 3 个" "denylist 跳过 3" "$build_out"
+assert_contains "报告 denylist 跳过 2 个" "denylist 跳过 2" "$build_out"
 
 # ─── prompt 数量与 denylist ───
 echo ""
 echo "Test: prompt 数量与 denylist"
 n=$(find "$OUT/prompts" -name 'pdlc-*.md' | wc -l | tr -d ' ')
-assert_eq "投影 33 个 prompt（36 − 3 denylist）" "33" "$n"
-assert_absent "pdlc-settings 未投影（Claude-only）"   "$OUT/prompts/pdlc-settings.md"
-assert_absent "pdlc-loop-next 未投影（Claude-only）"  "$OUT/prompts/pdlc-loop-next.md"
-assert_absent "pdlc-loop-run 未投影（Claude-only）"   "$OUT/prompts/pdlc-loop-run.md"
+assert_eq "投影 34 个 prompt（36 − 2 denylist）" "34" "$n"
+assert_absent "pdlc-settings 未投影（真·Claude-only）"   "$OUT/prompts/pdlc-settings.md"
+assert_absent "pdlc-loop-run 未投影（Task 版耦合子代理派发）" "$OUT/prompts/pdlc-loop-run.md"
+assert_exists "pdlc-loop-next 已投影（逻辑平台中立）" "$OUT/prompts/pdlc-loop-next.md"
 assert_exists "pdlc-feature 已投影"  "$OUT/prompts/pdlc-feature.md"
 assert_exists "pdlc-prd 已投影"      "$OUT/prompts/pdlc-prd.md"
 assert_exists "pdlc-review 已投影"   "$OUT/prompts/pdlc-review.md"
@@ -87,6 +87,11 @@ leaked_layer="$(grep -rl 'Layer 1/2 命令\|Layer 2 命令' "$OUT/prompts/" 2>/d
 assert_eq "无 'Layer 1/2 命令' 术语泄漏" "" "$leaked_layer"
 # IRON LAW 确实被内联进产出（自包含证据）
 assert_contains "pdlc-prd 内联了 IRON LAW" "IRON LAW" "$(cat "$OUT/prompts/pdlc-prd.md")"
+# adapter:claude-only 哨兵块被剥掉：loop-next 的 claude 专属驱动 helper 不应残留
+loopnext="$(cat "$OUT/prompts/pdlc-loop-next.md")"
+assert_eq "loop-next 剥掉 claude -p 驱动 helper" "" "$(grep -c 'claude -p' <<< "$loopnext" | sed 's/0//')"
+sentinel_left="$(grep -rl 'adapter:claude-only' "$OUT/prompts/" 2>/dev/null || true)"
+assert_eq "无 adapter:claude-only 哨兵残留" "" "$sentinel_left"
 
 # ─── frontmatter 剥离 ───
 echo ""

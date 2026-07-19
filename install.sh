@@ -64,8 +64,8 @@ After install, restart Claude Code and type \`/pdlc-\`. You should see 36
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
 
 --target codex builds the platform-neutral adapter (see
-docs/decisions/0003-multi-platform-adapters.md) and installs 33 /pdlc-*
-prompts into ~/.codex/prompts/ (the 3 Claude Code-only skills are skipped).
+docs/decisions/0003-multi-platform-adapters.md) and installs 34 /pdlc-*
+prompts into ~/.codex/prompts/ (the 2 Claude Code-only skills are skipped).
 Requires a local clone + python3.
 
 Remote (no clone) install one-liner:

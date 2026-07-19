@@ -27,22 +27,26 @@ PROMPTS_SRC = REPO / "references" / "templates" / "prompts"
 TEMPLATES_SRC = REPO / "references" / "templates"
 METHODOLOGY = REPO / "docs" / "pdlc-methodology.md"
 
-# 本 PoC 暂不投影。区分两类原因，别一概说成「Claude 绑死」：
+# 本 PoC 暂不投影：
 #   pdlc-settings   —— 真·Claude-only：配状态栏 / 改全局 settings.json，Codex 无等价机制。
 #   pdlc-loop-run   —— 部分耦合：默认「Task 版」用 Claude Code 的 Task 子代理派发（Codex 无直接等价）；
 #                      「外部 Runbook 版」原理可移植（bash 循环换 claude→codex），但需 Codex 驱动脚本 +
 #                      过 ADR 0003 §6.1 状态完整性准入闸后才敢放行（防 --autonomous 下写脏共用状态）。
-#   pdlc-loop-next  —— 逻辑本身平台中立（只读状态机、按 next_step 打印下一跳 token），并非绑死；
-#                      但它是 loop-run 的低层 helper，单独投影是个无引擎消费的孤儿命令，
-#                      故随整套「循环工程」系统一起留后续，不拆散。
-# 其它平台可手动逐阶段驱动达到同样产物（见 pdlc-methodology.md §9）。
-DENYLIST = {"pdlc-settings", "pdlc-loop-next", "pdlc-loop-run"}
+# 注：pdlc-loop-next 逻辑平台中立（只读状态机、打印下一跳 token），已投影为独立只读查询命令；
+#     其正文里「用 claude -p 驱动外层循环」的参考 helper 是 Claude 专属管线，用 adapter:claude-only 哨兵剥掉。
+DENYLIST = {"pdlc-settings", "pdlc-loop-run"}
 
 # 模板在 Codex 侧的安装位置（install.sh --target codex 会把模板拷到这里）
 CODEX_TEMPLATES = "~/.codex/pdlc/templates"
 
 INCLUDE_RE = re.compile(r"<!--\s*@include\s+templates/prompts/([a-z0-9-]+)\.md\s*-->")
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
+# 通用机制：源里被 <!-- adapter:claude-only-start/end --> 包裹的块是 Claude 专属内容
+# （如用 `claude -p` 驱动的示例管线），投影到其它平台时整段剥掉。Claude Code 看不见 HTML 注释、行为不变。
+CLAUDE_ONLY_RE = re.compile(
+    r"[ \t]*<!--\s*adapter:claude-only-start\s*-->.*?<!--\s*adapter:claude-only-end\s*-->\n?",
+    re.DOTALL,
+)
 
 
 def parse_frontmatter(text):
@@ -98,6 +102,7 @@ def next_step_note(fm):
 
 def transpile(text):
     fm, body = parse_frontmatter(text)
+    body = CLAUDE_ONLY_RE.sub("", body)   # 先剥 Claude 专属块
     body = inline_includes(body)
     body = rewrite_template_refs(body)
 

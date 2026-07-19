@@ -242,11 +242,12 @@ e2e:      "<跑 e2e 的命令>"         # 可选
 
 - **`/pdlc-*` 斜杠命令 + 自动补全**：其它平台用自然语言（§8）或该平台的原生命令文件（Tier 3 适配器，逐个平台加）替代。
 - **状态栏片段**（`bin/pdlc-statusline.sh` + `/pdlc-settings`）：Claude Code 状态栏机制专属，见 [ADR 0002](decisions/0002-statusline-pdlc-status.md)。
-- **自主收敛引擎**（`pdlc-loop-run` / `pdlc-loop-next` + `--autonomous` 契约）：可无人值守把 `tdd→implement→review`
-  推到 `review_done`。**并非绑死 Claude**——`pdlc-loop-next` 的判定逻辑（只读状态机、按 `next_step` 打印下一跳）
-  与 `--autonomous` 契约都平台中立，`loop-run` 的「外部 Runbook 版」原理也可移植；真正 Claude-only 的只有
-  `loop-run` 默认「Task 版」用的子代理派发机制。缺的是各平台的**循环驱动 harness** + 过状态完整性准入闸，
-  属后续工作。当前其它平台可**手动逐阶段驱动**达到同样产物，只是没有内置的循环引擎与判停哨兵。
+- **自主收敛引擎**（`pdlc-loop-run` + `--autonomous` 契约）：可无人值守把 `tdd→implement→review` 推到 `review_done`。
+  **并非绑死 Claude**——`--autonomous` 契约平台中立，`loop-run` 的「外部 Runbook 版」原理也可移植；真正 Claude-only
+  的只有 `loop-run` 默认「Task 版」用的子代理派发机制。`pdlc-loop-next`（只读状态机、按 `next_step` 打印下一跳阶段）
+  逻辑平台中立，**已作为独立只读查询投影到 Codex**（问「下一步该跑哪个阶段」）；缺的是 `loop-run` 引擎的各平台
+  **循环驱动 harness** + 过状态完整性准入闸，属后续工作。当前其它平台可**手动逐阶段驱动**达到同样产物，只是没有
+  内置的循环引擎与判停哨兵。
 - **关系子系统自动化**（`/pdlc-relate rebuild` 生成 `_relations.json` / `_graph.md`）：状态机里的 `relations`
   块本身平台中立、可手维护，但反向索引与图的自动重建是 Claude Code 命令。
 
