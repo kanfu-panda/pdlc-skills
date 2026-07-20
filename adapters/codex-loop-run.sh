@@ -38,6 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$FID" ]] || { echo "错误：缺功能ID" >&2; usage 64; }
+[[ "$MAX_STEPS" =~ ^[1-9][0-9]*$ ]] || { echo "错误：--max-steps 需正整数（得到 '$MAX_STEPS'）" >&2; usage 64; }
 command -v jq >/dev/null 2>&1 || { echo "错误：需要 jq" >&2; exit 64; }
 STATE="$PROJECT/docs/.pdlc-state/$FID.json"
 [[ -f "$STATE" ]] || { echo "错误：状态机不存在 $STATE" >&2; exit 64; }
@@ -48,7 +49,8 @@ fi
 # loop-next 映射（复刻 pdlc-loop-next：以 next_step 为主键，blocked_reason/终态优先）。
 # 输出白名单单 token：pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 compute_next() {
-  jq -r '
+  local n
+  n="$(jq -r '
     if (.last_phase_result.blocked_reason // null) != null then "blocked"
     elif ((.current_stage // "") | endswith("_done")) then "done"
     else (.next_step // "null") as $ns
@@ -56,7 +58,13 @@ compute_next() {
         elif ($ns == "pdlc-ship" or $ns == "pdlc-deploy" or $ns == "null") then "done"
         else "blocked" end
     end
-  ' "$STATE"
+  ' "$STATE" 2>/dev/null)"
+  # jq 解析失败 / 空 / 意外 token → 按 loop-next「无法解析 → blocked」契约兜底，
+  # 绝不让空串漏到下游被误判成 stuck。
+  case "$n" in
+    pdlc-tdd|pdlc-implement|pdlc-review|done|blocked) printf '%s\n' "$n" ;;
+    *) printf 'blocked\n' ;;
+  esac
 }
 
 echo "🔁 Codex loop-run：$FID  项目=$PROJECT  上限=$MAX_STEPS 步$([[ $DRY_RUN -eq 1 ]] && echo '  [dry-run]')"
@@ -69,7 +77,8 @@ while :; do
       echo "✅ 收敛到 review_done（或无后续）。发布是人工闸门 —— 交人工决定 /pdlc-ship。"
       exit 0 ;;
     blocked)
-      echo "⛔ blocked：$(jq -r '.last_phase_result.blocked_reason // "（next_step 超出收敛段，需人工）"' "$STATE")"
+      reason="$(jq -r '.last_phase_result.blocked_reason // empty' "$STATE" 2>/dev/null)"
+      echo "⛔ blocked：${reason:-（状态机无法解析，或 next_step 超出收敛段——需人工）}"
       exit 2 ;;
     pdlc-tdd|pdlc-implement|pdlc-review) ;;
     *)
