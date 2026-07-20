@@ -1,7 +1,7 @@
 {
   "name": "pdlc",
   "version": "1.5.2",
-  "description": "Product Development Life Cycle workflow for Claude Code — 36 standardized stages covering PRD, design, TDD, implementation, code review, release, deployment, and retrospective. Each stage enforces hard contracts (artifacts persisted to disk, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces auditable, real artifacts instead of chat-only output.",
+  "description": "Turn AI software engineering into an auditable, on-disk state machine. A staged PDLC workflow (PRD, design, TDD, implement, review, ship, retro) enforces hard contracts — artifacts on disk, per-feature state machine, tests-before-code, objective checks from real command exit codes, single-shot auto-repair — so AI work produces real, reviewable files instead of chat-only output. Because the checks are objective, an autonomous loop can drive tdd→implement→review to convergence unattended (fail-stop / budget guards); because the state machine lives in your repo, it's tool-agnostic — richest integration in Claude Code, plus Codex and others via adapters.",
   "author": {
     "name": "kanfu-panda"
   },

@@ -11,11 +11,13 @@
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**pdlc-skills** is a [Claude Code plugin](https://docs.anthropic.com/) that gives Claude a complete PDLC (Product Development Life Cycle) workflow — **36 standardized stages** exposed as slash commands `/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, `/pdlc-implement`, `/pdlc-review`, `/pdlc-ship`, etc.
+**pdlc-skills** turns AI software engineering into an **auditable, on-disk state machine**. It's a [Claude Code plugin](https://docs.anthropic.com/) shipping a staged PDLC (Product Development Life Cycle) workflow — PRD → design → TDD → implement → review → ship → retro — where every stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair), so AI work produces real, reviewable files instead of chat-only output.
 
-Each stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair) so AI-driven engineering produces real, auditable files instead of chat-only output.
+Three things fall out of that state machine:
 
-**Claude Code is the first-class citizen** (the plugin lives at `~/.claude/plugins/pdlc/` after install). The PDLC methodology itself is **platform-neutral**, so other AI coding tools can drive it too — **Codex CLI** via a native adapter today; Cursor / Windsurf / Copilot planned. See [Multi-platform](#multi-platform-other-ai-coding-tools).
+- **Auditable** — every artifact lands on disk; you `git diff` exactly what the AI did.
+- **Autonomous** — checks come from **real command exit codes** (never model self-report), so an autonomous loop can drive `tdd → implement → review` to convergence unattended, with fail-stop, stuck-stop, and budget guards.
+- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (36 slash commands + statusline + in-plugin loop engine); **Codex** and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
 
@@ -142,7 +144,7 @@ In Claude Code (after restarting the session), type `/` and start typing `pdlc-`
 
 ## Multi-platform (other AI coding tools)
 
-Claude Code is the **first-class citizen** — 36 slash commands + statusline + autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
+Claude Code has the **richest integration** — 36 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
 
 - **Any tool** (Codex, Cursor, Windsurf, Copilot, Cline, …): use the platform-neutral methodology doc [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) as your project rules (`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …), then drive PDLC in natural language ("run the PDLC review stage" → the agent follows the doc).
 - **Codex** (native skills — for Claude-Code-compatible Codex distributions):
@@ -154,6 +156,18 @@ Claude Code is the **first-class citizen** — 36 slash commands + statusline + 
   - **Autonomous convergence** on Codex: `adapters/codex-loop-run.sh <feature-id> --project <dir>` drives `tdd → implement → review` to `review_done` (external Runbook; release stays human). Cleared the state-integrity admission gate on a real run — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md).
 
 Cursor / Windsurf / Copilot native adapters are planned per real demand. Design & roadmap: [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md).
+
+---
+
+## Autonomous convergence (loop engineering)
+
+Because every stage writes **objective checks** — real `unit` / `lint` / `coverage` exit codes from `docs/00_standards/test-commands.yml`, never model self-report — to a machine-readable state machine, an outer loop can drive the mechanical stages to done without a human in the seat:
+
+- **`/pdlc-loop-run <feature-id>`** — the convergence engine: auto-advances `tdd → implement → review` to `review_done`, with an iteration cap, **fail-stop** (a stage reports `ok:false` → stop), and **stuck-stop** (state didn't advance → stop). **Release always stays human** — it never auto-ships.
+- **`/pdlc-loop-next <feature-id>`** — read-only helper that prints the next convergence command, for your own shell loops.
+- **On Codex** — `adapters/codex-loop-run.sh` drives the same loop externally (cleared a real-machine state-integrity gate — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md)).
+
+Design: [ADR 0001](./docs/decisions/0001-loop-engineering-integration.md).
 
 ---
 

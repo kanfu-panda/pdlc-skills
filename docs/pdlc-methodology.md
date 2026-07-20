@@ -5,7 +5,7 @@
 > Cursor、Windsurf、VS Code + Copilot、Cline …）都能照此驱动完整的产品开发生命周期。
 >
 > **定位（见 [ADR 0003](decisions/0003-multi-platform-adapters.md)）**：本文档是多平台策略里的
-> **Tier 1「地板」**——覆盖所有工具、优雅降级。**Claude Code 是 Tier 2 一等公民**，另有 36 个
+> **Tier 1「地板」**——覆盖所有工具、优雅降级。**Claude Code 集成最全（Tier 2）**，另有 36 个
 > `/pdlc-*` 斜杠命令 + 状态栏 + 自主收敛引擎，体验最全（见 [ARCHITECTURE.md](ARCHITECTURE.md)）。
 > 本文档描述的是**两者共享的方法论内核**。
 

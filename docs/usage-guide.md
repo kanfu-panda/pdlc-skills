@@ -220,7 +220,7 @@ pdlc-skills 可在 Claude Code 底部状态栏**独占一行**显示当前 PDLC 
 
 ## 4.6 在其它工具里用 PDLC（多平台）
 
-Claude Code 是**一等公民**（本手册前面全部内容）。但 PDLC 的方法论、状态机、模板是**平台中立**的——同一份 `docs/.pdlc-state/` 谁都能推，换工具不丢状态。设计与路线见 `docs/decisions/0003-multi-platform-adapters.md`。
+Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方法论、状态机、模板是**平台中立**的——同一份 `docs/.pdlc-state/` 谁都能推，换工具不丢状态。设计与路线见 `docs/decisions/0003-multi-platform-adapters.md`。
 
 **两种用法：**
 
