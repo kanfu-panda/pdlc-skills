@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.5.1-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.2-blue)](./CHANGELOG.md)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
@@ -133,7 +133,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.5.1  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 36 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -151,6 +151,7 @@ Claude Code is the **first-class citizen** — 36 slash commands + statusline + 
   cd pdlc-skills && bash install.sh --target codex
   ```
   Builds the adapter and installs 34 pdlc skills into `~/.codex/skills/` (the 2 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Codex skills are **description-triggered, not slash commands** — after restarting Codex, drive PDLC in natural language (e.g. `用 pdlc 写个 PRD：<一句话需求>`). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
+  - **Autonomous convergence** on Codex: `adapters/codex-loop-run.sh <feature-id> --project <dir>` drives `tdd → implement → review` to `review_done` (external Runbook; release stays human). Cleared the state-integrity admission gate on a real run — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md).
 
 Cursor / Windsurf / Copilot native adapters are planned per real demand. Design & roadmap: [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md).
 

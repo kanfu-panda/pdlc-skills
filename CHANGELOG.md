@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-07-20
+
+Codex 上的 PDLC 自主收敛循环（loop-run 外部 Runbook 版）。设计与真机准入闸结果见 `docs/decisions/0004-codex-loop-run.md`。
+
+### Added
+
+- **`adapters/codex-loop-run.sh`** — Codex 外部 Runbook 驱动：一个 bash 循环，无人值守把 `tdd → implement → review` 推到 `review_done`。以**状态机为唯一真源**，每轮读状态机 → loop-next 映射的 jq 复刻判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（`--max-steps` 默认 4 上限停机 / `ok!=true` fail-stop / `current_stage` 未推进 stuck-stop）。**发布永远人工**（到 review_done 即停，绝不自动 ship/deploy）；`--dry-run` 离线看决策。
+- **`tests/adapter-codex-loop-run-check.sh`** — 驱动映射 + 护栏回归（mock 状态 + `--dry-run`，免 codex，12 断言）。
+- **`docs/decisions/0004-codex-loop-run.md`** — ADR + **状态完整性准入闸真机结果**：gpt-5.6-sol 用「unit 恒失败 / lint 恒通过」判别场景，真跑 `test-commands.yml`、诚实写 `{tests_pass:false, lint_clean:true}`（一真一假只可能来自真跑）、fail-stop、发 `<<<PDLC blocked>>>` 哨兵——**闸过**，loop-run 得以在 Codex 放行。
+
 ## [1.5.1] - 2026-07-19
 
 Codex 适配器**真机验证后的重大更正**：v1.5.0 假设 Codex 靠 `~/.codex/prompts/*.md` 斜杠命令，未验证就发版——实测目标 Codex 是**兼容 Claude Code 生态的发行版**，用 `~/.codex/skills/<name>/SKILL.md`（description 触发、非斜杠命令）。gpt-5.6-sol 自然语言触发 `pdlc-prd` 成功、写出 schema 正确的状态机（Claude Code 可无缝读）。

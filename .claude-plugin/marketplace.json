@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Marketplace for pdlc-skills — Product Development Life Cycle workflow for Claude Code.",
-    "version": "1.5.1"
+    "version": "1.5.2"
   },
   "plugins": [
     {
