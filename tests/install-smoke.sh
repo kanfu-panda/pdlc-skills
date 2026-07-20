@@ -148,6 +148,13 @@ assert_contains "install.sh supports --target codex" "target codex" "$(cat insta
 assert_contains "methodology declares platform-neutral core" "平台中立" "$(cat docs/pdlc-methodology.md)"
 assert_contains "build_codex denylists Claude-only skills" "pdlc-loop-run" "$(cat adapters/build_codex.py)"
 
+# ─── Codex loop-run driver (v1.5.2) invariants ───
+assert_exists "codex-loop-run.sh driver exists" "adapters/codex-loop-run.sh"
+assert_exists "loop-run driver test exists" "tests/adapter-codex-loop-run-check.sh"
+assert_exists "ADR 0004 codex-loop-run exists" "docs/decisions/0004-codex-loop-run.md"
+assert_contains "driver never auto-ships (review_done terminal)" "review_done" "$(cat adapters/codex-loop-run.sh)"
+assert_contains "driver has stuck-stop guard" "stuck-stop" "$(cat adapters/codex-loop-run.sh)"
+
 # ─── Test 4: install.sh without claude CLI ───
 echo ""
 echo "Test: install.sh (claude CLI not required for these subcommands)"
