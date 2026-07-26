@@ -37,8 +37,9 @@ pdlc 现在**已经在编排自动化测试**：`pdlc-tdd`（测试先行 / 红�
 | **B1** `/pdlc-test-setup` | 立测试地基（test-commands.yml + 骨架） | 一次性，让"退出码地基"turnkey |
 | **B2** 质量闸门 + 报告 | quality-targets.yml + `/pdlc-quality` + 本地钩子 + 报告 + 发布挂钩 | **日常保障产品质量（终极目标）** |
 
-**顺序 A → B1 → B2，不跳步。** 理由：A 先落地，之后 B1/B2 每加一样都**写个 eval 断言它真管用**（复用 A 的
-harness）；B1 立地基，B2 的覆盖率 / E2E 都从这份地基跑；B2 长在地基上，成为常设闸门。每层为上一层兜底。
+**顺序：A 先行（最小步即可），B1 与 B2 的先后按目标项目现状取舍。** 理由：A 先落地，之后 B1/B2 每加一样都
+**写个 eval 断言它真管用**（复用 A 的 harness）。B2 真正依赖的地基是 `test-commands.yml` **存在且真实**——
+已手工立好该文件的项目可直接上 B2、B1 后补；从零接入的项目才必须先 B1。每层为上一层兜底。
 
 ---
 
@@ -54,8 +55,8 @@ harness）；B1 立地基，B2 的覆盖率 / E2E 都从这份地基跑；B2 长
 1. **fixture 项目** `evals/fixtures/<场景>/`：最小但真实的预置项目（把此前手搭的沙盒固化）。至少含：
    - `honest-checks`：`test-commands.yml` 里 `unit` 恒失败(exit 1) / `lint` 恒通过(exit 0)，状态机停在
      `next_step=pdlc-implement`。**判别断言**：跑 `按 pdlc implement <id> --autonomous` 后，状态机
-     `last_phase_result.checks == {tests_pass:false, lint_clean:true}`——**一真一假只有真跑两条命令才写得出**，
-     天然抗虚报（此即 ADR 0003 §6.1 / 0004 §2 的准入闸场景，现固化为可复现 eval）。
+     `last_phase_result.checks == {tests_pass:false, lint_clean:true}`——**一真一假的组合只有真跑两条命令才写得出**，
+     **对该判别式抗虚报**（是回归守卫，不是"模型永不虚报"的证明）。此即 ADR 0003 §6.1 / 0004 §2 的准入闸场景，现固化为可复现 eval。
    - `red-light-gate`：无对应测试时跑 `pdlc-implement` → 中止、`current_stage` 不变。
    - `loop-convergence`：`docs/.pdlc-state` 停在 tdd 完成，跑 `adapters/codex-loop-run.sh` → 收敛到
      `review_done`、**绝不推进到 ship**、退出 0；history 出现 `impl`/`review`。
@@ -65,7 +66,7 @@ harness）；B1 立地基，B2 的覆盖率 / E2E 都从这份地基跑；B2 长
 3. **runner** `evals/run.sh [--platform claude|codex] [--only <场景>]`：拷 fixture 到 temp → 经
    `claude -p "..."` 或 `codex exec -C <dir> -s workspace-write "..."` 跑 → 读回状态机断言。
    **同一份 eval 两平台各跑一遍**——正好把"跨工具状态延续"与"每平台都过 §6.1"变成可重复断言。
-4. **成本纪律（军规 §13）**：行为层**不进 CI**（要模型 + 烧钱）。发版前 maintainer 手动跑；fixture 最小、
+4. **成本纪律（项目 CI 纪律）**：行为层**不进 CI**（要模型 + 烧钱）。发版前 maintainer 手动跑；fixture 最小、
    reasoning 用 low；能 dry-run 的（映射 / 护栏）留在结构层免费跑，只有"诚实性 / 收敛"这类必须真跑 AI 的
    进行为层。
 
@@ -75,7 +76,22 @@ harness）；B1 立地基，B2 的覆盖率 / E2E 都从这份地基跑；B2 长
   `evals/run.sh --only honest-checks --platform codex`，可复现。
 - `pdlc-ship` 发版清单加一步："两平台跑行为 evals，贴结果"。
 - README 放一张**"行为契约已验"表**（红灯 ✓ / checks 诚实 ✓ / loop 收敛 ✓ · Claude + Codex）——
-  对开源工具是强信任信号。
+  对开源工具是强信任信号。**此表必须由 runner 生成 + 带时间戳/commit SHA**（见 §7 防腐）。
+
+### 3.4 两档拆分：A-det（免费·确定性·常跑）vs A-live（真模型·发版前）⭐
+
+**让 A 真能落地的关键洞察：A 里绝大部分"行为契约"其实不需要真模型。** 把模型调用换成一个**桩（stub）**——一个吐预置状态机 JSON 的假命令——就能确定性、零成本地测**驱动/harness 逻辑本身**（`tests/adapter-codex-loop-run-check.sh` 已用 codex 桩验证护栏，此模式直接复用）。据此把 A 劈成两档：
+
+- **A-det（桩驱动，确定性、免费、进本地钩子常跑）**：`red-light-gate` 的中止、`loop-convergence` 的收敛判定与不越发布闸、`guardrails` 的 fail-stop/stuck-stop/max-steps 退出码——**这些是驱动逻辑，桩掉模型即可确定性断言**，占行为契约的大头。
+- **A-live（真模型探针，付费、手动、发版前）**：**只有 `honest-checks` 判别式非真模型不可**——它的全部意义就是"真模型真跑两条命令、写出桩造不出的一真一假 checks"，桩掉即自我拆台。所幸它**单步、极小，约一个 implement turn 的成本**。
+
+**失败语义 / flake 政策**：
+- A-det 失败 = **契约真红灯**（确定性、无 flake）→ 可作**硬 blocker**，进 pre-push 本地钩子常跑。
+- A-live 失败**可能是模型抖动（限流/拒答/超时）而非契约破坏** → A-live 是**发版前的建议性证据、非自动硬闸**；瞬时失败允许重跑，连续失败才升级为"契约疑似回归"人工查。**绝不因 A-live flake 卡死发布。**
+
+**A-det 的边界（防"桩掉模型掩盖真 bug"）**：A-det 验证的是 **harness 逻辑**——"给定合法的模型输出，驱动的控制流正确"。它**结构上测不了模型行为本身**（真模型会不会中途卡死、会不会写出非法状态转移）——桩喂的是预置的合法输出，恰好旁路了模型可能出错的那一段。因此 **A-det 全绿 ≠ 收敛性已在真模型上成立**；模型侧的真实性只能来自 A-live。`honest-checks` 覆盖"真模型单步写出诚实 checks"；**全环收敛探针**（真模型多步连跑到 `review_done`）成本高一个量级，定位为**大版本发布前手动跑一次**、不进每版清单（此前已有一次真机端到端验证，见 ADR 0004）。
+
+**A-live 的重复与失败分类（把单发探针变成统计可信的探针）**：runner 支持 `--repeat N`（默认 1，发版前建议 3），失败分两类——**环境抖动**（超时/限流/拒答，无状态机产出）→ 重跑、不计失败；**契约破坏**（有状态机产出但 checks 与判别式不符）→ 立即红。以多数通过为结论，单次抖动不误报"契约回归"。
 
 ---
 
@@ -117,17 +133,23 @@ lint: zero-warnings
 这是 B2 最关键的一处。覆盖率 ≥ 90% 好办（覆盖率工具直接给数字 + 退出码）。但"E2E 覆盖了全部核心流程"——
 **若靠 AI 判断"我觉得覆盖了"，就破了 pdlc 那条命门（checks 只认客观事实、不认自评）。**
 
-**必须有"流程 → 测试"的映射：**
-- 每个 E2E 测试**声明它覆盖哪条核心流**：约定 **测试名 / 标签带 flow id**（如 `@flow:checkout` 或
-  `test_checkout__flow_checkout`），或一份显式 `docs/00_standards/e2e-flow-map.yml`。
+**必须有"流程 → 测试"的映射（以显式映射文件为主路径）：**
+- **主**：一份显式 `docs/00_standards/e2e-flow-map.yml`（`flow id → 测试标识`）——**跨框架稳健**、单一真源、不依赖解析测试名。
+- **辅（糖）**：可选约定测试名/标签带 flow id（如 `@flow:checkout`）自动回填映射；但跨 runner（pytest marker / vitest describe / cargo 测试名各异）解析脆弱，只作便利、不作依赖（同 ADR 0003 里"python 胜过 bash sed"的取舍）。
 - 报告做**覆盖矩阵**：`core_flows × 是否有对应的通过 E2E`。缺一条 = 红。
 - 这样"覆盖全部核心流"就从口号变成**可核对的矩阵**，且证据来自**真跑的 E2E 结果**，不是 AI 意见。
 
 > ⚠️ **这条是 B2 成立的地基**：没有 flow→test 映射，"覆盖核心流"永远主观，保障不了质量。
 
-**降低"声明核心流"的摩擦**（决定 B2 是否真的有用）：
-- `/pdlc-quality` 从 PRD（`docs/01_requirements/prd/`）的 P0/P1 流程**自动抽 `core_flows` 草稿**供人确认。
-- 报告主动提示："PRD 里的流程 X 尚未进 `core_flows`" / "core_flow Y 尚无映射的 E2E"。
+**清单维护必须机械化——这是 B2 成立的第二个地基**（与 flow→test 映射并列）：
+`core_flows` / `e2e-flow-map.yml` 若靠"有人记得改"来维护，必然腐烂；而腐烂的清单产出 **false-green**
+（新增的核心流没进清单 → 矩阵全绿、现实有洞），把"我们不知道"伪装成"我们覆盖了"——**比没有闸门更坏，直接破命门**。
+解法是把维护锚在 pdlc 自己的产物链上（PRD 本就被 pdlc 逼着落盘并保持最新，让它当 `core_flows` 的唯一上游真源）：
+- **强制对账**：`/pdlc-quality` 每次运行都把 PRD（`docs/01_requirements/prd/`）的 P0/P1 流程与 `core_flows`
+  做 diff，漂移即红（"PRD 流程 X 未进 core_flows"是**红灯项**，不是温柔提示）。
+- **上游挂钩**：`pdlc-prd` / `pdlc-feature` 产出新 P0/P1 流程时，handoff 里提示补 `core_flows` 与映射。
+- **降低首次摩擦**：`/pdlc-quality` 可从 PRD 自动抽 `core_flows` 草稿供人确认。
+这样维护从"靠自觉"（必烂）变成"被产物纪律接管"——与 pdlc 可测的根因（状态外化到磁盘）是同一个哲学。
 
 ### 5.3 `/pdlc-quality`：跑 → 量 → 出报告 → 人确认
 - 跑 test-commands.yml 的 coverage / e2e / lint（**真实退出码 + 真实覆盖率数字 + 真实 E2E 结果**，不自评）。
@@ -136,8 +158,8 @@ lint: zero-warnings
   （对比上一份报告，复用状态机 / `pdlc-retro` 那套）。
 - **人确认**：报告是给人签字的（AI 只从真实数据生成报告，go/no-go 由人拍）——与"发布永远人工"一脉相承。
 
-### 5.4 "自动化运行"怎么做到、又不踩军规 §13
-军规 §13 严禁 `on:schedule` / 频繁 CI。**能本地全本地：**
+### 5.4 "自动化运行"怎么做到、又不依赖 CI
+项目 CI 纪律：不上 `on: schedule`、不跑频繁 CI（CI 只在 release tag 触发）。**能本地全本地：**
 - **pre-push 钩子**：每次 push 本地自动跑质量闸，不达标就拦 / 警告——"日常自动"且**零 CI 成本**。
 - **按需**：`/pdlc-quality` 随时出全量报告。
 - **发布挂钩**：`pdlc-ship` 读最近一份质量报告，不达标不让发（或要人显式 override）——把质量绑死在发布闸上。
@@ -154,16 +176,32 @@ lint: zero-warnings
 
 ## 6. 非目标与诚实边界
 
-- **不进 CI 跑行为 evals / 质量闸**（军规 §13）；自动化靠本地钩子 / 按需 / 发布挂钩 / 本地 cron。
+- **不进 CI 跑行为 evals / 质量闸**（项目 CI 纪律）；自动化靠本地钩子 / 按需 / 发布挂钩 / 本地 cron。
 - **不用 AI 判断替代客观数据**：覆盖率来自覆盖率工具、E2E 覆盖来自 flow→test 映射 + 真跑结果、checks 来自退出码。
   AI 只负责**生成报告**与**从 PRD 抽核心流草稿**，判定与放行由客观数据 + 人。
 - **B1 不吹"生成全部测试"**；**B2 的 E2E 保障强度取决于 `core_flows` 清单与映射维护得多勤**——清单漏一条核心流，
   矩阵也照不出来，故 §5.2 的"降低声明摩擦"是 B2 真正有效的前提。
 - **vanilla OpenAI Codex 不在覆盖范围**（见 ADR 0003 实现纪要）；A 的 evals 面向已验证的 Codex 发行版 + Claude Code。
+- **Codex 那条 eval 臂是"凭证门控"的**：`codex exec` 需 provider key，只有持凭证的 maintainer 能跑；README「行为契约已验·Codex」栏 ≠「任何人可复现」，须标注"由持 Codex 凭证的维护者跑于 <日期/SHA>"。A-det 那档无此限制（桩驱动、任何人可跑）。
+- **加 skill = 全仓"36"计数涟漪**：B1 使 36→37、B2 的 `/pdlc-quality` 再 37→38；落地须同步 `ARCHITECTURE.md` / `GLOSSARY.md` / `CLAUDE.md` / `README(.zh-CN).md` / `docs/pdlc-methodology.md` 里所有硬编码"36"，以及 `tests/install-smoke.sh` 的计数断言。
 
 ---
 
-## 7. 与既有 ADR 的关系
+## 7. 真正落地：最小第一步与防腐
+
+**最小可跑第一步（先证明 A 立得住，再谈框架）**：不先搭 `evals/` 全框架，而是先做**一个** `honest-checks` 可跑脚本——fixture（`unit` 恒 exit 1 / `lint` 恒 exit 0）+ 一段 `run.sh --only honest-checks`：拷 fixture 到 temp → 经 `claude -p`（选配 `codex exec`）跑一步 implement → 读回状态机断言判别式。它一箭三雕：① 立刻把 ADR 0003 §6.1 / 0004 §2 的**一次性手工准入闸变成可复现命令**（今天就有价值）；② 是整个 A 档能否成立的最小证明；③ 成本约一个 turn。跑通后再把 runner 泛化到其余**桩驱动（免费）**的 fixture（即 §3.4 的 A-det）。
+
+**防腐（这决定 A 是资产还是负债）**：
+- **README「行为契约已验」表由 runner 生成 + 带时间戳/commit SHA**——过期的表要**看得出过期**（有日期），而非静默变谎。手工维护的"已验表"必然腐烂。
+- **A-det 进 pre-push 本地钩子常跑**（确定性、免费）→ harness 逻辑契约永不腐；A-live 靠发版清单人工触发。
+
+**Dogfood 的诚实限制**：pdlc-skills 自身是 bash 插件、**不是被单测的应用**，B1/B2 无法拿本仓自测。**A 的 `evals/fixtures/` 恰好是 B1/B2 唯一现成的 dogfood 靶子**——这反向印证"A 先行"：先手搭 fixture（含真实 `test-commands.yml`），正好成为 B1「该生成什么」的规格。
+
+**B2 的启动条件（2026-07 更新：需求门已满足，改为技术前置门）**：B2 曾被门控为"待真实用户提出质量闸需求再上"（YAGNI）。该门**已满足**——质量闸需求已由真实日常使用提出：维护者与协作者在多个已上线项目的日常质量保障中，正在手工重复 B2 要自动化的事（拉覆盖率达标、建 lint 门禁、出达标报告），这些项目即 B2 的第一批 dogfood 靶子。B2 的剩余门槛不再是"有没有人要"，而是**技术前置**：§5.2 的"清单维护机械化"（PRD 强制对账 + 漂移红灯）必须随 B2 第一版一起落地，做不到就不上——手工维护的映射必烂，烂掉的映射产出 false-green，破命门。**A 依然先行**（可复现准入闸 + README 已验表，成本只是 B2 零头），但 B2 无需再等待外部需求信号。
+
+---
+
+## 8. 与既有 ADR 的关系
 
 | ADR | 关系 |
 |---|---|
@@ -173,9 +211,9 @@ lint: zero-warnings
 
 ---
 
-## 8. 一句话小结
+## 9. 一句话小结
 
 **pdlc 用它逼用户测代码的同一套纪律来测自己（A）、并把"日常质量保障"做成常设闸门（B2）。** 全程守一条命门：
-**一切判定来自客观数据（退出码 / 覆盖率数字 / flow→test 映射 + 真跑），AI 只生成报告，放行由人。** 顺序
-A → B1 → B2，每层为上一层兜底；自动化靠本地钩子而非 CI（军规 §13）。终极目标——**可核对、及时、由人确认地
-保障产品质量。**
+**一切判定来自客观数据（退出码 / 覆盖率数字 / flow→test 映射 + 真跑），AI 只生成报告，放行由人。** 顺序：
+A 先行（最小步），B1/B2 按目标项目现状取舍，每层为上一层兜底；自动化靠本地钩子而非 CI（项目 CI 纪律）。
+终极目标——**可核对、及时、由人确认地保障产品质量。**
