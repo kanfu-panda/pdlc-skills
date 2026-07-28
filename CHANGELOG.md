@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`/pdlc-test-setup`（Layer 3，36 → 37 skills）**：立测试地基——探测技术栈 → **逐条验证命令真能跑** → 写 `docs/00_standards/test-commands.yml` → 脚手架测试目录 → 接本地 pre-commit/pre-push 钩子。设计见 `docs/decisions/0005-testing-and-quality-capability.md` §4（B1）。
+  - 命门是「**验证后再写**」：写进 yml 的每条命令都必须先真跑过、看到退出码；跑不通的**留空并说明怎么补**，绝不写一条没验证过的命令——一条猜错的命令会污染下游每个阶段的 `checks`，比没有这个文件更坏。
+  - 覆盖率达标线写死在命令参数里（默认 85%），「达标」即退出码本身，不需要任何一方解析百分比。
+  - 已存在的 `test-commands.yml` 不覆盖，改为逐条校验 + 提议补缺（surface 型就地编辑）。
+  - **不新建 CI workflow**，只接本地钩子；测试目录按 `pdlc-implement` 前置守卫认得的布局建，避免误触红灯守卫。
+
+
 ## [1.5.3] - 2026-07-28
 
 行为层 evals（A-live）落地——测的是「skill 真跑时契约有没有被守住」，而不只是结构。设计见 `docs/decisions/0005-testing-and-quality-capability.md`，用法与成本账见 `evals/EVALS.md`。

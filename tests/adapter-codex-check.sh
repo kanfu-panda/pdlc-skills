@@ -2,7 +2,7 @@
 # Codex 适配器产物回归测试。
 #
 # 跑 adapters/build_codex.py 到临时目录，断言投影出的 Codex skills 结构：
-#   - 34 个 skill 目录（36 skill − 2 denylist），denylist 确实缺席，loop-next 已投影
+#   - 35 个 skill 目录（37 skill − 2 denylist），denylist 确实缺席，loop-next 已投影
 #   - 每个 skill 是 skills/<name>/SKILL.md，frontmatter 为 Codex skill 格式 name + description
 #   - 无残留 @include；无 Claude 术语（Layer 1/2 命令）泄漏；adapter:claude-only 哨兵块被剥掉
 #   - Claude 内部 frontmatter 字段（layer/produces/allowed-tools）被剥离
@@ -74,7 +74,7 @@ assert_contains "报告 denylist 跳过 2 个" "denylist 跳过 2" "$build_out"
 echo ""
 echo "Test: skill 数量与 denylist"
 n=$(find "$OUT/skills" -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
-assert_eq "投影 34 个 skill（36 − 2 denylist）" "34" "$n"
+assert_eq "投影 35 个 skill（37 − 2 denylist）" "35" "$n"
 assert_absent "pdlc-settings 未投影（真·Claude-only）"       "$OUT/skills/pdlc-settings"
 assert_absent "pdlc-loop-run 未投影（Task 版耦合子代理派发）" "$OUT/skills/pdlc-loop-run"
 assert_exists "pdlc-loop-next 已投影（逻辑平台中立）"        "$(sk pdlc-loop-next)"

@@ -9,7 +9,7 @@
 1. [5 分钟上手](#1-5-分钟上手)
 2. [安装 / 升级 / 卸载](#2-安装升级卸载)
 3. [怎么调用 PDLC](#3-怎么调用-pdlc)
-4. [36 个内置阶段（按层）](#4-36-个内置阶段按层)
+4. [37 个内置阶段（按层）](#4-37-个内置阶段按层)
    - [在状态栏显示 PDLC 状态（可选）](#45-在状态栏显示-pdlc-状态可选)
 5. [状态机文件](#5-状态机文件)
 6. [目标项目目录契约](#6-目标项目目录契约)
@@ -23,7 +23,7 @@
 
 ## 1. 5 分钟上手
 
-pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——36 个标准化阶段，全部以斜杠命令暴露。
+pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产品开发生命周期）工作流——37 个标准化阶段，全部以斜杠命令暴露。
 
 最常用三件事：
 
@@ -33,7 +33,7 @@ pdlc-skills 是一个 Claude Code plugin，给 Claude 加上完整的 PDLC（产
 | 修一个 bug | `/pdlc-fix 修分页器在 0 条时崩溃` |
 | 看当前 PDLC 进展 | `/pdlc-status` |
 
-输入 `/pdlc-` 后下拉菜单会列出全部 36 个阶段，按 Tab 补全或直接挑。
+输入 `/pdlc-` 后下拉菜单会列出全部 37 个阶段，按 Tab 补全或直接挑。
 
 ---
 
@@ -83,7 +83,7 @@ ls /path/to/my-project/.claude/plugins/pdlc/     # 项目级
 
 应能看到 `.claude-plugin/` / `skills/` / `references/` / `VERSION` 等。
 
-在 Claude Code 里输入 `/pdlc-`，下拉框出现 36 个阶段就说明 plugin 已生效。
+在 Claude Code 里输入 `/pdlc-`，下拉框出现 37 个阶段就说明 plugin 已生效。
 
 ### 想自定义模板的高级用户
 
@@ -98,7 +98,7 @@ bash install.sh --global
 
 ## 3. 怎么调用 PDLC
 
-pdlc-skills 是 Claude Code plugin，**36 个阶段都是独立斜杠命令**，全部以 `/pdlc-` 开头：
+pdlc-skills 是 Claude Code plugin，**37 个阶段都是独立斜杠命令**，全部以 `/pdlc-` 开头：
 
 ```
 /pdlc-feature      ← 一句话需求驱动全流程
@@ -108,7 +108,7 @@ pdlc-skills 是 Claude Code plugin，**36 个阶段都是独立斜杠命令**，
 /pdlc-implement    ← 实现代码
 /pdlc-review       ← 代码评审
 /pdlc-ship         ← 发布
-... 共 36 个
+... 共 37 个
 ```
 
 输入 `/` 然后开始打 `pdlc-`，Claude Code 会自动补全。
@@ -131,7 +131,7 @@ pdlc-skills 是 Claude Code plugin，**36 个阶段都是独立斜杠命令**，
 
 ---
 
-## 4. 36 个内置阶段（按层）
+## 4. 37 个内置阶段（按层）
 
 ### Layer 1 · 入口（3 个，新手只看这层）
 
@@ -159,10 +159,10 @@ pdlc-skills 是 Claude Code plugin，**36 个阶段都是独立斜杠命令**，
 | `/pdlc-retro` | 迭代复盘（趋势对比） | — |
 | `/pdlc-task` | 阶段内任务跟踪 | — |
 
-### Layer 3 · 工具（22 个，专项叠加）
+### Layer 3 · 工具（23 个，专项叠加）
 
 **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-**🔍 质量（3）**：`/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+**🔍 质量（4）**：`/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `docs/00_standards/test-commands.yml`；没验证通过的项留空，绝不写一条没跑过的命令）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
@@ -432,11 +432,11 @@ done
 
 ### 三层分层心智
 
-PDLC 把 36 个阶段按使用频率分 3 层暴露：
+PDLC 把 37 个阶段按使用频率分 3 层暴露：
 
 - **Layer 1（3 个）**：高频入口，新手只学这层即可完成 80% 工作
 - **Layer 2（11 个）**：单阶段精细控制
-- **Layer 3（22 个）**：专项工具，按需叠加（含循环工具 `/pdlc-loop-next` · `/pdlc-loop-run`、设置 `/pdlc-settings`）
+- **Layer 3（23 个）**：专项工具，按需叠加（含循环工具 `/pdlc-loop-next` · `/pdlc-loop-run`、设置 `/pdlc-settings`）
 
 **你的心智**：做功能用 `feature`，修 bug 用 `fix`，看状态用 `status`——三个动词级指令。其他 29 个阶段需要时再用。
 

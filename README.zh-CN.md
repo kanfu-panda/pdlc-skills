@@ -17,7 +17,7 @@
 
 - **可审计**——每份产物都落盘，`git diff` 就能看 AI 到底做了什么。
 - **自主**——检查结果来自**真实命令退出码**（绝非模型自评），所以自主循环能把 `tdd → implement → review` 无人值守推到收敛，带 fail-stop、stuck-stop 和预算护栏。
-- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（36 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex** 等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
+- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（37 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex** 等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
 
 ---
 
@@ -138,13 +138,13 @@ claude plugin list | grep pdlc
 # 应该输出： pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
 ```
 
-在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 36 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
+在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 37 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
 
 ---
 
 ## 多平台（其它 AI 编程工具）
 
-Claude Code **集成最全**——36 个斜杠命令 + 状态栏 + 插件内自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
+Claude Code **集成最全**——37 个斜杠命令 + 状态栏 + 插件内自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
 
 - **任意工具**（Codex / Cursor / Windsurf / Copilot / Cline …）：把平台中立方法论文档 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 作为项目规则（`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …），然后用**自然语言**驱动（「按 pdlc 跑评审」→ agent 照文档执行）。
 - **Codex**（原生 skills——面向兼容 Claude Code 生态的 Codex 发行版）：
@@ -199,10 +199,10 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 | `/pdlc-retro` | 迭代复盘（趋势对比） |
 | `/pdlc-task` | 阶段内任务跟踪 |
 
-### Layer 3 · 工具（22 个，专项叠加）
+### Layer 3 · 工具（23 个，专项叠加）
 
 - **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-- **🔍 质量（3）**：`/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+- **🔍 质量（4）**：`/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `test-commands.yml`；没验证通过的宁可留空也不猜）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 - **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 - **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`

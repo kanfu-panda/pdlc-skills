@@ -17,7 +17,7 @@ Three things fall out of that state machine:
 
 - **Auditable** — every artifact lands on disk; you `git diff` exactly what the AI did.
 - **Autonomous** — checks come from **real command exit codes** (never model self-report), so an autonomous loop can drive `tdd → implement → review` to convergence unattended, with fail-stop, stuck-stop, and budget guards.
-- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (36 slash commands + statusline + in-plugin loop engine); **Codex** and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
+- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (37 slash commands + statusline + in-plugin loop engine); **Codex** and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
 
@@ -138,13 +138,13 @@ claude plugin list | grep pdlc
 # expected: pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
 ```
 
-In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 36 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
+In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 37 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
 
 ---
 
 ## Multi-platform (other AI coding tools)
 
-Claude Code has the **richest integration** — 36 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
+Claude Code has the **richest integration** — 37 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
 
 - **Any tool** (Codex, Cursor, Windsurf, Copilot, Cline, …): use the platform-neutral methodology doc [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) as your project rules (`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …), then drive PDLC in natural language ("run the PDLC review stage" → the agent follows the doc).
 - **Codex** (native skills — for Claude-Code-compatible Codex distributions):
@@ -201,12 +201,12 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-retro` | Iteration retrospective with trend comparison |
 | `/pdlc-task` | In-stage task tracking |
 
-### Layer 3 · Tools (22)
+### Layer 3 · Tools (23)
 
 Specialized stages you can invoke explicitly.
 
 - **🎨 Design (4):** `/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-- **🔍 Quality (3):** `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+- **🔍 Quality (4):** `/pdlc-test-setup` (lay the objective-check foundation — detect the stack, verify each command really runs, then write `test-commands.yml`; unverified commands are left blank rather than guessed) · `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 - **🔧 Engineering (7):** `/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 Governance (2):** `/pdlc-standard` · `/pdlc-relate`
 - **🏗️ Project lifecycle (3):** `/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`

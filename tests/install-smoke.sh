@@ -68,7 +68,7 @@ echo "Test: skills/ layout"
 assert_exists "skills/ directory exists" "skills"
 
 skill_count=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-assert_eq "exactly 36 sub-skill directories" "36" "$skill_count"
+assert_eq "exactly 37 sub-skill directories" "37" "$skill_count"
 
 for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate pdlc-loop-next pdlc-loop-run pdlc-settings; do
     assert_exists "skills/$name/SKILL.md exists" "skills/$name/SKILL.md"
@@ -154,6 +154,21 @@ assert_exists "loop-run driver test exists" "tests/adapter-codex-loop-run-check.
 assert_exists "ADR 0004 codex-loop-run exists" "docs/decisions/0004-codex-loop-run.md"
 assert_contains "driver never auto-ships (review_done terminal)" "review_done" "$(cat adapters/codex-loop-run.sh)"
 assert_contains "driver has stuck-stop guard" "stuck-stop" "$(cat adapters/codex-loop-run.sh)"
+
+# ─── B1 test-setup (ADR 0005 §4) invariants ───
+assert_exists "pdlc-test-setup skill exists"        "skills/pdlc-test-setup/SKILL.md"
+# 本命令的命门：写进 test-commands.yml 的命令必须先真跑过。这条纪律丢了，
+# 它就会生成「看起来对但跑不了」的命令，污染下游每个阶段的 checks。
+assert_contains "test-setup requires commands be verified before writing" \
+  "必须先被真跑过一次" "$(cat skills/pdlc-test-setup/SKILL.md)"
+assert_contains "test-setup leaves unverified entries blank" \
+  "猜出来的命令一律不写" "$(cat skills/pdlc-test-setup/SKILL.md)"
+# 不得顺手建 CI——日常 check 本地跑是本仓的既定纪律
+assert_contains "test-setup wires local hooks, not CI" \
+  "不新建 CI workflow" "$(cat skills/pdlc-test-setup/SKILL.md)"
+# 诚实边界：不能吹「帮你生成全部测试」
+assert_contains "test-setup does not overclaim test generation" \
+  "不生成完整测试套件" "$(cat skills/pdlc-test-setup/SKILL.md)"
 
 # ─── Behavioural evals (ADR 0005 · A-live) invariants ───
 assert_exists "evals/run.sh exists"                 "evals/run.sh"
