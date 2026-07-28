@@ -1,0 +1,36 @@
+{
+  "feature_id": "F20260728-101600",
+  "feature_name": "notify-send",
+  "created_at": "2026-07-28T10:15:00Z",
+  "current_stage": "design",
+  "run_mode": "autonomous",
+  "history": [
+    {
+      "stage": "design",
+      "done_at": "2026-07-28T10:16:00Z",
+      "produced": [
+        "docs/02_design/api/F20260728-101600-notify-send-design.md"
+      ],
+      "self_audit": { "passed": 6, "failed": 0, "manual": 0 }
+    }
+  ],
+  "last_phase_result": {
+    "stage": "design",
+    "ok": true,
+    "advanced_to": "tdd",
+    "checks": {},
+    "self_audit": { "failed": 0 },
+    "blocked_reason": null,
+    "run_mode": "autonomous",
+    "at": "2026-07-28T10:16:00Z"
+  },
+  "relations": {
+    "extends": [],
+    "depends_on": [],
+    "supersedes": [],
+    "resolves": [],
+    "conflicts_with": [],
+    "relates_to": []
+  },
+  "next_step": "pdlc-tdd"
+}

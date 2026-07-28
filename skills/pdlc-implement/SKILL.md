@@ -81,8 +81,12 @@ recommended_effort: medium
 <!-- @include templates/prompts/state-update.md -->
 
 **本阶段状态机更新**：
-- `current_stage`: `impl`
-- `next_step`: `pdlc-review`
+- `current_stage`: `impl`、`next_step`: `pdlc-review` —— **仅当本阶段成功时才这样写**
+  （所有 `checks` 通过且未命中 `blocked_reason`）。
+- **失败/受阻时不得推进**：`ok=false`（含 blocked）→ 按 `state-update.md` 规则 5，
+  `current_stage` **保持原值不变**、`advanced_to=null`、`blocked_reason` 写明原因。
+  > ⚠️ 失败也照写 `current_stage: impl` 是常见错误：那会让 `current_stage` 不再表示
+  > 「最后一个真正完成的阶段」，外层循环的 stuck-stop 因此失效。
 - **写 `last_phase_result`**：`checks.tests_pass` / `coverage_pass` / `lint_clean` 取自真跑 `docs/00_standards/test-commands.yml` 的 `unit` / `coverage` / `lint` 命令退出码（该文件不存在则回退项目既有约定，并在报告中提示 `consider 建立 docs/00_standards/test-commands.yml`）。**不得用自检结果冒充 checks**。
 
 <!-- @include templates/prompts/handoff.md -->

@@ -1,10 +1,13 @@
 name: CI
 
+# 触发条件刻意收窄：日常 check 全部本地跑（见 CLAUDE.md「Common commands」），
+# CI 只保留两个必要时刻——手动触发，以及打 release tag 时的发布前兜底。
+# 不用 on:push / on:pull_request：那会让每次迭代都跑一遍，而这些 check 本地秒级可得。
 on:
+  workflow_dispatch:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - "v*.*.*"
 
 permissions:
   contents: read

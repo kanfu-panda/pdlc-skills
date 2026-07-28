@@ -102,7 +102,8 @@ terminal_state: prd_done
 <!-- @include templates/prompts/state-update.md -->
 
 **本阶段状态机更新**：
-- `current_stage`: `requirements`
+- `current_stage`: `requirements` —— **仅当本阶段成功时才这样写**。`ok=false`（含 blocked）时按
+  `state-update.md` 规则 5：`current_stage` **保持原值不变**、`advanced_to=null`、写 `blocked_reason`。
 - 追加 history：
   ```json
   { "stage": "requirements", "done_at": "<ISO8601>", "produced": ["docs/01_requirements/prd/<...>-prd.md"], "self_audit": { "passed": <N>, "failed": <N>, "manual": <N> } }

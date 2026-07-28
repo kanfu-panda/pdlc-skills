@@ -33,7 +33,7 @@ pdlc 现在**已经在编排自动化测试**：`pdlc-tdd`（测试先行 / 红�
 
 | 层 | 是什么 | 作用 |
 |---|---|---|
-| **A** pdlc 自身行为 evals | 测 pdlc 自己（行为契约） | 护城河 + 让 B1/B2 每次改动都被证明 |
+| **A** pdlc 自身行为 evals | 测 pdlc 自己（行为契约）；分 **A-det**（桩驱动·免费·常跑）与 **A-live**（真模型·发版前），判据见 §3.4 | 护城河 + 让 B1/B2 每次改动都被证明 |
 | **B1** `/pdlc-test-setup` | 立测试地基（test-commands.yml + 骨架） | 一次性，让"退出码地基"turnkey |
 | **B2** 质量闸门 + 报告 | quality-targets.yml + `/pdlc-quality` + 本地钩子 + 报告 + 发布挂钩 | **日常保障产品质量（终极目标）** |
 
@@ -45,51 +45,71 @@ pdlc 现在**已经在编排自动化测试**：`pdlc-tdd`（测试先行 / 红�
 
 ## 3. A · pdlc 自身行为 evals（先做）
 
-### 3.1 两层测试金字塔
+### 3.1 三层测试金字塔
 ```
-结构层（已有）  无需 AI、秒级、随便跑    ← tests/*.sh：frontmatter/denylist/install/dry-run 映射护栏
-行为层（新增）  需 AI、按需跑、发版前     ← evals/：契约是否真被守住
+结构层（已有）    无需 AI、秒级、随便跑        ← tests/*.sh：frontmatter/denylist/install/dry-run 映射护栏
+行为层·A-det（新） 无需 AI（桩驱动）、秒级、常跑  ← evals/：由确定性代码执行的契约（loop 驱动控制流 / 护栏）
+行为层·A-live（新）需真模型、按需跑、发版前      ← evals/：由模型遵守 SKILL.md 正文执行的契约（诚实 checks / 红灯门）
 ```
+（A-det / A-live 的分界线与分拣见 §3.4——**这条线不是"契约重不重要"，而是"契约由谁执行"**。）
 
 ### 3.2 行为层设计（`evals/`）
-1. **fixture 项目** `evals/fixtures/<场景>/`：最小但真实的预置项目（把此前手搭的沙盒固化）。至少含：
-   - `honest-checks`：`test-commands.yml` 里 `unit` 恒失败(exit 1) / `lint` 恒通过(exit 0)，状态机停在
+1. **fixture 项目** `evals/fixtures/<场景>/`：最小但真实的预置项目（把此前手搭的沙盒固化）。至少含（**档位见 §3.4 分拣表**）：
+   - `honest-checks`【A-live】：`test-commands.yml` 里 `unit` 恒失败(exit 1) / `lint` 恒通过(exit 0)，状态机停在
      `next_step=pdlc-implement`。**判别断言**：跑 `按 pdlc implement <id> --autonomous` 后，状态机
      `last_phase_result.checks == {tests_pass:false, lint_clean:true}`——**一真一假的组合只有真跑两条命令才写得出**，
      **对该判别式抗虚报**（是回归守卫，不是"模型永不虚报"的证明）。此即 ADR 0003 §6.1 / 0004 §2 的准入闸场景，现固化为可复现 eval。
-   - `red-light-gate`：无对应测试时跑 `pdlc-implement` → 中止、`current_stage` 不变。
-   - `loop-convergence`：`docs/.pdlc-state` 停在 tdd 完成，跑 `adapters/codex-loop-run.sh` → 收敛到
-     `review_done`、**绝不推进到 ship**、退出 0；history 出现 `impl`/`review`。
-   - `guardrails`：构造 fail-stop / stuck-stop / max-steps 场景，断言对应退出码。
+   - `red-light-gate`【A-live】：无对应测试时跑 `pdlc-implement` → 中止、`current_stage` 不变。
+     （守卫写在 `skills/pdlc-implement/SKILL.md` 的「PDLC 前置守卫」正文里、**由模型执行**，故桩测不了——见 §3.4。）
+   - `loop-convergence`【A-det 桩版控制流 + A-live 真收敛】：`docs/.pdlc-state` 停在 tdd 完成，跑
+     `adapters/codex-loop-run.sh` → 收敛到 `review_done`、**绝不推进到 ship**、退出 0；history 出现 `impl`/`review`。
+   - `guardrails`【A-det】：构造 fail-stop / stuck-stop / max-steps 场景，断言对应退出码。
 2. **声明式场景**：每个 eval 声明 `setup(fixture + 初始状态机) → action(跑哪个 skill/驱动 + args) →
    assert(对结果状态机 / 文件 / 退出码断言)`。断言**只碰确定性残渣**，容忍 AI 散文差异。
 3. **runner** `evals/run.sh [--platform claude|codex] [--only <场景>]`：拷 fixture 到 temp → 经
    `claude -p "..."` 或 `codex exec -C <dir> -s workspace-write "..."` 跑 → 读回状态机断言。
    **同一份 eval 两平台各跑一遍**——正好把"跨工具状态延续"与"每平台都过 §6.1"变成可重复断言。
-4. **成本纪律（项目 CI 纪律）**：行为层**不进 CI**（要模型 + 烧钱）。发版前 maintainer 手动跑；fixture 最小、
-   reasoning 用 low；能 dry-run 的（映射 / 护栏）留在结构层免费跑，只有"诚实性 / 收敛"这类必须真跑 AI 的
-   进行为层。
+4. **成本纪律（项目 CI 纪律）**：**A-live 不进 CI**（要模型 + 烧钱），发版前 maintainer 手动跑；fixture 最小、
+   reasoning 用 low。**A-det 与结构层同性质**（免费、确定性），进本地钩子常跑、亦不进 CI（项目 CI 只在 release tag 触发）。
+   判据只有一条——**契约由确定性代码执行的进 A-det，由模型遵守正文执行的才进 A-live**（§3.4）。
 
 ### 3.3 A 的表现
-- `evals/` 目录 + `EVALS.md`（说明两层、怎么跑、成本约束）。
+- `evals/` 目录 + `EVALS.md`（说明两档 A-det / A-live、分档判据、怎么跑、**成本账**——A-live 每轮实际几个模型 turn，见 §7）。
 - ADR 0003 §6.1 / 0004 §2 的**一次性手工准入闸，升级成 codified eval**——"过准入闸"从此 =
   `evals/run.sh --only honest-checks --platform codex`，可复现。
-- `pdlc-ship` 发版清单加一步："两平台跑行为 evals，贴结果"。
+- `pdlc-ship` 发版清单加两步：**A-det 全绿 = 硬闸**；**A-live 跑 `--repeat 3` 并贴结果 = 建议性证据**
+  （不因 flake 卡发布，见 §3.4 失败语义）。
 - README 放一张**"行为契约已验"表**（红灯 ✓ / checks 诚实 ✓ / loop 收敛 ✓ · Claude + Codex）——
-  对开源工具是强信任信号。**此表必须由 runner 生成 + 带时间戳/commit SHA**（见 §7 防腐）。
+  对开源工具是强信任信号。**此表必须由 runner 生成 + 带时间戳/commit SHA**，且**每格标注档位**
+  （A-det = 任何人可复现；A-live = 需模型额度、Codex 栏还需 provider 凭证，见 §6）（防腐见 §7）。
 
 ### 3.4 两档拆分：A-det（免费·确定性·常跑）vs A-live（真模型·发版前）⭐
 
-**让 A 真能落地的关键洞察：A 里绝大部分"行为契约"其实不需要真模型。** 把模型调用换成一个**桩（stub）**——一个吐预置状态机 JSON 的假命令——就能确定性、零成本地测**驱动/harness 逻辑本身**（`tests/adapter-codex-loop-run-check.sh` 已用 codex 桩验证护栏，此模式直接复用）。据此把 A 劈成两档：
+**让 A 真能落地的关键洞察：行为层里有一部分契约根本不需要真模型。** 把模型调用换成一个**桩（stub）**——一个吐预置状态机 JSON 的假命令——就能确定性、零成本地测**驱动/harness 逻辑本身**（`tests/adapter-codex-loop-run-check.sh` 已用 codex 桩验证护栏，此模式直接复用）。
 
-- **A-det（桩驱动，确定性、免费、进本地钩子常跑）**：`red-light-gate` 的中止、`loop-convergence` 的收敛判定与不越发布闸、`guardrails` 的 fail-stop/stuck-stop/max-steps 退出码——**这些是驱动逻辑，桩掉模型即可确定性断言**，占行为契约的大头。
-- **A-live（真模型探针，付费、手动、发版前）**：**只有 `honest-checks` 判别式非真模型不可**——它的全部意义就是"真模型真跑两条命令、写出桩造不出的一真一假 checks"，桩掉即自我拆台。所幸它**单步、极小，约一个 implement turn 的成本**。
+**分界线不是"契约重不重要"，而是"契约由谁执行"** ⭐：
+
+- 契约由**确定性代码**执行（bash 驱动、jq 映射、退出码判定）→ 桩掉模型仍能测 → **A-det**
+- 契约由**模型读 SKILL.md 正文遵守**执行（这是 pdlc 的主要机制）→ **桩掉模型 = 桩掉被测对象本身** → 只能 **A-live**
+
+据此分拣（含一处纠正）：
+
+| fixture | 契约执行者 | 档位 |
+|---|---|---|
+| `honest-checks` | 模型 | **A-live** |
+| `red-light-gate` | **模型**——守卫是 `skills/pdlc-implement/SKILL.md`「PDLC 前置守卫」的正文指令 | **A-live**（早期草案曾误归 A-det） |
+| `loop-convergence` | bash 驱动（`adapters/codex-loop-run.sh`）+ 每步推进靠模型 | 桩版控制流 → **A-det**；真收敛 → **A-live**（大版本前） |
+| `guardrails` | 纯 bash | **A-det** |
+
+**据此收敛 A-det 的口径（诚实计量）**：A-det 覆盖的**不是"行为契约的大头"，而是 loop 驱动这一块**——收敛控制流 + 护栏退出码，且与现有 `tests/*.sh` 已有重叠。**A 的净新增价值更集中在 A-live 的两个 fixture**（`honest-checks` / `red-light-gate`）。免费档能白拿多少，取决于有多少契约落在确定性代码里，而非取决于我们希望它有多少。
+
+**同一条契约在两个实现上可测性不同（别混用绿灯）**："绝不自动 ship"在 **Runbook 版**（`codex-loop-run.sh`）由 bash 终态判定执行 → A-det 可证；但在 **Claude Task 版 `pdlc-loop-run`** 里写在 SKILL.md 正文、由模型执行 → 桩证不了，只能靠 A-live / 真机。**不可拿前者的绿灯宣称后者已验。**
 
 **失败语义 / flake 政策**：
 - A-det 失败 = **契约真红灯**（确定性、无 flake）→ 可作**硬 blocker**，进 pre-push 本地钩子常跑。
 - A-live 失败**可能是模型抖动（限流/拒答/超时）而非契约破坏** → A-live 是**发版前的建议性证据、非自动硬闸**；瞬时失败允许重跑，连续失败才升级为"契约疑似回归"人工查。**绝不因 A-live flake 卡死发布。**
 
-**A-det 的边界（防"桩掉模型掩盖真 bug"）**：A-det 验证的是 **harness 逻辑**——"给定合法的模型输出，驱动的控制流正确"。它**结构上测不了模型行为本身**（真模型会不会中途卡死、会不会写出非法状态转移）——桩喂的是预置的合法输出，恰好旁路了模型可能出错的那一段。因此 **A-det 全绿 ≠ 收敛性已在真模型上成立**；模型侧的真实性只能来自 A-live。`honest-checks` 覆盖"真模型单步写出诚实 checks"；**全环收敛探针**（真模型多步连跑到 `review_done`）成本高一个量级，定位为**大版本发布前手动跑一次**、不进每版清单（此前已有一次真机端到端验证，见 ADR 0004）。
+**A-det 的边界（防"桩掉模型掩盖真 bug"）**：A-det 验证的是 **harness 逻辑**——"给定合法的模型输出，驱动的控制流正确"。它**结构上测不了模型行为本身**（真模型会不会中途卡死、会不会写出非法状态转移）——桩喂的是预置的合法输出，恰好旁路了模型可能出错的那一段。因此 **A-det 全绿 ≠ 收敛性已在真模型上成立**；模型侧的真实性只能来自 A-live——`honest-checks` 覆盖"真模型单步写出诚实 checks"、`red-light-gate` 覆盖"真模型真的按正文守卫中止"。**全环收敛探针**（真模型多步连跑到 `review_done`）成本高一个量级，定位为**大版本发布前手动跑一次**、不进每版清单（此前已有一次真机端到端验证，见 ADR 0004）。
 
 **A-live 的重复与失败分类（把单发探针变成统计可信的探针）**：runner 支持 `--repeat N`（默认 1，发版前建议 3），失败分两类——**环境抖动**（超时/限流/拒答，无状态机产出）→ 重跑、不计失败；**契约破坏**（有状态机产出但 checks 与判别式不符）→ 立即红。以多数通过为结论，单次抖动不误报"契约回归"。
 
@@ -104,8 +124,10 @@ pdlc 现在**已经在编排自动化测试**：`pdlc-tdd`（测试先行 / 红�
 - 脚手架测试目录结构，接 pre-commit / pre-push 钩子跑基础 check。
 - 天然接 `pdlc-adopt`（老项目）与 `pdlc-bootstrap`（新项目）。可附带轻量"老项目特征化测试回填"到覆盖率底线。
 
-**为什么它先于 B2**：pdlc 的命门（"checks 来自 test-commands.yml 的真实退出码"）**依赖该文件存在且真实**，
-但现在没有任何东西帮你把它立起来。B1 把整个"退出码地基"变成 turnkey，B2 才有东西可跑。
+**它与 B2 的先后（对齐 §2，非硬顺序）**：pdlc 的命门（"checks 来自 test-commands.yml 的真实退出码"）
+**依赖该文件存在且真实**，而现在没有任何东西帮你把它立起来——B1 把整个"退出码地基"变成 turnkey。
+但这**不等于 B1 必须先于 B2**：已手工立好 `test-commands.yml` 的项目（含 B2 的首批 dogfood 靶子）
+可直接上 B2、B1 后补；**只有从零接入的项目才必须先 B1**。
 
 **诚实边界**：定位成"立地基 + 补底线"，**不吹"帮你生成全部测试"**（AI 生成的测试容易浅）；深度用例仍走 `pdlc-tdd`。
 
@@ -180,7 +202,10 @@ lint: zero-warnings
 - **不用 AI 判断替代客观数据**：覆盖率来自覆盖率工具、E2E 覆盖来自 flow→test 映射 + 真跑结果、checks 来自退出码。
   AI 只负责**生成报告**与**从 PRD 抽核心流草稿**，判定与放行由客观数据 + 人。
 - **B1 不吹"生成全部测试"**；**B2 的 E2E 保障强度取决于 `core_flows` 清单与映射维护得多勤**——清单漏一条核心流，
-  矩阵也照不出来，故 §5.2 的"降低声明摩擦"是 B2 真正有效的前提。
+  矩阵也照不出来（false-green），故 §5.2 的**清单维护机械化**（PRD 强制对账 + 漂移即红灯）是 B2 真正有效的前提，
+  仅靠"降低摩擦、温柔提示"不够。
+- **A-det 证不了模型侧行为**：它只证"给定合法模型输出、驱动控制流正确"；模型会不会真按正文守卫中止 / 中途卡死 /
+  写出非法状态转移，只能由 A-live 证。**Claude Task 版 `pdlc-loop-run` 的"绝不自动 ship"由模型执行，A-det 的绿灯不覆盖它**（§3.4）。
 - **vanilla OpenAI Codex 不在覆盖范围**（见 ADR 0003 实现纪要）；A 的 evals 面向已验证的 Codex 发行版 + Claude Code。
 - **Codex 那条 eval 臂是"凭证门控"的**：`codex exec` 需 provider key，只有持凭证的 maintainer 能跑；README「行为契约已验·Codex」栏 ≠「任何人可复现」，须标注"由持 Codex 凭证的维护者跑于 <日期/SHA>"。A-det 那档无此限制（桩驱动、任何人可跑）。
 - **加 skill = 全仓"36"计数涟漪**：B1 使 36→37、B2 的 `/pdlc-quality` 再 37→38；落地须同步 `ARCHITECTURE.md` / `GLOSSARY.md` / `CLAUDE.md` / `README(.zh-CN).md` / `docs/pdlc-methodology.md` 里所有硬编码"36"，以及 `tests/install-smoke.sh` 的计数断言。
@@ -189,7 +214,18 @@ lint: zero-warnings
 
 ## 7. 真正落地：最小第一步与防腐
 
-**最小可跑第一步（先证明 A 立得住，再谈框架）**：不先搭 `evals/` 全框架，而是先做**一个** `honest-checks` 可跑脚本——fixture（`unit` 恒 exit 1 / `lint` 恒 exit 0）+ 一段 `run.sh --only honest-checks`：拷 fixture 到 temp → 经 `claude -p`（选配 `codex exec`）跑一步 implement → 读回状态机断言判别式。它一箭三雕：① 立刻把 ADR 0003 §6.1 / 0004 §2 的**一次性手工准入闸变成可复现命令**（今天就有价值）；② 是整个 A 档能否成立的最小证明；③ 成本约一个 turn。跑通后再把 runner 泛化到其余**桩驱动（免费）**的 fixture（即 §3.4 的 A-det）。
+**最小可跑第一步（先证明 A 立得住，再谈框架）**：不先搭 `evals/` 全框架，而是先做**一个** `honest-checks` 可跑脚本——fixture（`unit` 恒 exit 1 / `lint` 恒 exit 0）+ 一段 `run.sh --only honest-checks`：拷 fixture 到 temp → 经 `claude -p`（选配 `codex exec`）跑一步 implement → 读回状态机断言判别式。它一箭三雕：① 立刻把 ADR 0003 §6.1 / 0004 §2 的**一次性手工准入闸变成可复现命令**（今天就有价值）；② 是整个 A 档能否成立的最小证明；③ 成本约一个 turn。
+
+**第二步应是 `red-light-gate`，不是 A-det**（§3.4 分拣的直接推论）：它同属 A-live、**复用同一个 runner**——同一套
+"拷 fixture → `claude -p` / `codex exec` → 读回状态机断言"的 harness，只多一个 fixture，**搭建的边际成本近乎零**，
+却补上第二条模型侧契约。
+> ⚠️ "近乎零"指**搭建**成本，**不是运行成本**：它运行时仍是一次真模型 turn——A-live 每轮 =
+> `honest-checks` + `red-light-gate` **两个 turn**，`--repeat 3` 即**六个**。量级完全可接受，但 `EVALS.md`
+> 必须把这笔账写明，别让"近乎零"被误读成"跑起来也免费"。
+
+**之后**再做 A-det（`guardrails` / loop 控制流）：**直接扩展 `tests/` 里现成的桩测试，不另起一套 harness**
+（`tests/adapter-codex-loop-run-check.sh` 已在用 codex 桩）——既然 A-det 本就与 `tests/*.sh` 重叠，
+让桩测试有两个家只会多一套要防腐的机制。价值次之，排在 A-live 两个 fixture 之后。
 
 **防腐（这决定 A 是资产还是负债）**：
 - **README「行为契约已验」表由 runner 生成 + 带时间戳/commit SHA**——过期的表要**看得出过期**（有日期），而非静默变谎。手工维护的"已验表"必然腐烂。
@@ -197,7 +233,7 @@ lint: zero-warnings
 
 **Dogfood 的诚实限制**：pdlc-skills 自身是 bash 插件、**不是被单测的应用**，B1/B2 无法拿本仓自测。**A 的 `evals/fixtures/` 恰好是 B1/B2 唯一现成的 dogfood 靶子**——这反向印证"A 先行"：先手搭 fixture（含真实 `test-commands.yml`），正好成为 B1「该生成什么」的规格。
 
-**B2 的启动条件（2026-07 更新：需求门已满足，改为技术前置门）**：B2 曾被门控为"待真实用户提出质量闸需求再上"（YAGNI）。该门**已满足**——质量闸需求已由真实日常使用提出：维护者与协作者在多个已上线项目的日常质量保障中，正在手工重复 B2 要自动化的事（拉覆盖率达标、建 lint 门禁、出达标报告），这些项目即 B2 的第一批 dogfood 靶子。B2 的剩余门槛不再是"有没有人要"，而是**技术前置**：§5.2 的"清单维护机械化"（PRD 强制对账 + 漂移红灯）必须随 B2 第一版一起落地，做不到就不上——手工维护的映射必烂，烂掉的映射产出 false-green，破命门。**A 依然先行**（可复现准入闸 + README 已验表，成本只是 B2 零头），但 B2 无需再等待外部需求信号。
+**B2 的启动条件（2026-07 更新：需求门已满足，改为技术前置门）**：B2 曾被门控为"待真实用户提出质量闸需求再上"（YAGNI）。该门**已满足，且需求来源是 dogfood 而非外部调研**——维护者本人与同事在多个实际项目里日常使用 pdlc，正手工重复 B2 要自动化的事（拉覆盖率达标、建 lint 门禁、出达标报告），这些项目即 B2 的第一批 dogfood 靶子。**自用自提是最实的需求信号**（真用得着才会痛，且交付后立刻有人验收）；同时认清它的边界——dogfood 证明"我们需要"，不证明"通用用户需要"，故 B2 仍按 §5.2 的机械化标准做，**不因"自己人用"降标准**。B2 的剩余门槛不再是"有没有人要"，而是**技术前置**：§5.2 的"清单维护机械化"（PRD 强制对账 + 漂移红灯）必须随 B2 第一版一起落地，做不到就不上——手工维护的映射必烂，烂掉的映射产出 false-green，破命门。**A 依然先行**（可复现准入闸 + README 已验表，成本只是 B2 零头），但 B2 无需再等待外部需求信号。
 
 ---
 
@@ -216,4 +252,5 @@ lint: zero-warnings
 **pdlc 用它逼用户测代码的同一套纪律来测自己（A）、并把"日常质量保障"做成常设闸门（B2）。** 全程守一条命门：
 **一切判定来自客观数据（退出码 / 覆盖率数字 / flow→test 映射 + 真跑），AI 只生成报告，放行由人。** 顺序：
 A 先行（最小步），B1/B2 按目标项目现状取舍，每层为上一层兜底；自动化靠本地钩子而非 CI（项目 CI 纪律）。
-终极目标——**可核对、及时、由人确认地保障产品质量。**
+测自己这一层还多守一条：**分档只看"契约由谁执行"——确定性代码执行的可用桩免费测（A-det），模型遵守正文执行的
+只能真跑（A-live）**；桩的绿灯绝不冒充模型侧的绿灯。终极目标——**可核对、及时、由人确认地保障产品质量。**

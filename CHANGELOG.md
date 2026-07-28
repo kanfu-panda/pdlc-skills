@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-07-28
+
+行为层 evals（A-live）落地——测的是「skill 真跑时契约有没有被守住」，而不只是结构。设计见 `docs/decisions/0005-testing-and-quality-capability.md`，用法与成本账见 `evals/EVALS.md`。
+
+### Added
+
+- `evals/` 行为层测试：`run.sh`（runner）+ `honest-checks` / `red-light-gate` 两个 A-live fixture + `EVALS.md`。
+- 分档判据「**契约由谁执行**」：确定性代码执行的契约（bash 驱动 / jq 映射）可用桩测、留在 `tests/`；由模型遵守 SKILL.md 正文执行的契约桩测不了，必须真跑（A-live）。
+- 失败二分类：**环境抖动**（无状态机产出，自动重跑、不计失败）vs **契约破坏**（有产出但判别式不符，立即红）；全抖动时报「无结论」而非冒充通过。
+- `run.sh --check` 离线校验 fixture（不烧额度，CI 只跑这个）、`--replay` 对保留现场复跑断言、`--repeat N` 以多数通过为结论。
+- `install-smoke.sh` 新增 11 条 evals 不变量（95 → 106）。
+
+### Fixed
+
+- **状态机推进契约冲突**（由 `honest-checks` eval 首跑抓到）：`pdlc-implement` / `pdlc-prd` 的段四无条件写 `current_stage`，与共享片段 `state-update.md` 规则 5「`ok=false` 时 `current_stage` 不变」矛盾，导致失败的阶段也会推进 `current_stage`、令外层循环的 stuck-stop 失效。两处均改为「仅当本阶段成功时才推进」。
+
+
 ## [1.5.2] - 2026-07-20
 
 Codex 上的 PDLC 自主收敛循环（loop-run 外部 Runbook 版）。设计与真机准入闸结果见 `docs/decisions/0004-codex-loop-run.md`。

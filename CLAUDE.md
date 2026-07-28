@@ -76,6 +76,17 @@ bash tests/install-smoke.sh       # end-to-end install layout assertions
 shellcheck install.sh tests/*.sh  # bash linting
 ```
 
+Behavioural evals (`evals/`, added v1.5.3) — verify contracts that only hold when a skill *really runs*:
+
+```bash
+./evals/run.sh --check            # fixture structure only, no model, free (this is what CI runs)
+./evals/run.sh --list             # list scenarios
+./evals/run.sh --only honest-checks          # real run — costs one model turn
+./evals/run.sh --platform codex --repeat 3   # pre-release: both platforms, 3 rounds each
+```
+
+The tier criterion is **who executes the contract**: deterministic code (bash driver, jq mapping) → stub-testable, keep it in `tests/`; the *model following SKILL.md prose* → stubbing the model stubs the object under test, so it needs a real run (`A-live`). Evals are **advisory, never a hard release gate** (a rate-limit shouldn't block a release) and **never run in CI**. Details and cost ledger: `evals/EVALS.md`, ADR `docs/decisions/0005-testing-and-quality-capability.md`.
+
 ## How sub-skills compose
 
 Each `skills/pdlc-<name>/SKILL.md` has:

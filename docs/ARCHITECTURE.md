@@ -110,11 +110,23 @@ Design: `docs/decisions/0002-statusline-pdlc-status.md`.
 
 ## 9. Quality gates
 
-Automated checks, run locally (no CI by default):
+Two tiers, both run locally (no CI by default).
+
+**Structural — free, deterministic, run anytime:**
 
 - `tests/frontmatter-check.sh` — required frontmatter fields, layer values, `@include` resolvability, `name == dir`, `next_step` resolves, manifest version sync.
 - `tests/install-smoke.sh` — skill / template / fragment counts, manifest fields, key invariants.
 - `tests/statusline-check.sh` — `pdlc-statusline.sh` render scenarios (interactive / autonomous / blocked / terminal / multi-feature pick / non-PDLC empty).
+- `tests/adapter-codex-check.sh` / `tests/adapter-codex-loop-run-check.sh` — Codex projection layout and loop-driver guardrails (the latter already stub-driven).
+
+**Behavioural (v1.5.3, `evals/`) — does a contract actually hold when a skill really runs:**
+
+The tier criterion is **who executes the contract**. Contracts executed by deterministic code (bash driver, jq mapping, exit codes) can be tested with a stub — those stay in `tests/`. Contracts executed by *the model following SKILL.md prose* cannot: stubbing the model stubs out the object under test. Those are **A-live** and need a real model:
+
+- `evals/fixtures/honest-checks/` — `unit` always fails / `lint` always passes, so the only honest state-machine write is `{tests_pass:false, lint_clean:true}`. The pair is un-fabricable and, by construction, un-fixable (a correct implementation still leaves one contradictory assertion red).
+- `evals/fixtures/red-light-gate/` — no tests present ⇒ `pdlc-implement` must abort and leave `current_stage` untouched.
+
+`evals/run.sh --check` validates fixtures offline (free); a real run costs model turns and is **advisory, not a hard release gate** — failures are classified as *env-flake* (retried, not counted) vs *contract-break* (immediately red). Since pdlc's main mechanism is prose-following, most behavioural contracts land on the A-live side. Design and cost ledger: `evals/EVALS.md`, `docs/decisions/0005-testing-and-quality-capability.md`.
 
 ## 10. Platform-neutral core (multi-platform)
 
