@@ -62,13 +62,27 @@ printf '%s' "${TIMEOUT_SECS}" | grep -qE '^[1-9][0-9]*$' \
 
 command -v jq >/dev/null 2>&1 || die "缺少 jq（断言要靠它读状态机）"
 
+# 哈希工具因平台而异：Linux 多为 sha256sum，macOS 为 shasum。启动期选定一个，
+# 一个都没有就**立即报错停机**——绝不静默降级，否则「文件未被修改」类断言会
+# 因两侧都拿不到哈希而恒真，变成假绿。
+if command -v sha256sum >/dev/null 2>&1;  then HASH_TOOL="sha256sum"
+elif command -v shasum   >/dev/null 2>&1; then HASH_TOOL="shasum"
+elif command -v openssl  >/dev/null 2>&1; then HASH_TOOL="openssl"
+else die "缺少哈希工具（需 sha256sum / shasum / openssl 之一，断言要靠它比对文件是否被改）"
+fi
+
 # ---------- 供 scenario.sh 使用的助手（由 scenario 间接调用）----------
 NOTES=""
 # shellcheck disable=SC2329  # 在 scenario.sh 的 assert_scenario 里调用
 eval_note() { NOTES="${NOTES}    · ${1}"$'\n'; }
 # shellcheck disable=SC2329  # 同上
 eval_sha() {
-  if [ -f "$1" ]; then shasum -a 256 "$1" | awk '{print $1}'; else printf '缺失'; fi
+  [ -f "$1" ] || { printf '缺失'; return 0; }
+  case "${HASH_TOOL}" in
+    sha256sum) sha256sum "$1"       | awk '{print $1}'  ;;
+    shasum)    shasum -a 256 "$1"   | awk '{print $1}'  ;;
+    openssl)   openssl dgst -sha256 "$1" | awk '{print $NF}' ;;
+  esac
 }
 
 # ---------- 场景发现 ----------
