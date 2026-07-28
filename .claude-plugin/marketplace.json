@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Marketplace for pdlc-skills — Product Development Life Cycle workflow for Claude Code.",
-    "version": "1.5.2"
+    "version": "1.5.3"
   },
   "plugins": [
     {
@@ -13,7 +13,14 @@
       "source": "./",
       "description": "An auditable, on-disk PDLC state machine for AI software engineering: a staged workflow (PRD → design → TDD → implement → review → ship → retro) with hard contracts + objective checks from real exit codes, so an autonomous loop can drive it to convergence unattended (fail-stop / budget guards) — tool-agnostic, richest in Claude Code, plus Codex via adapters.",
       "category": "workflow",
-      "tags": ["pdlc", "workflow", "tdd", "engineering", "ai-coding", "claude-code"]
+      "tags": [
+        "pdlc",
+        "workflow",
+        "tdd",
+        "engineering",
+        "ai-coding",
+        "claude-code"
+      ]
     }
   ]
 }

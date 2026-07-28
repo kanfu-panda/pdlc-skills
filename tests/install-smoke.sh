@@ -155,6 +155,25 @@ assert_exists "ADR 0004 codex-loop-run exists" "docs/decisions/0004-codex-loop-r
 assert_contains "driver never auto-ships (review_done terminal)" "review_done" "$(cat adapters/codex-loop-run.sh)"
 assert_contains "driver has stuck-stop guard" "stuck-stop" "$(cat adapters/codex-loop-run.sh)"
 
+# ─── Behavioural evals (ADR 0005 · A-live) invariants ───
+assert_exists "evals/run.sh exists"                 "evals/run.sh"
+assert_exists "evals/run.sh is executable"          "evals/run.sh"
+assert_exists "EVALS.md exists"                     "evals/EVALS.md"
+assert_exists "ADR 0005 testing capability exists"  "docs/decisions/0005-testing-and-quality-capability.md"
+assert_exists "honest-checks fixture exists"        "evals/fixtures/honest-checks/scenario.sh"
+assert_exists "red-light-gate fixture exists"       "evals/fixtures/red-light-gate/scenario.sh"
+# 分档判据必须留在文档里——它决定一个场景要不要烧模型额度
+assert_contains "EVALS.md states the tier criterion" "契约由谁执行" "$(cat evals/EVALS.md)"
+# 抖动 ≠ 契约破坏：这条政策丢了，A-live 会因限流误报"契约回归"
+assert_contains "runner classifies env-flake vs contract-break" "环境抖动" "$(cat evals/run.sh)"
+assert_contains "runner reports inconclusive rather than green" "无结论" "$(cat evals/run.sh)"
+# red-light-gate 的假绿护栏：没有守卫哨兵不得判通过
+assert_contains "red-light-gate requires guard sentinel" "PDLC 守卫" \
+  "$(cat evals/fixtures/red-light-gate/scenario.sh)"
+# 免费的结构自检必须可用（不烧额度）
+check_out="$(./evals/run.sh --check 2>&1 || true)"
+assert_contains "evals --check passes offline" "fixture 结构自检全部通过" "$check_out"
+
 # ─── Test 4: install.sh without claude CLI ───
 echo ""
 echo "Test: install.sh (claude CLI not required for these subcommands)"
