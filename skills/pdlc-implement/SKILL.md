@@ -28,10 +28,11 @@ recommended_effort: medium
 ## PDLC 前置守卫（不可跳过）
 
 1. 从用户输入提取功能名称关键词
-2. 在以下位置搜索与该功能相关的**测试代码**：
-   - 后端: `backend/services/*/src/test/`、`backend/services/*/tests/`
-   - 前端: `frontend/*/src/__tests__/`、`frontend/*/*/src/__tests__/`
-3. **未找到测试代码** → 输出以下后立即中止：
+2. 按下面的规则搜索与该功能相关的**测试代码**：
+
+<!-- @include templates/prompts/test-location.md -->
+
+3. **按上述四步走完仍未找到测试代码** → 输出以下后立即中止：
    ```
    ⛔ PDLC 守卫：未找到与「<功能名>」相关的测试代码。
    实现代码前必须先编写测试（TDD）。请先运行：

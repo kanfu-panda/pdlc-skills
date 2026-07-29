@@ -32,6 +32,9 @@ ADR 0005 的 B1 + B2 落地：把「客观 check」从单阶段能力升级成**
 
 ### Fixed
 
+- **红灯守卫在常见测试布局上误拦**（aim-quant 真项目验证暴露）：`pdlc-implement` 的前置守卫原先只在一份**写死的路径清单**（`backend/services/*/tests/`、`frontend/*/src/__tests__/` 等）下找测试，找不到就判「项目没测试」并中止。但真实布局千差万别——单体 `backend/tests/`（aim-quant 即是）、根级 `tests/`、Go 同包 `*_test.go`、Node 与源码同目录的 `*.test.tsx`——**守卫把「测试不在我预期的位置」当成了「项目没有测试」**，会让 pdlc 在大量正常项目上直接卡死。
+  - 新增共享片段 `test-location.md`（11 → 12 个）：**优先认项目自己的 `test-commands.yml`**（它已明确声明测试怎么跑），其次常见生态约定，再次文件名兜底扫描，**四步都落空才判红灯**。
+  - `pdlc-implement` / `pdlc-tdd` / `pdlc-feature` / `pdlc-fix` 四处改为引用该片段；写测试时也跟随项目既有布局，不再新造平行目录。
 - **对账自身的 false-green**（真项目验证时实测踩到）：PRD 不含 P0/P1 标记时提取为空集、不产生漂移条目，报告若就此判「无漂移 ✅」，等于宣称那份 PRD 的流程都覆盖了——而事实是它整份没进闸门视野（已上线的老主链路最容易栽在这里）。现要求单列「不可判」告警，且对账项**不得判为 ✅**。
 - 修全仓 5 处 `$var` 紧贴中文的隐患（`bin/pdlc-statusline.sh`、`tests/adapter-codex-check.sh` ×2、`tests/statusline-check.sh` ×2），并加上防复发守卫。
 

@@ -49,9 +49,10 @@ Skills inline reusable instruction blocks via `<!-- @include templates/prompts/X
 - `feature-id.md` / `defect-id.md` — ID allocation.
 - `output-language.md` — output language rules.
 - `relations.md` — the v1.1 relation-chain definition (six types, five expression sites, validation rules).
+- `test-location.md` — layout-agnostic test discovery: defer to the project's own `test-commands.yml`, then conventions, then filename scan. The red-light guard must distinguish *no tests* from *tests not where I expected* — the latter would wrongly block ordinary layouts.
 - `noninteractive.md` — the v1.2 `--autonomous` contract (auto-advance procedural confirmations, block on judgement calls, destructive actions always human).
 
-(11 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
+(12 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
 
 ## 4. Target-project contract
 

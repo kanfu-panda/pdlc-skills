@@ -96,8 +96,8 @@ pdlc 的命门是「`checks` 只认命令退出码，绝不用模型自评」—
 按栈惯例建空目录 + 一个占位说明，**不生成业务测试用例**：
 
 - Rust `tests/`、Node `src/__tests__/` 或 `tests/`、Python `tests/`、Go 同包 `*_test.go`、JVM `src/test/java/`
-- 若项目是 `backend/services/*` / `frontend/*` 布局，按 `pdlc-implement` 前置守卫认得的路径建
-  （`backend/services/<name>/tests/`、`frontend/<app>/src/__tests__/`），否则守卫会找不到测试而误拦
+- **跟随项目既有布局**，不新造平行目录。守卫侧的定位规则是布局无关的
+  （见 `templates/prompts/test-location.md`），所以这里不必迁就任何预设结构
 
 ### 2.3 接本地钩子（不进 CI）
 
@@ -124,7 +124,7 @@ pdlc 的命门是「`checks` 只认命令退出码，绝不用模型自评」—
 - [ ] **收尾复跑一遍**：从写好的 yml 里逐条读命令再跑一次，确认与写入时的结论一致（防止写错路径 / 引号）
 - [ ] 留空的项，报告里都写明了「为什么空」和「怎么补」
 - [ ] 覆盖率阈值已写死在命令参数里，不依赖任何一方解析百分比
-- [ ] 测试目录路径能被 `pdlc-implement` 的前置守卫找到（`backend/services/*/tests/` 等布局）
+- [ ] 测试目录跟随项目既有布局；若写了 `test-commands.yml`，其 `unit` 命令能定位到这些测试
 - [ ] 钩子是**本地**的，没有新建或修改任何 CI workflow
 - [ ] 已存在的 `test-commands.yml` 没有被静默覆盖
 

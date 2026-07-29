@@ -96,9 +96,9 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "12 user-facing templates"                   "12"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "11 shared prompt fragments"                 "11"  "$prompt_count"
+assert_eq "12 shared prompt fragments"                 "12"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations noninteractive; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations noninteractive test-location; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
 
@@ -186,6 +186,23 @@ assert_contains "ship gates on the latest quality report" \
 # 上游挂钩：PRD 产出 P0/P1 流程时提示补 core_flows
 assert_contains "prd hooks new P0/P1 flows into core_flows" \
   "core_flows" "$(cat skills/pdlc-prd/SKILL.md)"
+
+# ─── 测试定位布局无关（真项目验证所得）───
+# 守卫必须区分「项目没测试」和「测试不在我预期位置」——后者拦了就是误伤。
+# aim-quant 用 backend/tests/ 单体布局，老的写死路径清单会让它直接卡死。
+assert_exists "test-location fragment exists" "references/templates/prompts/test-location.md"
+assert_contains "test-location distinguishes no-tests from wrong-place" \
+  "测试不在我预期的位置" "$(cat references/templates/prompts/test-location.md)"
+assert_contains "test-location defers to the project's own declaration" \
+  "test-commands.yml" "$(cat references/templates/prompts/test-location.md)"
+for s in pdlc-implement pdlc-tdd pdlc-feature pdlc-fix; do
+    assert_contains "$s uses layout-agnostic test location" \
+      "templates/prompts/test-location.md" "$(cat skills/$s/SKILL.md)"
+done
+# 正文里不得再写死那份路径清单（frontmatter 的 produces/requires 声明不算）
+# grep 无匹配时退出码为 1，pipefail 下会让整条管道失败 → 必须显式吞掉
+hardcoded="$( { grep -l 'backend/services/<服务名>/src/test/' skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
+assert_eq "no skill body hardcodes the old test-path list" "0" "$hardcoded"
 
 # ─── B1 test-setup (ADR 0005 §4) invariants ───
 assert_exists "pdlc-test-setup skill exists"        "skills/pdlc-test-setup/SKILL.md"

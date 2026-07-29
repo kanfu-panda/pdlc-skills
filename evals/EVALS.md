@@ -103,18 +103,18 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
    README 里的"行为契约已验"若含 Codex 栏，必须标注是谁、于何时/哪个 commit 跑的——
    它**不等于**"任何人可复现"。
 
-## fixture 布局的一个硬约束
+## fixture 布局（曾经的硬约束，现已解除）
 
-`pdlc-implement` 的前置守卫只在这些**硬编码路径**下找测试：
+**历史**：`pdlc-implement` 的守卫早期只在一份**写死的路径清单**下找测试
+（`backend/services/*/tests/`、`frontend/*/src/__tests__/` 等），所以 fixture 必须迁就那份清单。
 
-```
-backend/services/*/src/test/    backend/services/*/tests/
-frontend/*/src/__tests__/       frontend/*/*/src/__tests__/
-```
+**现状**：真项目验证（aim-quant 用 `backend/tests/` 单体布局）暴露出这个设计会**误伤正常项目**——
+守卫把「测试不在我预期的位置」当成了「项目没有测试」。定位规则已改为布局无关，
+见 `references/templates/prompts/test-location.md`：优先认项目自己的 `test-commands.yml`，
+其次常见约定，再次文件名兜底，**四步都落空才判红灯**。
 
-所以 `honest-checks` 的测试必须放在 `backend/services/calc/tests/`——
-放到项目根 `tests/` 会**误触**红灯守卫，让 eval 报出与被测契约无关的失败。
-新增 fixture 时照此布局，否则先改守卫。
+因此新 fixture **不必**迁就任何预设结构；按目标场景最真实的布局搭即可。
+现有的 `honest-checks` 仍用 `backend/services/calc/tests/`，只是历史沿袭，不是要求。
 
 ## 加一个新场景
 

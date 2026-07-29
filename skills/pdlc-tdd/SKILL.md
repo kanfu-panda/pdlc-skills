@@ -53,9 +53,11 @@ recommended_effort: medium
      <!-- 阶段: 测试 -->
      <!-- 前置文档: docs/02_design/api/F20260326-090000-user-auth-api.md -->
      ```
-4. **编写测试代码**: 在对应服务/应用的测试目录下编写测试用例
-   - 后端: `backend/services/<服务名>/src/test/` 或 `backend/services/<服务名>/tests/`
-   - 前端: `frontend/<分类>/<应用名>/src/__tests__/`
+4. **编写测试代码**: 写到项目**既有的**测试布局里，按下面的规则定位；
+   **不要**为迎合某种预设结构新造一套平行的测试目录。
+
+<!-- @include templates/prompts/test-location.md -->
+
 5. **测试计划自审与自动修复**（编写完成后、运行前执行，不可跳过）：
    - 重新阅读测试计划和测试代码，对照设计文档和 PRD 逐项检查以下质量门禁：
 
