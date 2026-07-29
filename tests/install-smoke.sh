@@ -170,6 +170,10 @@ assert_contains "quality reconciles PRD against core_flows" \
   "强制对账" "$(cat skills/pdlc-quality/SKILL.md)"
 assert_contains "quality names the false-green failure mode" \
   "false-green" "$(cat skills/pdlc-quality/SKILL.md)"
+# 对账自身的 false-green：PRD 没有 P0/P1 标记时提取为空集、不产生漂移，
+# 若就此判「无漂移 ✅」等于宣称那份 PRD 的流程都覆盖了。真项目上实测踩到过。
+assert_contains "quality distinguishes unjudgeable from no-drift" \
+  "不可判" "$(cat skills/pdlc-quality/SKILL.md)"
 # 量不到不得算通过
 assert_contains "quality never passes an unmeasured item" \
   "不得因此判为通过" "$(cat skills/pdlc-quality/SKILL.md)"
