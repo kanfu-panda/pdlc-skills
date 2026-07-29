@@ -32,11 +32,11 @@ next_step: <next skill | null>
 terminal_state: <state | null>
 ```
 
-Three layers (37 skills total: 3 / 11 / 23):
+Three layers (38 skills total: 3 / 11 / 24):
 
 - **Layer 1 — entry points (3)** (`pdlc-feature`, `pdlc-fix`, `pdlc-status`): one-sentence-driven whole-flow drivers plus the read-only status view.
 - **Layer 2 — core pipeline (11)** (`pdlc-prd`, `pdlc-design`, `pdlc-tdd`, `pdlc-implement`, `pdlc-review`, `pdlc-ship`, ...): the staged lifecycle, feature-scoped, state-machine-driven.
-- **Layer 3 — specialized tools (23)** (`pdlc-arch`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, `pdlc-test-setup`, the loop tooling `pdlc-loop-next` / `pdlc-loop-run`, the config command `pdlc-settings`, ...): focused tools, not always feature-scoped.
+- **Layer 3 — specialized tools (24)** (`pdlc-arch`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, `pdlc-test-setup`, `pdlc-quality`, the loop tooling `pdlc-loop-next` / `pdlc-loop-run`, the config command `pdlc-settings`, ...): focused tools, not always feature-scoped.
 
 ## 3. Shared prompt fragments
 

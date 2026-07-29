@@ -7,14 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-29
+
+ADR 0005 的 B1 + B2 落地：把「客观 check」从单阶段能力升级成**常设质量闸门**。36 → 38 skills。
+
 ### Added
 
-- **`/pdlc-test-setup`（Layer 3，36 → 37 skills）**：立测试地基——探测技术栈 → **逐条验证命令真能跑** → 写 `docs/00_standards/test-commands.yml` → 脚手架测试目录 → 接本地 pre-commit/pre-push 钩子。设计见 `docs/decisions/0005-testing-and-quality-capability.md` §4（B1）。
-  - 命门是「**验证后再写**」：写进 yml 的每条命令都必须先真跑过、看到退出码；跑不通的**留空并说明怎么补**，绝不写一条没验证过的命令——一条猜错的命令会污染下游每个阶段的 `checks`，比没有这个文件更坏。
-  - 覆盖率达标线写死在命令参数里（默认 85%），「达标」即退出码本身，不需要任何一方解析百分比。
-  - 已存在的 `test-commands.yml` 不覆盖，改为逐条校验 + 提议补缺（surface 型就地编辑）。
-  - **不新建 CI workflow**，只接本地钩子；测试目录按 `pdlc-implement` 前置守卫认得的布局建，避免误触红灯守卫。
+- **`/pdlc-test-setup`（B1，立测试地基）**：探测技术栈 → **逐条验证命令真能跑** → 写 `docs/00_standards/test-commands.yml` → 脚手架测试目录 → 接本地 pre-commit/pre-push 钩子。
+  - 命门是「**验证后再写**」：写进 yml 的每条命令都必须先真跑过、看到退出码；跑不通的**留空并说明怎么补**，绝不写没验证过的命令——一条猜错的命令会污染下游每个阶段的 `checks`，比没有这个文件更坏。
+  - 覆盖率达标线写死在命令参数里（默认 85%），「达标」即退出码本身，无需解析百分比。已存在的 yml 不覆盖，改为校验 + 提议补缺。
+- **`/pdlc-quality`（B2，质量闸门）**：跑真实 check → 对照目标 → 出可核对报告 → **人签字放行**。AI 只整理数据，**不参与达标判定**。
+  - **E2E 覆盖矩阵**：靠显式 `docs/00_standards/e2e-flow-map.yml`（`core_flow → 测试标识`）机械核对，不靠模型说「我觉得覆盖了」。映射指向不存在的测试 = **映射腐烂**，按红处理。
+  - **PRD 强制对账防 false-green**：每次运行都拿 PRD 的 P0/P1 流程与 `core_flows` 做 diff，**漂移即红灯**。清单靠自觉维护必腐烂，而腐烂的清单会让矩阵全绿、现实有洞——把「我们不知道」伪装成「我们覆盖了」，比没有闸门更坏。
+  - 报告落盘 `docs/07_reviews/quality/<日期>.md`（ledger 型，可 diff 可看趋势），含红绿表、实测证据、覆盖矩阵、对账结果、趋势、**人工签字栏**。
+  - 量不到的项如实写「未测量」，**不得因此判为通过**——与「无命令可跑 → `checks: {}`」同一条纪律。
+- 新模板：`quality-targets-template.yml`、`e2e-flow-map-template.yml`、`quality-report-template.md`。
+- **多字节相邻守卫**（repo hygiene）：`install-smoke` 新增一条闸——全仓 `.sh` 里 `$var` 紧贴中文即失败。这类写法几乎总藏在错误分支里，正常路径跑不到、一旦真出错连报错本身都崩；本仓已被它坑过 4 次。
 
+### Changed
+
+- `/pdlc-ship` 前置检查新增**质量闸门**：读 `docs/07_reviews/quality/` 最近一份报告，未达标默认不放行，要发必须由人显式 override 并写明理由；报告早于最近提交则提示已过期。
+- `/pdlc-prd` 新增**上游挂钩**：产出 P0/P1 流程时提示补 `core_flows` 与 E2E 映射——在源头挂钩比事后补救可靠。
+- 目标项目契约新增 `docs/00_standards/quality-targets.yml`、`docs/00_standards/e2e-flow-map.yml`、`docs/07_reviews/quality/`。
+
+### Fixed
+
+- 修全仓 5 处 `$var` 紧贴中文的隐患（`bin/pdlc-statusline.sh`、`tests/adapter-codex-check.sh` ×2、`tests/statusline-check.sh` ×2），并加上防复发守卫。
 
 ## [1.5.3] - 2026-07-28
 

@@ -62,7 +62,7 @@ assert_empty() {
     if [[ -z "${hay//[$'\n\t ']/}" ]]; then
         echo "  ✓ $desc"; pass=$((pass + 1))
     else
-        echo "  ✗ $desc（应为空，实际: $hay）"; fail=$((fail + 1))
+        echo "  ✗ ${desc}（应为空，实际: ${hay}）"; fail=$((fail + 1))
     fi
 }
 

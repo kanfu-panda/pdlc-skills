@@ -68,7 +68,7 @@ echo "Test: skills/ layout"
 assert_exists "skills/ directory exists" "skills"
 
 skill_count=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-assert_eq "exactly 37 sub-skill directories" "37" "$skill_count"
+assert_eq "exactly 38 sub-skill directories" "38" "$skill_count"
 
 for name in pdlc-feature pdlc-fix pdlc-status pdlc-prd pdlc-design pdlc-tdd pdlc-implement pdlc-review pdlc-ship pdlc-standard pdlc-relate pdlc-loop-next pdlc-loop-run pdlc-settings; do
     assert_exists "skills/$name/SKILL.md exists" "skills/$name/SKILL.md"
@@ -93,7 +93,7 @@ echo "Test: shared resources"
 assert_exists "references/templates/ directory exists" "references/templates"
 
 template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | wc -l | tr -d ' ')
-assert_eq "11 user-facing templates"                   "11"  "$template_count"
+assert_eq "12 user-facing templates"                   "12"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
 assert_eq "11 shared prompt fragments"                 "11"  "$prompt_count"
@@ -155,6 +155,34 @@ assert_exists "ADR 0004 codex-loop-run exists" "docs/decisions/0004-codex-loop-r
 assert_contains "driver never auto-ships (review_done terminal)" "review_done" "$(cat adapters/codex-loop-run.sh)"
 assert_contains "driver has stuck-stop guard" "stuck-stop" "$(cat adapters/codex-loop-run.sh)"
 
+# ─── B2 quality gate (ADR 0005 §5) invariants ───
+assert_exists "pdlc-quality skill exists"           "skills/pdlc-quality/SKILL.md"
+assert_exists "quality-targets template exists"     "references/templates/quality-targets-template.yml"
+assert_exists "e2e-flow-map template exists"        "references/templates/e2e-flow-map-template.yml"
+assert_exists "quality-report template exists"      "references/templates/quality-report-template.md"
+# 第一个地基：核心流覆盖必须靠显式 flow→test 映射机械核对，不能靠模型意见
+assert_contains "quality uses explicit flow→test map, not model opinion" \
+  "e2e-flow-map.yml" "$(cat skills/pdlc-quality/SKILL.md)"
+assert_contains "quality treats a broken mapping as red" \
+  "映射腐烂" "$(cat skills/pdlc-quality/SKILL.md)"
+# 第二个地基：PRD 对账防 false-green——清单腐烂会让矩阵全绿而现实有洞
+assert_contains "quality reconciles PRD against core_flows" \
+  "强制对账" "$(cat skills/pdlc-quality/SKILL.md)"
+assert_contains "quality names the false-green failure mode" \
+  "false-green" "$(cat skills/pdlc-quality/SKILL.md)"
+# 量不到不得算通过
+assert_contains "quality never passes an unmeasured item" \
+  "不得因此判为通过" "$(cat skills/pdlc-quality/SKILL.md)"
+# go/no-go 由人拍
+assert_contains "quality leaves go/no-go to a human" \
+  "放行由人" "$(cat skills/pdlc-quality/SKILL.md)"
+# 发布挂钩：ship 读最近一份质量报告
+assert_contains "ship gates on the latest quality report" \
+  "07_reviews/quality/" "$(cat skills/pdlc-ship/SKILL.md)"
+# 上游挂钩：PRD 产出 P0/P1 流程时提示补 core_flows
+assert_contains "prd hooks new P0/P1 flows into core_flows" \
+  "core_flows" "$(cat skills/pdlc-prd/SKILL.md)"
+
 # ─── B1 test-setup (ADR 0005 §4) invariants ───
 assert_exists "pdlc-test-setup skill exists"        "skills/pdlc-test-setup/SKILL.md"
 # 本命令的命门：写进 test-commands.yml 的命令必须先真跑过。这条纪律丢了，
@@ -208,6 +236,24 @@ assert_contains "unknown arg shows error"           "Unknown argument"          
 # ─── Test 5: docs / repo hygiene ───
 echo ""
 echo "Test: repo hygiene"
+
+# 多字节相邻守卫：`$var` 紧跟中文时，bash 会把多字节的首字节并进变量名，
+# 报 `xxx?: unbound variable` 甚至改变语义。这类写法几乎总藏在**错误分支**里
+# ——正常路径跑不到，一旦真出错连报错本身都崩。本仓已被它坑过 4 次，故设此闸。
+# 修法：加花括号 `${var}中文`。
+# 用 awk + C locale 按字节匹配（macOS 的 grep 没有 -P，无法用 \x 类）。
+mb_hits="$(LC_ALL=C find . -name '*.sh' -not -path './.git/*' -exec \
+    awk '/\$[A-Za-z_][A-Za-z0-9_]*[^ -~]/ {print FILENAME":"FNR}' {} + 2>/dev/null || true)"
+if [[ -z "$mb_hits" ]]; then
+    echo "  ✓ no \$var directly adjacent to multibyte text (use \${var} instead)"
+    pass=$((pass + 1))
+else
+    echo "  ✗ \$var directly adjacent to multibyte text — wrap as \${var}:"
+    # shellcheck disable=SC2086  # 需要按空白拆成多行输出，此处刻意不加引号
+    printf '      %s\n' $mb_hits
+    fail=$((fail + 1))
+fi
+
 assert_exists "README.md exists"                    "README.md"
 assert_exists "README.zh-CN.md exists"              "README.zh-CN.md"
 assert_exists "LICENSE exists"                      "LICENSE"

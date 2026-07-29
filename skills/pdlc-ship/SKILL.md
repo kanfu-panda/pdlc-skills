@@ -33,6 +33,13 @@ terminal_state: ship_done
 3. 检查 `docs/.pdlc-state/` 下是否有未完成的功能（`current_stage` 不在 `[*_done]` 的）
    - 有 → 列出来并询问是否继续（用户明确同意才继续）
    - 无 → 直接进入下一步
+4. **质量闸门检查**（若项目有 `docs/00_standards/quality-targets.yml`）：
+   读 `docs/07_reviews/quality/` 下**最近一份**报告：
+   - 无任何报告 → 提示先跑 `/pdlc-quality`，询问是继续还是先出报告
+   - 报告**总判定未达标** → **默认不放行**；要发必须由人**显式 override 并写明理由**，
+     该理由需记入本次发布的 CHANGELOG 或发布说明（不允许无声跳过）
+   - 报告日期**早于最近一次代码提交** → 提示报告已过期，建议重跑 `/pdlc-quality`
+   - 达标 → 在发布报告里引用该报告路径与日期作为质量证据
 
 ### 1.2 发布前测试门（参考 CLAUDE.md §6）
 

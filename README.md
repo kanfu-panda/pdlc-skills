@@ -17,7 +17,7 @@ Three things fall out of that state machine:
 
 - **Auditable** — every artifact lands on disk; you `git diff` exactly what the AI did.
 - **Autonomous** — checks come from **real command exit codes** (never model self-report), so an autonomous loop can drive `tdd → implement → review` to convergence unattended, with fail-stop, stuck-stop, and budget guards.
-- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (37 slash commands + statusline + in-plugin loop engine); **Codex** and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
+- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (38 slash commands + statusline + in-plugin loop engine); **Codex** and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
 
@@ -138,13 +138,13 @@ claude plugin list | grep pdlc
 # expected: pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
 ```
 
-In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 37 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
+In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
 
 ---
 
 ## Multi-platform (other AI coding tools)
 
-Claude Code has the **richest integration** — 37 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
+Claude Code has the **richest integration** — 38 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
 
 - **Any tool** (Codex, Cursor, Windsurf, Copilot, Cline, …): use the platform-neutral methodology doc [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) as your project rules (`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …), then drive PDLC in natural language ("run the PDLC review stage" → the agent follows the doc).
 - **Codex** (native skills — for Claude-Code-compatible Codex distributions):
@@ -168,6 +168,22 @@ Because every stage writes **objective checks** — real `unit` / `lint` / `cove
 - **On Codex** — `adapters/codex-loop-run.sh` drives the same loop externally (cleared a real-machine state-integrity gate — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md)).
 
 Design: [ADR 0001](./docs/decisions/0001-loop-engineering-integration.md).
+
+---
+
+## Quality gate
+
+The same objective-checks discipline, promoted from a per-feature stage to a **standing gate**:
+
+- **`/pdlc-test-setup`** — lays the foundation: detects your stack, **runs every candidate command once and watches the exit code**, then writes `docs/00_standards/test-commands.yml`. Commands that don't actually run are **left blank with a note on how to fill them**, never guessed — a plausible-but-broken command would silently corrupt every downstream stage's `checks`.
+- **`/pdlc-quality`** — runs the real checks, compares them against `docs/00_standards/quality-targets.yml`, and writes a dated report to `docs/07_reviews/quality/`. **A human signs off**; the tool only reports facts.
+
+Two things keep "all core flows are covered" from becoming an opinion:
+
+1. **An explicit `core_flow → E2E test` map** (`docs/00_standards/e2e-flow-map.yml`) turns coverage into a matrix you can check mechanically. A mapping that points at a test which didn't run is **rot** — reported red, not skipped.
+2. **PRD reconciliation** — every run diffs the P0/P1 flows in your PRDs against the declared `core_flows`, and **drift is a red light**. A stale flow list is the dangerous failure mode: the matrix goes green while reality has holes, dressing up "we don't know" as "we're covered".
+
+Anything that can't be measured is reported as **unmeasured, never as passing**. Design: [ADR 0005](./docs/decisions/0005-testing-and-quality-capability.md).
 
 ---
 
@@ -201,12 +217,12 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-retro` | Iteration retrospective with trend comparison |
 | `/pdlc-task` | In-stage task tracking |
 
-### Layer 3 · Tools (23)
+### Layer 3 · Tools (24)
 
 Specialized stages you can invoke explicitly.
 
 - **🎨 Design (4):** `/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-- **🔍 Quality (4):** `/pdlc-test-setup` (lay the objective-check foundation — detect the stack, verify each command really runs, then write `test-commands.yml`; unverified commands are left blank rather than guessed) · `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+- **🔍 Quality (5):** `/pdlc-quality` (the standing gate — run real checks, verify every core flow has a passing E2E via an explicit flow→test map, reconcile the flow list against PRDs, then a human signs off) · `/pdlc-test-setup` (lay the objective-check foundation — detect the stack, verify each command really runs, then write `test-commands.yml`; unverified commands are left blank rather than guessed) · `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 - **🔧 Engineering (7):** `/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 Governance (2):** `/pdlc-standard` · `/pdlc-relate`
 - **🏗️ Project lifecycle (3):** `/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
@@ -248,7 +264,7 @@ docs/03_development/                                        # developer manuals 
 docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   # tests & defects
 docs/05_deployment/                                         # deployment docs
 docs/06_tasks/                                              # in-stage task tracking
-docs/07_reviews/{doc,code,design,retro}/                    # review records
+docs/07_reviews/{doc,code,design,retro,quality}/            # review records + quality reports
 docs/.pdlc-state/<feature-id>.json                          # state machine + relations (one per feature, e.g. F20260419-090000.json)
 docs/.pdlc-state/_relations.json                            # auto · reverse index of feature relations (pdlc-relate)
 docs/.pdlc-state/_graph.md                                  # auto · mermaid relation graph

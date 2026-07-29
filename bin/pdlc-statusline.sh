@@ -46,7 +46,7 @@ do_uninstall() {
         rm -f "$STABLE_LINK"
         echo "✅ 已移除稳定链接：$STABLE_LINK"
     else
-        echo "ℹ️ 未发现稳定链接：$STABLE_LINK（无需移除）"
+        echo "ℹ️ 未发现稳定链接：${STABLE_LINK}（无需移除）"
     fi
 }
 
