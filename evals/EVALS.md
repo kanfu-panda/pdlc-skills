@@ -108,7 +108,7 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
 **历史**：`pdlc-implement` 的守卫早期只在一份**写死的路径清单**下找测试
 （`backend/services/*/tests/`、`frontend/*/src/__tests__/` 等），所以 fixture 必须迁就那份清单。
 
-**现状**：真项目验证（aim-quant 用 `backend/tests/` 单体布局）暴露出这个设计会**误伤正常项目**——
+**现状**：真项目验证（某项目用 `backend/tests/` 单体布局）暴露出这个设计会**误伤正常项目**——
 守卫把「测试不在我预期的位置」当成了「项目没有测试」。定位规则已改为布局无关，
 见 `references/templates/prompts/test-location.md`：优先认项目自己的 `test-commands.yml`，
 其次常见约定，再次文件名兜底，**四步都落空才判红灯**。

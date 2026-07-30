@@ -189,7 +189,7 @@ assert_contains "prd hooks new P0/P1 flows into core_flows" \
 
 # ─── 测试定位布局无关（真项目验证所得）───
 # 守卫必须区分「项目没测试」和「测试不在我预期位置」——后者拦了就是误伤。
-# aim-quant 用 backend/tests/ 单体布局，老的写死路径清单会让它直接卡死。
+# 真实项目常用 backend/tests/ 单体布局，老的写死路径清单会让它直接卡死。
 assert_exists "test-location fragment exists" "references/templates/prompts/test-location.md"
 assert_contains "test-location distinguishes no-tests from wrong-place" \
   "测试不在我预期的位置" "$(cat references/templates/prompts/test-location.md)"
