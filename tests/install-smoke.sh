@@ -195,6 +195,21 @@ assert_contains "test-location distinguishes no-tests from wrong-place" \
   "测试不在我预期的位置" "$(cat references/templates/prompts/test-location.md)"
 assert_contains "test-location defers to the project's own declaration" \
   "test-commands.yml" "$(cat references/templates/prompts/test-location.md)"
+# 优先问 runner 而非翻文件——in-source 测试的语言里翻文件根本找不到
+assert_contains "test-location interrogates the runner, not just the filesystem" \
+  "优先问 runner" "$(cat references/templates/prompts/test-location.md)"
+# Rust 单测在源文件的 #[cfg(test)] 里；tests/ 按 Cargo 约定只放集成测试。
+# 照文件清单判红会稳定误伤所有 Rust 项目。
+assert_contains "test-location handles in-source tests (Rust cfg(test))" \
+  "#[cfg(test)]" "$(cat references/templates/prompts/test-location.md)"
+assert_contains "test-location handles Vitest in-source testing" \
+  "import.meta.vitest" "$(cat references/templates/prompts/test-location.md)"
+# 三态而非两态：无法判定不得并入通过
+assert_contains "test-location refuses to pass when it cannot tell" \
+  "绝不等于" "$(cat references/templates/prompts/test-location.md)"
+# ADR 记录这条反模式，供后续做同类闸门时自查
+assert_contains "ADR 0005 records the cannot-tell-vs-fine anti-pattern" \
+  "无法判定（缺证据）" "$(cat docs/decisions/0005-testing-and-quality-capability.md)"
 for s in pdlc-implement pdlc-tdd pdlc-feature pdlc-fix; do
     assert_contains "$s uses layout-agnostic test location" \
       "templates/prompts/test-location.md" "$(cat skills/$s/SKILL.md)"
