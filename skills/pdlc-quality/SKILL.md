@@ -7,7 +7,11 @@ layer: 3
 stage: quality
 artifact_type: ledger
 produces:
+  # 主产物（ledger 型，一次一份可看趋势）
   - docs/07_reviews/quality/<YYYY-MM-DD>.md
+  # 仅 --init 时创建（surface 型，就地编辑不累积）
+  - docs/00_standards/quality-targets.yml
+  - docs/00_standards/e2e-flow-map.yml
 requires:
   - docs/00_standards/test-commands.yml
 next_step: null
