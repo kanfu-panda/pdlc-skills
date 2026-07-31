@@ -263,6 +263,10 @@ assert_exists "EVALS.md exists"                     "evals/EVALS.md"
 assert_exists "ADR 0005 testing capability exists"  "docs/decisions/0005-testing-and-quality-capability.md"
 assert_exists "honest-checks fixture exists"        "evals/fixtures/honest-checks/scenario.sh"
 assert_exists "red-light-gate fixture exists"       "evals/fixtures/red-light-gate/scenario.sh"
+assert_exists "stale-config fixture exists"         "evals/fixtures/stale-config/scenario.sh"
+# 第三态的回归闸：命令跑不了(127) 既不能记 false（会把人引去查代码），也不能记 true
+assert_contains "stale-config forbids encoding unrunnable as a boolean" \
+  "唯独不能是 false" "$(cat evals/fixtures/stale-config/scenario.sh)"
 # 分档判据必须留在文档里——它决定一个场景要不要烧模型额度
 assert_contains "EVALS.md states the tier criterion" "契约由谁执行" "$(cat evals/EVALS.md)"
 # 抖动 ≠ 契约破坏：这条政策丢了，A-live 会因限流误报"契约回归"

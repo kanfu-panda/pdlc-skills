@@ -22,6 +22,7 @@ ADR 0005 的 B1 + B2 落地：把「客观 check」从单阶段能力升级成**
   - 报告落盘 `docs/07_reviews/quality/<日期>.md`（ledger 型，可 diff 可看趋势），含红绿表、实测证据、覆盖矩阵、对账结果、趋势、**人工签字栏**。
   - 量不到的项如实写「未测量」，**不得因此判为通过**——与「无命令可跑 → `checks: {}`」同一条纪律。
 - 新模板：`quality-targets-template.yml`、`e2e-flow-map-template.yml`、`quality-report-template.md`。
+- **`stale-config` eval（A-live 第三个场景）**：`unit` 真失败(exit 1) + `lint` 指向不存在的脚本(exit 127)，验证「命令跑不了 ≠ 检查没通过」。判别力来自**一个有值 + 一个表达「无法判定」**——照抄 schema 的模型会把两个键都填布尔值。真机验证通过，且这一跑当场纠正了规范本身：原先要求"必须省略键"过窄，实际 `null` 与缺席对消费方等价（`jq` 都返回 `null`），已放宽为二者皆可、**唯独不许 `false`**。
 - **多字节相邻守卫**（repo hygiene）：`install-smoke` 新增一条闸——全仓 `.sh` 里 `$var` 紧贴中文即失败。这类写法几乎总藏在错误分支里，正常路径跑不到、一旦真出错连报错本身都崩；本仓已被它坑过 4 次。
 
 ### Changed
