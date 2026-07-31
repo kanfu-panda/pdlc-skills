@@ -107,5 +107,6 @@ recommended_effort: medium
 
 目标功能: $ARGUMENTS
 
+<!-- @include templates/prompts/check-commands.md -->
 <!-- @include templates/prompts/state-update.md -->
 <!-- @include templates/prompts/handoff.md -->

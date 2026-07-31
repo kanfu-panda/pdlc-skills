@@ -26,6 +26,12 @@ ADR 0005 的 B1 + B2 落地：把「客观 check」从单阶段能力升级成**
 
 ### Changed
 
+- **`test-commands.yml` 自动保鲜**：这份文件会随项目演进而过期（脚本改名、runner 换代、工具移除），一旦过期下游所有 `checks` 就开始失真。现在不需要你记得去维护：
+  - **退出码三态语义**（新共享片段 `check-commands.md`，12 → 13 个）：`0`=通过、非 0=未通过、**`127`/命令不存在=无法判定**。后者**省略该 `checks` 键而非写 `false`**——把「跑不了」记成「没通过」是**会误导人的虚报**：它让人去查代码，而真正的问题是配置过期。
+  - **过期检测零成本**：各阶段本来就在跑这些命令，遇到「跑不了」即提示 yml 疑似过期。`pdlc-tdd` / `pdlc-implement` / `pdlc-review` / `pdlc-quality` / `pdlc-test-setup` 五处共用同一套语义。
+  - **`/pdlc-quality` 报告新增「配置健康度」一节**：哪条命令已失效、哪个空格现在可以填上（💡 可收紧）。
+  - **`/pdlc-test-setup --refresh`**：重新探测并给出 diff。**方向决定自动化程度**——让闸门**变严**（空 e2e 现在能跑、阈值上调）或平移替换可自动应用；让闸门**变松**（删命令、留空、降阈值）**必须人确认，`--autonomous` 也不豁免**。最危险的"自动修复"就是把坏掉的 check 留空：闸门瞬间松了、报告还是绿的。
+
 - `/pdlc-ship` 前置检查新增**质量闸门**：读 `docs/07_reviews/quality/` 最近一份报告，未达标默认不放行，要发必须由人显式 override 并写明理由；报告早于最近提交则提示已过期。
 - `/pdlc-prd` 新增**上游挂钩**：产出 P0/P1 流程时提示补 `core_flows` 与 E2E 映射——在源头挂钩比事后补救可靠。
 - 目标项目契约新增 `docs/00_standards/quality-targets.yml`、`docs/00_standards/e2e-flow-map.yml`、`docs/07_reviews/quality/`。

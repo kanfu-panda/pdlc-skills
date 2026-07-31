@@ -96,9 +96,9 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "12 user-facing templates"                   "12"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "12 shared prompt fragments"                 "12"  "$prompt_count"
+assert_eq "13 shared prompt fragments"                 "13"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations noninteractive test-location; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update loop-prevention output-language relations noninteractive test-location check-commands; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
 
@@ -218,6 +218,28 @@ done
 # grep 无匹配时退出码为 1，pipefail 下会让整条管道失败 → 必须显式吞掉
 hardcoded="$( { grep -l 'backend/services/<服务名>/src/test/' skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
 assert_eq "no skill body hardcodes the old test-path list" "0" "$hardcoded"
+
+# ─── check 命令三态语义 + yml 自动保鲜 ───
+# 「命令跑不了(127)」被记成 false 是会误导人的虚报：它说"检查失败"，
+# 于是有人去查代码，而真正的问题是 test-commands.yml 过期了。
+assert_exists "check-commands fragment exists" "references/templates/prompts/check-commands.md"
+assert_contains "check-commands defines three-state exit semantics" \
+  "无法判定" "$(cat references/templates/prompts/check-commands.md)"
+assert_contains "check-commands forbids recording unrunnable as false" \
+  "绝不写 \`false\`" "$(cat references/templates/prompts/check-commands.md)"
+assert_contains "check-commands treats unrunnable as a staleness signal" \
+  "过期信号" "$(cat references/templates/prompts/check-commands.md)"
+# 方向规则：变严可自动、变松必须人确认——防「自动修复把闸门修没了」
+assert_contains "check-commands gates loosening behind human confirmation" \
+  "变严可以自动，变松必须由人签字" "$(cat references/templates/prompts/check-commands.md)"
+for s in pdlc-tdd pdlc-implement pdlc-review pdlc-quality pdlc-test-setup; do
+    assert_contains "$s uses the check-command exit semantics" \
+      "templates/prompts/check-commands.md" "$(cat skills/$s/SKILL.md)"
+done
+assert_contains "test-setup offers --refresh for staleness" \
+  "\`--refresh\`" "$(cat skills/pdlc-test-setup/SKILL.md)"
+assert_contains "quality reports config health" \
+  "配置健康度" "$(cat skills/pdlc-quality/SKILL.md)"
 
 # ─── B1 test-setup (ADR 0005 §4) invariants ───
 assert_exists "pdlc-test-setup skill exists"        "skills/pdlc-test-setup/SKILL.md"

@@ -1,7 +1,7 @@
 ---
 name: pdlc-test-setup
 description: 立测试地基（探测技术栈 → 验证并生成 test-commands.yml → 脚手架测试目录 → 接本地钩子）
-argument-hint: [项目目录] [--autonomous]
+argument-hint: [项目目录] [--refresh] [--autonomous]
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering
@@ -31,6 +31,27 @@ pdlc 的命门是「`checks` 只认命令退出码，绝不用模型自评」—
 > ⛔ **本命令最重要的一条纪律**：**写进 `test-commands.yml` 的每条命令，必须先被真跑过一次、亲眼看到退出码。**
 > 一条"看起来对但跑不了"的命令**比留空更坏**——它会让下游每个阶段都拿到假的 `checks`，
 > 而整个 pdlc 的可信度正建立在这些 checks 是真的之上。**猜出来的命令一律不写。**
+
+## `--refresh`：让这份 yml 跟上项目的演进
+
+项目会漂移——脚本改名、runner 换代、工具从依赖里移除、子项目增删。这份 yml 一旦过期，
+下游所有 `checks` 就开始失真。`--refresh` 是**重新探测 + 给出 diff**，而不是从头再来：
+
+1. **逐条复跑现有命令**，按 `check-commands.md` 的三态判定谁还活着（跑不通 ≠ 检查没过）。
+2. **重新探测候选**，与现状对比，得出变更清单。
+3. **按方向决定自不自动**（这条是安全底线）：
+
+<!-- @include templates/prompts/check-commands.md -->
+
+4. **不管自动与否，全部变更都要在报告里列出**：改了什么、为什么、依据是哪次真跑的退出码。
+   自动应用的也要能一眼看出来，便于事后 `git diff` 复核。
+
+> ⚠️ **最危险的"自动修复"是把坏掉的 check 留空**——闸门瞬间松了，报告还是绿的。
+> 所以留空 / 删除 / 降阈值一律走人工确认，`--autonomous` 也不豁免。
+
+**从哪来的过期信号**：不用你盯着——`pdlc-tdd` / `pdlc-implement` / `pdlc-review` 每次跑 check
+时遇到"命令跑不了"都会提示，`/pdlc-quality` 的报告里还有专门的「配置健康度」一节。
+看到提示再来 `--refresh` 即可。
 
 ## 段一：探测与验证
 
@@ -127,6 +148,7 @@ pdlc 的命门是「`checks` 只认命令退出码，绝不用模型自评」—
 - [ ] 测试目录跟随项目既有布局；若写了 `test-commands.yml`，其 `unit` 命令能定位到这些测试
 - [ ] 钩子是**本地**的，没有新建或修改任何 CI workflow
 - [ ] 已存在的 `test-commands.yml` 没有被静默覆盖
+- [ ] （`--refresh` 时）所有变更已在报告里列出；**没有任何"让闸门变松"的改动被自动应用**
 
 ## 段四：修复（单次，不递归）
 

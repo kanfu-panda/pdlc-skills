@@ -142,7 +142,8 @@ recommended_effort: medium
 6. **修复后验证**：自动修复完成后，重新运行全部测试（命令取自 `docs/00_standards/test-commands.yml`），确认修复未引入新问题
    - 测试通过 → 评审完成
    - 测试失败 → 回滚修复，将问题标记为需人工处理
-   - **写 `last_phase_result`**：`checks` 取自真跑 test-commands 的 `unit`/`coverage`/`lint` 退出码，不用自检冒充
+   - **写 `last_phase_result`**：`checks` 取自真跑 test-commands 的 `unit`/`coverage`/`lint` 退出码，不用自检冒充；
+     退出码三态语义与「命令跑不了 = yml 过期信号」见下方 check 命令规则
 7. **`--autonomous` 下的收尾判定**（呼应非交互契约）：
    - 「需人工处理/需人工确认」表中存在**阻塞级**项 → 不推进：`last_phase_result.ok=false` + `blocked_reason="评审存在阻塞级待人工项"` + 输出 blocked 哨兵，交还人类
    - 仅有非阻塞级人工项 → 记录在案并正常推进到 `review_done`
@@ -245,5 +246,6 @@ recommended_effort: medium
      ```
 - 修复后仅复查一次（确认修复未引入新问题），**不再递归修复**。若复查仍发现问题，记录到评审报告的「需人工确认」中
 
+<!-- @include templates/prompts/check-commands.md -->
 <!-- @include templates/prompts/state-update.md -->
 <!-- @include templates/prompts/handoff.md -->
