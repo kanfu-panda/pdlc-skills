@@ -1,0 +1,33 @@
+# docs/00_standards/e2e-flow-map.yml — 核心流程 → E2E 测试 的显式映射
+#
+# 这是「E2E 覆盖了全部核心流程」从口号变成可机械核对的那一步。
+# 没有这份映射，「覆盖核心流」就永远是主观判断，也就破了 pdlc 的命门
+# （checks 只认客观事实、不认自评）。
+#
+# 为什么用显式映射文件、而不是靠解析测试名：
+#   各 runner 的测试标识格式完全不同（pytest marker / vitest describe /
+#   cargo 测试路径 / JUnit 方法名），解析脆弱且随框架升级而碎。显式映射
+#   跨框架稳健、是单一真源。测试名带 flow 标签（如 @flow:checkout）可以
+#   作为**便利糖**用来自动回填这份文件，但判定不依赖它。
+
+# 每条 core_flow（id 必须与 quality-targets.yml 里的一致）映射到一个或多个
+# E2E 测试标识。「标识」的写法由项目的 e2e runner 决定——填你能用来**单独
+# 跑这一条**的那个字符串，/pdlc-quality 会用它到 E2E 结果里匹配。
+flows:
+  - id: login
+    tests:
+      - "tests/e2e/auth.spec.ts::用户能用邮箱密码登录"
+  - id: checkout
+    tests:
+      - "tests/e2e/order.spec.ts::下单并支付成功"
+      - "tests/e2e/order.spec.ts::库存不足时下单被拒"
+  - id: refund
+    tests:
+      - "tests/e2e/refund.spec.ts::已支付订单可全额退款"
+
+# 判定规则（由 /pdlc-quality 执行，不由模型意见决定）：
+#   1. quality-targets.yml 里每个 core_flow 都必须在本文件出现 → 缺失 = 红
+#   2. 映射到的每个测试标识，都必须能在**本次真跑的 E2E 结果**里找到，且为通过
+#      → 找不到 = 红（映射指向了不存在的测试，属映射腐烂）
+#      → 找到但失败 = 红
+#   3. 本文件里出现了 core_flows 中没有的 id → 黄（映射有孤儿，提示清理）

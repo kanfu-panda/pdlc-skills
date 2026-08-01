@@ -32,11 +32,11 @@ next_step: <next skill | null>
 terminal_state: <state | null>
 ```
 
-Three layers (36 skills total: 3 / 11 / 22):
+Three layers (38 skills total: 3 / 11 / 24):
 
 - **Layer 1 — entry points (3)** (`pdlc-feature`, `pdlc-fix`, `pdlc-status`): one-sentence-driven whole-flow drivers plus the read-only status view.
 - **Layer 2 — core pipeline (11)** (`pdlc-prd`, `pdlc-design`, `pdlc-tdd`, `pdlc-implement`, `pdlc-review`, `pdlc-ship`, ...): the staged lifecycle, feature-scoped, state-machine-driven.
-- **Layer 3 — specialized tools (22)** (`pdlc-arch`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, the loop tooling `pdlc-loop-next` / `pdlc-loop-run`, the config command `pdlc-settings`, ...): focused tools, not always feature-scoped.
+- **Layer 3 — specialized tools (24)** (`pdlc-arch`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, `pdlc-test-setup`, `pdlc-quality`, the loop tooling `pdlc-loop-next` / `pdlc-loop-run`, the config command `pdlc-settings`, ...): focused tools, not always feature-scoped.
 
 ## 3. Shared prompt fragments
 
@@ -49,9 +49,11 @@ Skills inline reusable instruction blocks via `<!-- @include templates/prompts/X
 - `feature-id.md` / `defect-id.md` — ID allocation.
 - `output-language.md` — output language rules.
 - `relations.md` — the v1.1 relation-chain definition (six types, five expression sites, validation rules).
+- `check-commands.md` — three-state exit-code semantics for the `test-commands.yml` checks: `0` = pass, non-zero = fail, **`127`/not-found = cannot tell** (omit the key rather than record `false`). Recording "couldn't run" as "failed" is a misleading fabrication — it sends people to debug code when the real problem is a stale config. An unrunnable command therefore doubles as a free staleness signal; loosening the gate always requires human confirmation.
+- `test-location.md` — layout-agnostic test discovery: defer to the project's own `test-commands.yml`, then conventions, then filename scan. The red-light guard must distinguish *no tests* from *tests not where I expected* — the latter would wrongly block ordinary layouts.
 - `noninteractive.md` — the v1.2 `--autonomous` contract (auto-advance procedural confirmations, block on judgement calls, destructive actions always human).
 
-(11 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
+(13 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
 
 ## 4. Target-project contract
 

@@ -6,12 +6,11 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: impl
 produces:
-  - backend/services/*/src/
-  - frontend/*/src/
+  # 跟随项目既有源码布局，不限定固定目录
+  - <实现代码 · 项目既有布局>
 requires:
+  # 只依赖设计文档；测试的位置由 test-location.md 的规则动态定位，不硬编码路径
   - docs/02_design/
-  - backend/services/*/src/test/
-  - frontend/*/src/__tests__/
 next_step: pdlc-review
 terminal_state: impl_done
 recommended_model: sonnet
@@ -28,10 +27,11 @@ recommended_effort: medium
 ## PDLC 前置守卫（不可跳过）
 
 1. 从用户输入提取功能名称关键词
-2. 在以下位置搜索与该功能相关的**测试代码**：
-   - 后端: `backend/services/*/src/test/`、`backend/services/*/tests/`
-   - 前端: `frontend/*/src/__tests__/`、`frontend/*/*/src/__tests__/`
-3. **未找到测试代码** → 输出以下后立即中止：
+2. 按下面的规则搜索与该功能相关的**测试代码**：
+
+<!-- @include templates/prompts/test-location.md -->
+
+3. **按上述四步走完仍未找到测试代码** → 输出以下后立即中止：
    ```
    ⛔ PDLC 守卫：未找到与「<功能名>」相关的测试代码。
    实现代码前必须先编写测试（TDD）。请先运行：
@@ -69,7 +69,7 @@ recommended_effort: medium
    - 可自动修复 → 直接修复
    - 修复后重跑测试确认不破坏功能
    - lint fix 导致失败 → 回滚并记录人工处理
-3. **覆盖率验证**：单元测试覆盖率 ≥ 80%
+3. **覆盖率验证**：覆盖率达标线**以项目配置为准**：优先取 `docs/00_standards/test-commands.yml` 的 coverage 命令阈值参数（那才是强制点，退出码即判定），其次 `quality-targets.yml`；两者都没有时按 >= 80% 兜底。
    - 不达标 → 补测试用例并确认通过
 
 ## 段三：修复（单次，不递归）
@@ -87,7 +87,9 @@ recommended_effort: medium
   `current_stage` **保持原值不变**、`advanced_to=null`、`blocked_reason` 写明原因。
   > ⚠️ 失败也照写 `current_stage: impl` 是常见错误：那会让 `current_stage` 不再表示
   > 「最后一个真正完成的阶段」，外层循环的 stuck-stop 因此失效。
-- **写 `last_phase_result`**：`checks.tests_pass` / `coverage_pass` / `lint_clean` 取自真跑 `docs/00_standards/test-commands.yml` 的 `unit` / `coverage` / `lint` 命令退出码（该文件不存在则回退项目既有约定，并在报告中提示 `consider 建立 docs/00_standards/test-commands.yml`）。**不得用自检结果冒充 checks**。
+- **写 `last_phase_result`**：`checks.tests_pass` / `coverage_pass` / `lint_clean` 取自真跑 `unit` / `coverage` / `lint` 的退出码，**不得用自检结果冒充**。退出码语义与"跑不了"的处理见下（该文件不存在则回退项目既有约定，并提示 `consider 建立 docs/00_standards/test-commands.yml`）。
+
+<!-- @include templates/prompts/check-commands.md -->
 
 <!-- @include templates/prompts/handoff.md -->
 

@@ -6,8 +6,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: tdd
 produces:
-  - backend/services/*/src/test/**
-  - frontend/*/src/__tests__/**
+  # 跟随项目既有测试布局，不限定固定目录（定位规则见 templates/prompts/test-location.md）
+  - <测试代码 · 项目既有布局>
+  - docs/04_testing/unit-tests/**
 requires:
   - docs/02_design/
 next_step: pdlc-implement
@@ -53,9 +54,11 @@ recommended_effort: medium
      <!-- 阶段: 测试 -->
      <!-- 前置文档: docs/02_design/api/F20260326-090000-user-auth-api.md -->
      ```
-4. **编写测试代码**: 在对应服务/应用的测试目录下编写测试用例
-   - 后端: `backend/services/<服务名>/src/test/` 或 `backend/services/<服务名>/tests/`
-   - 前端: `frontend/<分类>/<应用名>/src/__tests__/`
+4. **编写测试代码**: 写到项目**既有的**测试布局里，按下面的规则定位；
+   **不要**为迎合某种预设结构新造一套平行的测试目录。
+
+<!-- @include templates/prompts/test-location.md -->
+
 5. **测试计划自审与自动修复**（编写完成后、运行前执行，不可跳过）：
    - 重新阅读测试计划和测试代码，对照设计文档和 PRD 逐项检查以下质量门禁：
 
@@ -101,9 +104,10 @@ recommended_effort: medium
 <!-- @include templates/prompts/output-language.md -->
 - 测试用例必须覆盖：正常流程、边界条件、异常场景
 - 测试方法命名清晰描述测试场景
-- 单元测试覆盖率目标 >= 80%
+- 单元测试覆盖率：覆盖率达标线**以项目配置为准**：优先取 `docs/00_standards/test-commands.yml` 的 coverage 命令阈值参数（那才是强制点，退出码即判定），其次 `quality-targets.yml`；两者都没有时按 >= 80% 兜底。
 
 目标功能: $ARGUMENTS
 
+<!-- @include templates/prompts/check-commands.md -->
 <!-- @include templates/prompts/state-update.md -->
 <!-- @include templates/prompts/handoff.md -->

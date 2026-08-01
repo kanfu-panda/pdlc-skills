@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-29
+
+ADR 0005 的 B1 + B2 落地：把「客观 check」从单阶段能力升级成**常设质量闸门**。36 → 38 skills。
+
+### Added
+
+- **`/pdlc-test-setup`（B1，立测试地基）**：探测技术栈 → **逐条验证命令真能跑** → 写 `docs/00_standards/test-commands.yml` → 脚手架测试目录 → 接本地 pre-commit/pre-push 钩子。
+  - 命门是「**验证后再写**」：写进 yml 的每条命令都必须先真跑过、看到退出码；跑不通的**留空并说明怎么补**，绝不写没验证过的命令——一条猜错的命令会污染下游每个阶段的 `checks`，比没有这个文件更坏。
+  - 覆盖率达标线写死在命令参数里（默认 85%），「达标」即退出码本身，无需解析百分比。已存在的 yml 不覆盖，改为校验 + 提议补缺。
+- **`/pdlc-quality`（B2，质量闸门）**：跑真实 check → 对照目标 → 出可核对报告 → **人签字放行**。AI 只整理数据，**不参与达标判定**。
+  - **E2E 覆盖矩阵**：靠显式 `docs/00_standards/e2e-flow-map.yml`（`core_flow → 测试标识`）机械核对，不靠模型说「我觉得覆盖了」。映射指向不存在的测试 = **映射腐烂**，按红处理。
+  - **PRD 强制对账防 false-green**：每次运行都拿 PRD 的 P0/P1 流程与 `core_flows` 做 diff，**漂移即红灯**。清单靠自觉维护必腐烂，而腐烂的清单会让矩阵全绿、现实有洞——把「我们不知道」伪装成「我们覆盖了」，比没有闸门更坏。
+  - 报告落盘 `docs/07_reviews/quality/<日期>.md`（ledger 型，可 diff 可看趋势），含红绿表、实测证据、覆盖矩阵、对账结果、趋势、**人工签字栏**。
+  - 量不到的项如实写「未测量」，**不得因此判为通过**——与「无命令可跑 → `checks: {}`」同一条纪律。
+- 新模板：`quality-targets-template.yml`、`e2e-flow-map-template.yml`、`quality-report-template.md`。
+- **`stale-config` eval（A-live 第三个场景）**：`unit` 真失败(exit 1) + `lint` 指向不存在的脚本(exit 127)，验证「命令跑不了 ≠ 检查没通过」。判别力来自**一个有值 + 一个表达「无法判定」**——照抄 schema 的模型会把两个键都填布尔值。真机验证通过，且这一跑当场纠正了规范本身：原先要求"必须省略键"过窄，实际 `null` 与缺席对消费方等价（`jq` 都返回 `null`），已放宽为二者皆可、**唯独不许 `false`**。
+- **多字节相邻守卫**（repo hygiene）：`install-smoke` 新增一条闸——全仓 `.sh` 里 `$var` 紧贴中文即失败。这类写法几乎总藏在错误分支里，正常路径跑不到、一旦真出错连报错本身都崩；本仓已被它坑过 4 次。
+
+### Changed
+
+- **`test-commands.yml` 自动保鲜**：这份文件会随项目演进而过期（脚本改名、runner 换代、工具移除），一旦过期下游所有 `checks` 就开始失真。现在不需要你记得去维护：
+  - **退出码三态语义**（新共享片段 `check-commands.md`，12 → 13 个）：`0`=通过、非 0=未通过、**`127`/命令不存在=无法判定**。后者**省略该 `checks` 键而非写 `false`**——把「跑不了」记成「没通过」是**会误导人的虚报**：它让人去查代码，而真正的问题是配置过期。
+  - **过期检测零成本**：各阶段本来就在跑这些命令，遇到「跑不了」即提示 yml 疑似过期。`pdlc-tdd` / `pdlc-implement` / `pdlc-review` / `pdlc-quality` / `pdlc-test-setup` 五处共用同一套语义。
+  - **`/pdlc-quality` 报告新增「配置健康度」一节**：哪条命令已失效、哪个空格现在可以填上（💡 可收紧）。
+  - **`/pdlc-test-setup --refresh`**：重新探测并给出 diff。**方向决定自动化程度**——让闸门**变严**（空 e2e 现在能跑、阈值上调）或平移替换可自动应用；让闸门**变松**（删命令、留空、降阈值）**必须人确认，`--autonomous` 也不豁免**。最危险的"自动修复"就是把坏掉的 check 留空：闸门瞬间松了、报告还是绿的。
+
+- `/pdlc-ship` 前置检查新增**质量闸门**：读 `docs/07_reviews/quality/` 最近一份报告，未达标默认不放行，要发必须由人显式 override 并写明理由；报告早于最近提交则提示已过期。
+- `/pdlc-prd` 新增**上游挂钩**：产出 P0/P1 流程时提示补 `core_flows` 与 E2E 映射——在源头挂钩比事后补救可靠。
+- 目标项目契约新增 `docs/00_standards/quality-targets.yml`、`docs/00_standards/e2e-flow-map.yml`、`docs/07_reviews/quality/`。
+
+### Fixed
+
+- **红灯守卫在常见测试布局上误拦**（真实项目验证暴露）：`pdlc-implement` 的前置守卫原先只在一份**写死的路径清单**（`backend/services/*/tests/`、`frontend/*/src/__tests__/` 等）下找测试，找不到就判「项目没测试」并中止。但真实布局千差万别——单体 `backend/tests/`、根级 `tests/`、Go 同包 `*_test.go`、Node 与源码同目录的 `*.test.tsx`——**守卫把「测试不在我预期的位置」当成了「项目没有测试」**，会让 pdlc 在大量正常项目上直接卡死。
+  - 新增共享片段 `test-location.md`（11 → 12 个）。核心原则是**优先问 runner、其次翻文件**：项目的 `test-commands.yml` 是权威，用它去问 runner（`cargo test -- --list` / `pytest --collect-only -k` / `go test -list` / `vitest list`），查询为空才是「该功能没有测试」——这是行为证据，比「我没找到文件」可靠得多。
+  - **专门处理「测试写在源文件里」的语言**：Rust 单测几乎总在 `#[cfg(test)] mod tests` 里，`tests/` 按 Cargo 约定只放集成测试，所以「没有 `tests/` 目录」在 Rust 项目里**完全不能推出「没有单元测试」**，照文件清单判红会稳定误伤所有 Rust 项目。同类还有 Vitest in-source testing（`import.meta.vitest`）、Python doctest、Elixir doctest——这些都必须靠**内容标记**匹配，文件名扫描无效。
+  - 定位顺序：问 runner → in-source 内容标记 → 生态布局约定 → 文件名兜底，**四步都落空才判红灯**；无法判定（runner 装不上 / 语言不认识）则如实报「无法确认」并交还人类，不默认放行。
+  - **真 Rust 项目双向验证**（一个 Tauri 项目，54 个文件含 in-source 测试、无 `test-commands.yml`）：正例——某模块的 21 条测试**只存在于源文件内**（同级 `tests/` 目录无对应文件），守卫正确找到并跑 `cargo test` 确认全绿，未误拦（旧逻辑在此必红）；反例——一个真的没有测试的功能，守卫正确红灯、零代码改动、且**未伪造状态机**（守卫在提取功能 ID 前中止，凭空写 `current_stage` 属伪造阶段记录）。两向都对，证明修复没有把守卫改松。
+  - `pdlc-implement` / `pdlc-tdd` / `pdlc-feature` / `pdlc-fix` 四处改为引用该片段；写测试时也跟随项目既有布局，不再新造平行目录。
+- **对账自身的 false-green**（真项目验证时实测踩到）：PRD 不含 P0/P1 标记时提取为空集、不产生漂移条目，报告若就此判「无漂移 ✅」，等于宣称那份 PRD 的流程都覆盖了——而事实是它整份没进闸门视野（已上线的老主链路最容易栽在这里）。现要求单列「不可判」告警，且对账项**不得判为 ✅**。
+- 修全仓 5 处 `$var` 紧贴中文的隐患（`bin/pdlc-statusline.sh`、`tests/adapter-codex-check.sh` ×2、`tests/statusline-check.sh` ×2），并加上防复发守卫。
+
 ## [1.5.3] - 2026-07-28
 
 行为层 evals（A-live）落地——测的是「skill 真跑时契约有没有被守住」，而不只是结构。设计见 `docs/decisions/0005-testing-and-quality-capability.md`，用法与成本账见 `evals/EVALS.md`。

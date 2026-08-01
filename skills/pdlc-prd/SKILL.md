@@ -69,6 +69,16 @@ terminal_state: prd_done
 
 > Phase 2：本步从"被动检测"升级为"主动提示用户确认关系"。
 
+### 1.5 核心流程挂钩（若项目已启用质量闸门）
+
+若存在 `docs/00_standards/quality-targets.yml`：本 PRD 里标为 **P0 / P1** 的流程，
+逐条比对该文件的 `core_flows`，**在 handoff 里提示补齐**尚未收录的流程及其 E2E 映射。
+
+> 为什么在这里提示：`core_flows` 清单若靠"事后有人记得改"来维护必然腐烂，
+> 而腐烂的清单会让质量报告产出 **false-green**（新增核心流没进清单 → 覆盖矩阵照样全绿）。
+> PRD 是这些流程的**上游真源**，在产出时就挂钩，比事后补救可靠。
+> `/pdlc-quality` 每次运行还会再做一次强制对账兜底。
+
 ## 段二：自检（强制）
 
 <!-- @include templates/prompts/self-audit.md -->

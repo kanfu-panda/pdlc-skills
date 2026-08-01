@@ -17,7 +17,7 @@
 
 - **可审计**——每份产物都落盘，`git diff` 就能看 AI 到底做了什么。
 - **自主**——检查结果来自**真实命令退出码**（绝非模型自评），所以自主循环能把 `tdd → implement → review` 无人值守推到收敛，带 fail-stop、stuck-stop 和预算护栏。
-- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（36 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex** 等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
+- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（38 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex** 等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
 
 ---
 
@@ -138,13 +138,13 @@ claude plugin list | grep pdlc
 # 应该输出： pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
 ```
 
-在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 36 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
+在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
 
 ---
 
 ## 多平台（其它 AI 编程工具）
 
-Claude Code **集成最全**——36 个斜杠命令 + 状态栏 + 插件内自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
+Claude Code **集成最全**——38 个斜杠命令 + 状态栏 + 插件内自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
 
 - **任意工具**（Codex / Cursor / Windsurf / Copilot / Cline …）：把平台中立方法论文档 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 作为项目规则（`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …），然后用**自然语言**驱动（「按 pdlc 跑评审」→ agent 照文档执行）。
 - **Codex**（原生 skills——面向兼容 Claude Code 生态的 Codex 发行版）：
@@ -168,6 +168,22 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 - **Codex 上** —— `adapters/codex-loop-run.sh` 在外部驱动同一套循环（已过真机状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)）。
 
 设计：[ADR 0001](./docs/decisions/0001-loop-engineering-integration.md)。
+
+---
+
+## 质量闸门
+
+同一套「客观 check」纪律，从单功能阶段升级为**常设闸门**：
+
+- **`/pdlc-test-setup`**——立地基：探测技术栈，**把每条候选命令真跑一次、看着退出码**，再写 `docs/00_standards/test-commands.yml`。跑不通的**留空并写明怎么补**，绝不猜——一条「看起来对但跑不了」的命令会让下游每个阶段的 `checks` 静默失真。
+- **`/pdlc-quality`**——跑真实 check、对照 `docs/00_standards/quality-targets.yml`、把带日期的报告写进 `docs/07_reviews/quality/`。**放行由人签字**，工具只陈述事实。
+
+有两样东西让「核心流程都覆盖了」不再是一句主观判断：
+
+1. **显式的 `核心流 → E2E 测试` 映射**（`docs/00_standards/e2e-flow-map.yml`），把覆盖变成可机械核对的矩阵。映射指向了本次没跑到的测试 = **映射腐烂**，判红而不是略过。
+2. **PRD 强制对账**——每次运行都拿 PRD 里的 P0/P1 流程与已声明的 `core_flows` 做 diff，**漂移即红灯**。清单过期才是真正危险的失效模式：矩阵全绿而现实有洞，把「我们不知道」打扮成「我们覆盖了」。
+
+量不到的一律如实报「**未测量**」，**绝不当作通过**。设计：[ADR 0005](./docs/decisions/0005-testing-and-quality-capability.md)。
 
 ---
 
@@ -199,10 +215,10 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 | `/pdlc-retro` | 迭代复盘（趋势对比） |
 | `/pdlc-task` | 阶段内任务跟踪 |
 
-### Layer 3 · 工具（22 个，专项叠加）
+### Layer 3 · 工具（24 个，专项叠加）
 
 - **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-- **🔍 质量（3）**：`/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+- **🔍 质量（5）**：`/pdlc-quality`（常设闸门——跑真实 check、按显式 flow→test 映射核对每条核心流都有通过的 E2E、拿 PRD 与流程清单强制对账，最后由人签字）· `/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `test-commands.yml`；没验证通过的宁可留空也不猜）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 - **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 - **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
@@ -237,7 +253,7 @@ docs/03_development/                 ← 开发者手册（onboard 命令产出�
 docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   ← 测试与缺陷
 docs/05_deployment/                  ← 部署
 docs/06_tasks/                       ← 任务跟踪
-docs/07_reviews/{doc,code,design,retro}/   ← 评审 + 复盘
+docs/07_reviews/{doc,code,design,retro,quality}/   ← 评审 + 复盘 + 质量报告
 docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-090000.json）
 ```
 

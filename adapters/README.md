@@ -35,7 +35,7 @@ bash install.sh --target codex --uninstall   # 移除
 - **目标机制（已在真机验证）**：目标 Codex 是**兼容 Claude Code 生态的发行版**，读 `~/.codex/skills/<name>/SKILL.md`（frontmatter `name` + `description`，靠 description 触发、**非斜杠命令**）。gpt-5.6-sol 实测能按 description 匹配到 `pdlc-prd` 并执行。**不是** vanilla Codex 的 `~/.codex/prompts/*.md` 斜杠命令（那个假设早期错了，已纠正）。
 - **frontmatter**：输出 Codex skill 格式 `name` + `description`，description 追加「用 pdlc …」触发提示，便于模型按描述匹配。Claude 内部字段（`layer`/`produces`/`allowed-tools`/`next_step`…）剥离；`next_step` 物化进正文（自然语言措辞）。
 - **语言**：python3 **标准库**（零 pip 依赖）。选 python 而非 bash：markdown 文本变换（frontmatter 解析、内联、改写）用 bash 的 sed/awk 脆弱易错，python 稳健得多；且这是**构建期专用**、不进运行时。
-- **denylist**（本 PoC 暂不投影，2 个）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）。`pdlc-loop-next` **已投影**（逻辑平台中立，作独立只读查询），其正文里 `claude -p` 驱动 helper 由 `adapter:claude-only` 哨兵剥掉。共 34 个 skill 投影为 `~/.codex/skills/pdlc-*/SKILL.md`。详见 `build_codex.py` 里 `DENYLIST` 的注释。
+- **denylist**（本 PoC 暂不投影，2 个）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）。`pdlc-loop-next` **已投影**（逻辑平台中立，作独立只读查询），其正文里 `claude -p` 驱动 helper 由 `adapter:claude-only` 哨兵剥掉。共 36 个 skill 投影为 `~/.codex/skills/pdlc-*/SKILL.md`。详见 `build_codex.py` 里 `DENYLIST` 的注释。
 - **`adapter:claude-only` 哨兵**：源里被 `<!-- adapter:claude-only-start -->` / `<!-- adapter:claude-only-end -->` 包裹的块是 Claude 专属内容（如用 `claude -p` 驱动的示例管线），投影到其它平台时整段剥掉；Claude Code 看不见 HTML 注释、行为不变。这是「单一源、按目标裁剪」的通用手段。
 - **模板**：`references/templates/*-template.*` 拷到 `dist/codex/templates/`（安装到 `~/.codex/pdlc/templates/`），正文里 `templates/X.md` 引用改写到 `~/.codex/pdlc/templates/X.md`。
 

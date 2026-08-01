@@ -60,7 +60,7 @@ Usage:
   bash install.sh --target codex                 Install pdlc as Codex skills
   bash install.sh --target codex --uninstall     Remove the Codex skills
 
-After install, restart Claude Code and type \`/pdlc-\`. You should see 36
+After install, restart Claude Code and type \`/pdlc-\`. You should see 38
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
 
 --target codex builds the adapter (see
@@ -267,7 +267,7 @@ case "$ACTION" in
     echo ""
     echo "✅ Done."
     echo ""
-    echo "Restart Claude Code, then type /pdlc- to see all 36 sub-commands."
+    echo "Restart Claude Code, then type /pdlc- to see all 38 sub-commands."
     ;;
   upgrade)
     echo "Updating ${PLUGIN_NAME}@${MARKETPLACE_NAME}..."

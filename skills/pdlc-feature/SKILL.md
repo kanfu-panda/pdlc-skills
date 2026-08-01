@@ -8,8 +8,8 @@ stage: feature
 produces:
   - docs/01_requirements/prd/<feature-id>-<feature-name>-prd.md
   - docs/02_design/**
-  - backend/services/*/src/**
-  - frontend/*/src/**
+  # 跟随项目既有布局，不限定固定目录
+  - <实现与测试代码 · 项目既有布局>
 requires: []
 next_step: pdlc-ship
 terminal_state: feature_done
@@ -163,11 +163,12 @@ PRD 创建后、任务拆解前，立即执行自审：
 
 1. 在 `docs/04_testing/unit-tests/` 下创建测试计划：`<功能ID>-<功能名>-test-plan.md`
    - **文档顶部包含 PDLC 追溯头**（阶段: 测试，前置文档指向设计文档）
-2. 在对应服务/应用的测试目录下编写测试代码：
-   - 后端 Java：`backend/services/<服务名>/src/test/`
-   - 前端：`frontend/web/<应用名>/src/__tests__/`
+2. 写到项目**既有的**测试布局里（定位规则见下），不新造平行目录：
+
+<!-- @include templates/prompts/test-location.md -->
+
 3. 测试必须覆盖：正常流程、边界条件、异常场景
-4. 单元测试覆盖率目标：>= 80%
+4. 单元测试覆盖率：覆盖率达标线**以项目配置为准**：优先取 `docs/00_standards/test-commands.yml` 的 coverage 命令阈值参数（那才是强制点，退出码即判定），其次 `quality-targets.yml`；两者都没有时按 >= 80% 兜底。
 5. 运行测试，**确认测试处于失败状态（红灯）**，记录失败输出
 6. 同步编写 E2E 测试骨架（可暂时 skip，实现阶段补全）：
    - 路径：`docs/04_testing/e2e-tests/<功能ID>-<功能名>-e2e.md`
@@ -196,7 +197,7 @@ PRD 创建后、任务拆解前，立即执行自审：
 
 代码实现完成、测试全部通过后，执行快速自检：
 - **设计偏离检查**：对照设计文档，确认没有遗漏的接口或功能点
-- **测试覆盖验证**：确认单元测试覆盖率 >= 80%，不达标则补充测试
+- **测试覆盖验证**：按上述口径确认覆盖率达标，不达标则补充测试
 - **编码规范快检**：快速运行 lint check，有问题立即 lint fix
 - 自检通过才进入阶段五正式评审
 
