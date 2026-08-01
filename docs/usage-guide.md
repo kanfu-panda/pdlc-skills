@@ -438,7 +438,7 @@ PDLC 把 38 个阶段按使用频率分 3 层暴露：
 - **Layer 2（11 个）**：单阶段精细控制
 - **Layer 3（24 个）**：专项工具，按需叠加（含循环工具 `/pdlc-loop-next` · `/pdlc-loop-run`、设置 `/pdlc-settings`）
 
-**你的心智**：做功能用 `feature`，修 bug 用 `fix`，看状态用 `status`——三个动词级指令。其他 29 个阶段需要时再用。
+**你的心智**：做功能用 `feature`，修 bug 用 `fix`，看状态用 `status`——三个动词级指令。其他 35 个阶段需要时再用。
 
 ### IRON LAW：硬门禁不可协商
 

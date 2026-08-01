@@ -241,6 +241,21 @@ assert_contains "test-setup offers --refresh for staleness" \
 assert_contains "quality reports config health" \
   "配置健康度" "$(cat skills/pdlc-quality/SKILL.md)"
 
+# ─── 派生计数守卫 ───
+# 教训：历次改 skill 数时，「36」「22」这类字面量能被批量替换扫到，但**派生数字**
+# （总数−Layer1、总数−denylist）扫不到，会静默过期。这里用实际数量反算来校验。
+_total=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+_l1=$(grep -l '^layer: 1' skills/*/SKILL.md | wc -l | tr -d ' ')
+_deny=$(grep -c '^    "pdlc-' adapters/build_codex.py 2>/dev/null || echo 0)
+# usage-guide 的「其他 N 个阶段」= 总数 − Layer1
+_want_rest=$((_total - _l1))
+assert_contains "usage-guide's derived 'other N stages' matches total-layer1" \
+  "其他 ${_want_rest} 个阶段" "$(cat docs/usage-guide.md)"
+# adapters/README 的「共 N 个 skill 投影」= 总数 − denylist
+_want_proj=$((_total - 2))
+assert_contains "adapters/README projection count matches total-denylist" \
+  "共 ${_want_proj} 个 skill 投影" "$(cat adapters/README.md)"
+
 # ─── 契约一致性回归闸（Copilot 评审所得）───
 # 规范与回归契约不得互相打架：片段允许 null，eval 也允许 null
 assert_contains "check-commands allows null as well as omission" \
