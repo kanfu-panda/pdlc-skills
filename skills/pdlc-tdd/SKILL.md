@@ -6,8 +6,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: tdd
 produces:
-  - backend/services/*/src/test/**
-  - frontend/*/src/__tests__/**
+  # 跟随项目既有测试布局，不限定固定目录（定位规则见 templates/prompts/test-location.md）
+  - <测试代码 · 项目既有布局>
+  - docs/04_testing/unit-tests/**
 requires:
   - docs/02_design/
 next_step: pdlc-implement
@@ -103,7 +104,7 @@ recommended_effort: medium
 <!-- @include templates/prompts/output-language.md -->
 - 测试用例必须覆盖：正常流程、边界条件、异常场景
 - 测试方法命名清晰描述测试场景
-- 单元测试覆盖率目标 >= 80%
+- 单元测试覆盖率：覆盖率达标线**以项目配置为准**：优先取 `docs/00_standards/test-commands.yml` 的 coverage 命令阈值参数（那才是强制点，退出码即判定），其次 `quality-targets.yml`；两者都没有时按 >= 80% 兜底。
 
 目标功能: $ARGUMENTS
 

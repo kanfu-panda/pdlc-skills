@@ -6,12 +6,11 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: impl
 produces:
-  - backend/services/*/src/
-  - frontend/*/src/
+  # 跟随项目既有源码布局，不限定固定目录
+  - <实现代码 · 项目既有布局>
 requires:
+  # 只依赖设计文档；测试的位置由 test-location.md 的规则动态定位，不硬编码路径
   - docs/02_design/
-  - backend/services/*/src/test/
-  - frontend/*/src/__tests__/
 next_step: pdlc-review
 terminal_state: impl_done
 recommended_model: sonnet
@@ -70,7 +69,7 @@ recommended_effort: medium
    - 可自动修复 → 直接修复
    - 修复后重跑测试确认不破坏功能
    - lint fix 导致失败 → 回滚并记录人工处理
-3. **覆盖率验证**：单元测试覆盖率 ≥ 80%
+3. **覆盖率验证**：覆盖率达标线**以项目配置为准**：优先取 `docs/00_standards/test-commands.yml` 的 coverage 命令阈值参数（那才是强制点，退出码即判定），其次 `quality-targets.yml`；两者都没有时按 >= 80% 兜底。
    - 不达标 → 补测试用例并确认通过
 
 ## 段三：修复（单次，不递归）

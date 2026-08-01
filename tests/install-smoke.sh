@@ -226,7 +226,7 @@ assert_exists "check-commands fragment exists" "references/templates/prompts/che
 assert_contains "check-commands defines three-state exit semantics" \
   "无法判定" "$(cat references/templates/prompts/check-commands.md)"
 assert_contains "check-commands forbids recording unrunnable as false" \
-  "绝不写 \`false\`" "$(cat references/templates/prompts/check-commands.md)"
+  "绝不能是 \`false\`" "$(cat references/templates/prompts/check-commands.md)"
 assert_contains "check-commands treats unrunnable as a staleness signal" \
   "过期信号" "$(cat references/templates/prompts/check-commands.md)"
 # 方向规则：变严可自动、变松必须人确认——防「自动修复把闸门修没了」
@@ -240,6 +240,20 @@ assert_contains "test-setup offers --refresh for staleness" \
   "\`--refresh\`" "$(cat skills/pdlc-test-setup/SKILL.md)"
 assert_contains "quality reports config health" \
   "配置健康度" "$(cat skills/pdlc-quality/SKILL.md)"
+
+# ─── 契约一致性回归闸（Copilot 评审所得）───
+# 规范与回归契约不得互相打架：片段允许 null，eval 也允许 null
+assert_contains "check-commands allows null as well as omission" \
+  "或写 \`null\`" "$(cat references/templates/prompts/check-commands.md)"
+# frontmatter 不得再硬编码测试/源码布局——正文已改为布局无关，元数据要跟上
+hardcoded_fm="$( { grep -l 'backend/services/\*/src/test/$' skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
+assert_eq "no frontmatter hardcodes fixed test layouts" "0" "$hardcoded_fm"
+# 覆盖率口径唯一：以项目配置为准，不得散落多个裸阈值
+bare_cov="$( { grep -l '目标 >= 80%\|覆盖率 ≥ 80%\|覆盖率目标：>= 80%' skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')"
+assert_eq "no skill states a bare coverage threshold" "0" "$bare_cov"
+# 报告模板的对账行必须能表达「不可判」，否则与规则冲突
+assert_contains "report template can express the unjudgeable state" \
+  "✅ / ⚠️ / ❌" "$(cat references/templates/quality-report-template.md)"
 
 # ─── B1 test-setup (ADR 0005 §4) invariants ───
 assert_exists "pdlc-test-setup skill exists"        "skills/pdlc-test-setup/SKILL.md"

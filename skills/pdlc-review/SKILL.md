@@ -77,7 +77,7 @@ recommended_effort: medium
 - [ ] 大数据量操作是否有批处理
 
 ### 测试完备性
-- [ ] 单元测试覆盖率是否 >= 80%
+- [ ] 单元测试覆盖率是否达标（覆盖率达标线**以项目配置为准**：优先取 `docs/00_standards/test-commands.yml` 的 coverage 命令阈值参数（那才是强制点，退出码即判定），其次 `quality-targets.yml`；两者都没有时按 >= 80% 兜底。）
 - [ ] 核心业务路径是否有完整的测试
 - [ ] CHANGELOG 是否已更新
 
