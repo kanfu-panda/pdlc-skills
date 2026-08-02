@@ -293,6 +293,10 @@ assert_exists "ADR 0005 testing capability exists"  "docs/decisions/0005-testing
 assert_exists "honest-checks fixture exists"        "evals/fixtures/honest-checks/scenario.sh"
 assert_exists "red-light-gate fixture exists"       "evals/fixtures/red-light-gate/scenario.sh"
 assert_exists "stale-config fixture exists"         "evals/fixtures/stale-config/scenario.sh"
+assert_exists "refresh-safety fixture exists"       "evals/fixtures/refresh-safety/scenario.sh"
+# 方向规则的回归闸：--refresh 不得自动放松闸门（留空/删除失效的 check）
+assert_contains "refresh-safety guards against silent loosening" \
+  "必须人确认" "$(cat evals/fixtures/refresh-safety/scenario.sh)"
 # 第三态的回归闸：命令跑不了(127) 既不能记 false（会把人引去查代码），也不能记 true
 assert_contains "stale-config forbids encoding unrunnable as a boolean" \
   "唯独不能是 false" "$(cat evals/fixtures/stale-config/scenario.sh)"
