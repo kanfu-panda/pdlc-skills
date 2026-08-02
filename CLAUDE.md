@@ -157,4 +157,9 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 
 - Public-facing entry: `README.md` (English) and `README.zh-CN.md` (Chinese). They mirror each other.
 - User manual: `docs/usage-guide.md` — single source containing install, command catalog, contract, scenarios, FAQ.
-- This file (`CLAUDE.md`) is contributor-facing only and excluded from the installed plugin.
+- This file (`CLAUDE.md`) is contributor-facing only. **It is still shipped to users**, though — see below.
+- **Everything in this repo is installed, including dev-only files.** `claude plugin install` copies the whole source directory (minus `.git`) into `~/.claude/plugins/cache/`, so `evals/`, `tests/`, `docs/`, `adapters/`, `.github/` and this file all land on the user's machine (~950K total, of which ~520K is dev-only).
+
+  The plugin manifest schema has **no** `exclude` / `files` / `ignore` field, and there is no `.claudeignore` — verified against the [plugins reference](https://code.claude.com/docs/en/plugins-reference). The only way to ship less is to move the user-facing parts (`skills/`, `references/`, `bin/`, `.claude-plugin/plugin.json`) into a subdirectory and point the marketplace entry's `source` at it.
+
+  We deliberately have **not** done that: the token cost is zero either way (`claude plugin details` reports ~1,345 always-on tokens, all of it skill descriptions — dev files never enter the context window), so the only gain is ~520K of disk, against a restructure that touches 26 + 15 + 11 path references and risks silent breakage in the statusline symlink and adapter template paths. Revisit if the plugin grows substantially or if Claude Code adds an exclusion mechanism.
