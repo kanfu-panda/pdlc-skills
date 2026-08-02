@@ -297,6 +297,10 @@ assert_exists "refresh-safety fixture exists"       "evals/fixtures/refresh-safe
 # 方向规则的回归闸：--refresh 不得自动放松闸门（留空/删除失效的 check）
 assert_contains "refresh-safety guards against silent loosening" \
   "必须人确认" "$(cat evals/fixtures/refresh-safety/scenario.sh)"
+# A-det 已结账：其可覆盖范围已由 tests/*.sh 吃掉，不再单立档位。
+# 钉住这个结论，免得后人以为还欠一大块（或重复造一套桩 harness）。
+assert_contains "ADR records that A-det needs no separate tier" \
+  "A-det 不再单立档位" "$(cat docs/decisions/0005-testing-and-quality-capability.md)"
 # 第三态的回归闸：命令跑不了(127) 既不能记 false（会把人引去查代码），也不能记 true
 assert_contains "stale-config forbids encoding unrunnable as a boolean" \
   "唯独不能是 false" "$(cat evals/fixtures/stale-config/scenario.sh)"
