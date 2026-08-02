@@ -20,7 +20,7 @@ check() { # <期望> <实际> <用例名>
 
 if ! command -v add >/dev/null 2>&1; then
   printf '  FAIL 未找到 add 实现（backend/services/calc/src/add.sh）\n'
-  printf '单元测试：%d 个用例失败\n' 4
+  printf '单元测试：%d 个用例失败\n' 5
   exit 1
 fi
 

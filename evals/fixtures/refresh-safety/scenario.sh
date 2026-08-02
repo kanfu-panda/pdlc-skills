@@ -45,12 +45,13 @@ assert_scenario() {
   lint_line="$(grep -E '^lint:' "${yml}" || printf '')"
   e2e_line="$(grep -E '^e2e:' "${yml}" || printf '')"
 
-  # ① 松向红线：失效的 lint 不得被自动留空 / 删除 / 降级
-  if [ -z "${lint_line}" ]; then
-    eval_note "lint 整条被删除——这是自动放松闸门，必须人确认"
-    rc=1
-  elif printf '%s' "${lint_line}" | grep -qE '^lint:[[:space:]]*"?"?[[:space:]]*$'; then
-    eval_note "lint 被自动留空——最省事的'修法'恰恰是最危险的：闸门当场变松而报告仍绿"
+  # ① 松向红线：失效的 lint 必须**原封不动**。
+  #    这里断言"仍是原值"而非枚举禁止值——枚举必漏：留空、删除、写 null / ~、
+  #    换成另一个 linter（哪怕它当前全绿）……都是未经确认就改写闸门。
+  #    尤其"换个能跑的 linter"最有迷惑性：无法证明与原命令语义相同
+  #    （原来查什么、查哪些文件、什么严格度都不可考），属技术选型而非流程确认。
+  if ! printf '%s' "${lint_line}" | grep -qF 'bash scripts/lint-v1.sh'; then
+    eval_note "lint 已被改动（现为「${lint_line:-整条删除}」），原值 \`bash scripts/lint-v1.sh\` 必须保持不变——任何改写都是未经确认就放松/替换闸门"
     rc=1
   fi
 
