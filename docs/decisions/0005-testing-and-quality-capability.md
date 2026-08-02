@@ -61,9 +61,9 @@ pdlc 现在**已经在编排自动化测试**：`pdlc-tdd`（测试先行 / 红�
      **对该判别式抗虚报**（是回归守卫，不是"模型永不虚报"的证明）。此即 ADR 0003 §6.1 / 0004 §2 的准入闸场景，现固化为可复现 eval。
    - `red-light-gate`【A-live】：无对应测试时跑 `pdlc-implement` → 中止、`current_stage` 不变。
      （守卫写在 `skills/pdlc-implement/SKILL.md` 的「PDLC 前置守卫」正文里、**由模型执行**，故桩测不了——见 §3.4。）
-   - `loop-convergence`【A-det 桩版控制流 + A-live 真收敛】：`docs/.pdlc-state` 停在 tdd 完成，跑
-     `adapters/codex-loop-run.sh` → 收敛到 `review_done`、**绝不推进到 ship**、退出 0；history 出现 `impl`/`review`。
-   - `guardrails`【A-det】：构造 fail-stop / stuck-stop / max-steps 场景，断言对应退出码。
+   - ~~`loop-convergence`~~ / ~~`guardrails`~~【原计划的 A-det 场景，**已结账、不建**】：
+     其桩驱动部分已由 `tests/adapter-codex-loop-run-check.sh` 覆盖（fail-stop / stuck-stop /
+     max-steps 退出码、终态不越 ship）；真模型的全环收敛属大版本前手动探针。详见 §3.4 结论框。
 2. **声明式场景**：每个 eval 声明 `setup(fixture + 初始状态机) → action(跑哪个 skill/驱动 + args) →
    assert(对结果状态机 / 文件 / 退出码断言)`。断言**只碰确定性残渣**，容忍 AI 散文差异。
 3. **runner** `evals/run.sh [--platform claude|codex] [--only <场景>]`：拷 fixture 到 temp → 经
@@ -102,6 +102,23 @@ pdlc 现在**已经在编排自动化测试**：`pdlc-tdd`（测试先行 / 红�
 | `guardrails` | 纯 bash | **A-det** |
 
 **据此收敛 A-det 的口径（诚实计量）**：A-det 覆盖的**不是"行为契约的大头"，而是 loop 驱动这一块**——收敛控制流 + 护栏退出码，且与现有 `tests/*.sh` 已有重叠。**A 的净新增价值更集中在 A-live 的两个 fixture**（`honest-checks` / `red-light-gate`）。免费档能白拿多少，取决于有多少契约落在确定性代码里，而非取决于我们希望它有多少。
+
+> **结论（2026-08-02 结账）：A-det 不再单立档位——它要测的东西已被 `tests/*.sh` 覆盖完了。**
+>
+> 把本仓的确定性代码逐个点一遍，A-det 的可覆盖范围就这么大，且几乎全已有测：
+>
+> | 确定性代码 | 现有覆盖 |
+> |---|---|
+> | `adapters/codex-loop-run.sh`（loop 驱动） | `tests/adapter-codex-loop-run-check.sh` **18 条**——本就是 codex 桩驱动 |
+> | `bin/pdlc-statusline.sh` | `tests/statusline-check.sh` **27 条** |
+> | `adapters/build_codex.py` | `tests/adapter-codex-check.sh` **32 条** |
+> | `evals/run.sh`（runner 自身） | 无——但属"测测试框架自己"，收益递减，其故障会以 eval 结果反常的形式暴露 |
+>
+> 其余 38 个 SKILL.md **全部是"模型读正文执行"，结构上只能 A-live**。所以
+> **loop 驱动本就是 A-det 唯一像样的靶子，而它已经测过了**。
+>
+> 后来者不必再把 A-det 当成"欠着的一大块"。若将来新增了成规模的确定性代码
+> （新驱动、新转译器），按同一判据补进 `tests/` 即可，仍不需要独立的 A-det harness。
 
 **同一条契约在两个实现上可测性不同（别混用绿灯）**："绝不自动 ship"在 **Runbook 版**（`codex-loop-run.sh`）由 bash 终态判定执行 → A-det 可证；但在 **Claude Task 版 `pdlc-loop-run`** 里写在 SKILL.md 正文、由模型执行 → 桩证不了，只能靠 A-live / 真机。**不可拿前者的绿灯宣称后者已验。**
 
@@ -256,13 +273,13 @@ lint: zero-warnings
 > `honest-checks` + `red-light-gate` **两个 turn**，`--repeat 3` 即**六个**。量级完全可接受，但 `EVALS.md`
 > 必须把这笔账写明，别让"近乎零"被误读成"跑起来也免费"。
 
-**之后**再做 A-det（`guardrails` / loop 控制流）：**直接扩展 `tests/` 里现成的桩测试，不另起一套 harness**
-（`tests/adapter-codex-loop-run-check.sh` 已在用 codex 桩）——既然 A-det 本就与 `tests/*.sh` 重叠，
-让桩测试有两个家只会多一套要防腐的机制。价值次之，排在 A-live 两个 fixture 之后。
+~~**之后**再做 A-det~~ —— **已结账，无需再做**（2026-08-02，详见 §3.4 的结论框）：
+A-det 要测的确定性代码已被 `tests/*.sh` 覆盖完（loop 驱动 18 条 / 状态栏 27 条 / 适配器 32 条），
+再单立一档只会让桩测试有两个家、多一套要防腐的机制。**新增确定性代码时按同一判据补进 `tests/` 即可。**
 
 **防腐（这决定 A 是资产还是负债）**：
 - **README「行为契约已验」表由 runner 生成 + 带时间戳/commit SHA**——过期的表要**看得出过期**（有日期），而非静默变谎。手工维护的"已验表"必然腐烂。
-- **A-det 进 pre-push 本地钩子常跑**（确定性、免费）→ harness 逻辑契约永不腐；A-live 靠发版清单人工触发。
+- **确定性档（即 `tests/*.sh`）进 pre-push 本地钩子常跑**（免费、无 flake）→ harness 逻辑契约永不腐；A-live 靠发版清单人工触发。
 
 **Dogfood 的诚实限制**：pdlc-skills 自身是 bash 插件、**不是被单测的应用**，B1/B2 无法拿本仓自测。**A 的 `evals/fixtures/` 恰好是 B1/B2 唯一现成的 dogfood 靶子**——这反向印证"A 先行"：先手搭 fixture（含真实 `test-commands.yml`），正好成为 B1「该生成什么」的规格。
 
