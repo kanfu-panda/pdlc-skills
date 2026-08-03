@@ -268,6 +268,9 @@ case "$ACTION" in
     echo "✅ Done."
     echo ""
     echo "Restart Claude Code, then type /pdlc- to see all 38 sub-commands."
+    echo ""
+    echo "⭐ If pdlc helps you ship, a star helps others find it:"
+    echo "   https://github.com/kanfu-panda/pdlc-skills"
     ;;
   upgrade)
     echo "Updating ${PLUGIN_NAME}@${MARKETPLACE_NAME}..."
