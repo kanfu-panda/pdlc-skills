@@ -4,7 +4,8 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.5.2-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/github/v/release/kanfu-panda/pdlc-skills?label=version&color=blue)](./CHANGELOG.md)
+[![GitHub stars](https://img.shields.io/github/stars/kanfu-panda/pdlc-skills?style=social)](https://github.com/kanfu-panda/pdlc-skills/stargazers)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > Author: **kanfu-panda**
@@ -45,6 +46,8 @@ Without this plugin, an AI assistant working on a feature typically:
 
 ## Quick demo
 
+![pdlc-skills end-to-end demo](docs/assets/demo.gif)
+
 A typical end-to-end flow looks like this:
 
 ```text
@@ -76,7 +79,7 @@ Every artifact above is a real file you can `git diff`. Run `/pdlc-status` any t
 
 ## Install
 
-> One-liner — no clone needed. Pulls the latest published release from GitHub.
+> One-liner — no manual clone needed.
 
 ```bash
 # Global (~/.claude/plugins/pdlc/)
@@ -88,7 +91,7 @@ curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/instal
   | bash -s -- --project /path/to/my-project
 ```
 
-That's it. The installer downloads the matching release tarball, extracts it, and copies only the plugin files to your `.claude/plugins/pdlc/` directory.
+That's it. The installer is a thin wrapper around `claude plugin marketplace add` + `claude plugin install`: it registers the marketplace source and installs the plugin into your `.claude/plugins/pdlc/` directory.
 
 ### Upgrade
 
@@ -135,7 +138,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.6.0 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -330,7 +333,7 @@ User manual: [docs/usage-guide.md](./docs/usage-guide.md) · Release notes: [CHA
 
 ## 💖 Support this project
 
-PDLC is built and maintained in spare time. If it saves you hours (or sanity), consider supporting its development.
+PDLC is built and maintained in spare time. The zero-cost way to support it: [leave a ⭐ star](https://github.com/kanfu-panda/pdlc-skills) — stars are how other Claude Code users discover this project. If it saves you hours (or sanity) and you want to go further:
 
 **Donation channels:**
 

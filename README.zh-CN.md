@@ -4,7 +4,8 @@
 
 [![CI](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/kanfu-panda/pdlc-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.5.2-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/github/v/release/kanfu-panda/pdlc-skills?label=version&color=blue)](./CHANGELOG.md)
+[![GitHub stars](https://img.shields.io/github/stars/kanfu-panda/pdlc-skills?style=social)](https://github.com/kanfu-panda/pdlc-skills/stargazers)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
 
 > 作者：**kanfu-panda**
@@ -45,6 +46,8 @@
 
 ## 一眼看效果
 
+![pdlc-skills 端到端演示](docs/assets/demo.gif)
+
 一个典型端到端流程：
 
 ```text
@@ -76,7 +79,7 @@ $ /pdlc-feature 给用户登录加手机号验证
 
 ## 安装
 
-> 一行命令搞定，无需 clone 整个仓库。会从 GitHub 拉取最新发布版本。
+> 一行命令搞定，无需手动 clone。
 
 ```bash
 # 全局安装（~/.claude/plugins/pdlc/）
@@ -88,7 +91,7 @@ curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/instal
   | bash -s -- --project /path/to/my-project
 ```
 
-就这一条。安装器会下载对应版本的 tarball，解压，把 plugin 文件复制到你的 `.claude/plugins/pdlc/` 目录下。
+就这一条。安装器是 `claude plugin marketplace add` + `claude plugin install` 的薄封装：注册 marketplace 源，把 plugin 装进你的 `.claude/plugins/pdlc/` 目录。
 
 ### 升级
 
@@ -135,7 +138,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.5.2  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.6.0（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -304,7 +307,7 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 
 ## 💖 支持本项目
 
-PDLC 是业余时间维护的开源项目。如果它给你省下了几个小时（或者一点头发），欢迎支持后续迭代。
+PDLC 是业余时间维护的开源项目。零成本的支持方式：[点个 ⭐ star](https://github.com/kanfu-panda/pdlc-skills)——star 是其他 Claude Code 用户发现这个项目的主要途径。如果它给你省下了几个小时（或者一点头发），也欢迎更进一步：
 
 **捐赠通道：**
 
