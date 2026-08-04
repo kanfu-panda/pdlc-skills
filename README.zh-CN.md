@@ -18,7 +18,7 @@
 
 - **可审计**——每份产物都落盘，`git diff` 就能看 AI 到底做了什么。
 - **自主**——检查结果来自**真实命令退出码**（绝非模型自评），所以自主循环能把 `tdd → implement → review` 无人值守推到收敛，带 fail-stop、stuck-stop 和预算护栏。
-- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（38 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex** 等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
+- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（38 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex**（兼容 Claude Code 生态的发行版）等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
 
 ---
 
@@ -157,6 +157,7 @@ Claude Code **集成最全**——38 个斜杠命令 + 状态栏 + 插件内自�
   ```
   构建适配器并把 34 个 pdlc skill 装到 `~/.codex/skills/`（2 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
   - **Codex 上自主收敛**：`adapters/codex-loop-run.sh <功能ID> --project <目录>` 无人值守把 `tdd → implement → review` 推到 `review_done`（外部 Runbook，发布留人）。已在真机过状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)。
+  - ⚠️ **适用范围——原版 OpenAI Codex 未验证**：适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上验过，我们没有原版环境可测。若重启后 Codex 对这些 skill 毫无反应，说明它不读该目录——退回上面的平台中立路线（方法论文档进 `AGENTS.md`），无需适配器。欢迎原版用户提 issue 反馈。
 
 Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路线：[ADR 0003](./docs/decisions/0003-multi-platform-adapters.md)。
 

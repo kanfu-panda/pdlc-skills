@@ -175,6 +175,13 @@ EOF
   echo "   NOT slash commands), e.g.:  用 pdlc 写个 PRD：<一句话需求>"
   echo "   Methodology + templates: ${CODEX_PDLC_DIR}"
   echo "   Note: the statusline and the autonomous loop engine are Claude Code-only (not ported)."
+  echo ""
+  echo "   ⚠️  Scope: this adapter targets Codex distributions that read ~/.codex/skills/"
+  echo "       (Claude-Code-compatible ones). Vanilla OpenAI Codex is UNVERIFIED — we have"
+  echo "       no such environment to test on. If Codex ignores the skills after a restart,"
+  echo "       it does not read that directory; fall back to the platform-neutral route:"
+  echo "       append ${CODEX_PDLC_DIR}/pdlc-methodology.md to your project's AGENTS.md"
+  echo "       and drive PDLC in natural language. Reports welcome via GitHub issues."
 }
 
 do_codex_uninstall() {
@@ -277,6 +284,9 @@ case "$ACTION" in
     claude plugin update "${PLUGIN_NAME}@${MARKETPLACE_NAME}"
     echo ""
     echo "✅ Updated. Restart Claude Code to apply."
+    echo ""
+    echo "⭐ If pdlc helps you ship, a star helps others find it:"
+    echo "   https://github.com/kanfu-panda/pdlc-skills"
     ;;
   uninstall)
     echo "Uninstalling ${PLUGIN_NAME}@${MARKETPLACE_NAME}..."

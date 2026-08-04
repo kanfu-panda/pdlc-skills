@@ -18,7 +18,7 @@ Three things fall out of that state machine:
 
 - **Auditable** — every artifact lands on disk; you `git diff` exactly what the AI did.
 - **Autonomous** — checks come from **real command exit codes** (never model self-report), so an autonomous loop can drive `tdd → implement → review` to convergence unattended, with fail-stop, stuck-stop, and budget guards.
-- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (38 slash commands + statusline + in-plugin loop engine); **Codex** and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
+- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (38 slash commands + statusline + in-plugin loop engine); **Codex** (Claude-Code-compatible distributions) and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
 
@@ -157,6 +157,7 @@ Claude Code has the **richest integration** — 38 slash commands + statusline +
   ```
   Builds the adapter and installs 34 pdlc skills into `~/.codex/skills/` (the 2 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Codex skills are **description-triggered, not slash commands** — after restarting Codex, drive PDLC in natural language (e.g. `用 pdlc 写个 PRD：<一句话需求>`). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
   - **Autonomous convergence** on Codex: `adapters/codex-loop-run.sh <feature-id> --project <dir>` drives `tdd → implement → review` to `review_done` (external Runbook; release stays human). Cleared the state-integrity admission gate on a real run — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md).
+  - ⚠️ **Scope — not verified on vanilla OpenAI Codex.** The adapter was validated only on a Codex distribution that reads `~/.codex/skills/`; we have no vanilla environment to test on. If Codex ignores the skills after a restart, it doesn't read that directory — fall back to the platform-neutral route above (methodology doc in `AGENTS.md`), which needs no adapter. Reports from vanilla users are welcome via issues.
 
 Cursor / Windsurf / Copilot native adapters are planned per real demand. Design & roadmap: [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md).
 

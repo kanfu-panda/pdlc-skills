@@ -353,6 +353,37 @@ else
     fail=$((fail + 1))
 fi
 
+# 文档版本新鲜度守卫：README 的版本徽章曾硬编码 `1.5.2`，而实际已发到 1.6.0
+# ——过期三个版本没人发现，因为**没有任何断言盯它**。此闸把「文档里声明的当前
+# 版本」钉死到 VERSION 上，两条：
+#   ① 版本徽章不许硬编码，必须用 shields 的 github/v/release 动态取；
+#   ② `Version: X.Y.Z` 这类「预期输出」示例必须与 VERSION 相等。
+# 只管**声明当前版本**的地方；举例用的版本号（如 `--version 1.5.0`）不在此列。
+# 代价是每次 bump VERSION 都要顺手改 README——这正是本闸的目的。
+version_now="$(cat VERSION)"
+doc_files=(README.md README.zh-CN.md docs/usage-guide.md)
+
+hardcoded_badge="$(grep -nE 'img\.shields\.io/badge/version-[0-9]' "${doc_files[@]}" || true)"
+if [[ -z "$hardcoded_badge" ]]; then
+    echo "  ✓ version badge is dynamic (shields github/v/release)"
+    pass=$((pass + 1))
+else
+    echo "  ✗ hardcoded version badge goes stale — use github/v/release instead:"
+    printf '      %s\n' "$hardcoded_badge"
+    fail=$((fail + 1))
+fi
+
+stale_ver="$(grep -nE 'Version[:：][[:space:]]*[0-9]+\.[0-9]+\.[0-9]+' "${doc_files[@]}" \
+    | grep -vE "Version[:：][[:space:]]*${version_now//./\\.}([^0-9]|\$)" || true)"
+if [[ -z "$stale_ver" ]]; then
+    echo "  ✓ documented version matches VERSION (${version_now})"
+    pass=$((pass + 1))
+else
+    echo "  ✗ documented version disagrees with VERSION (${version_now}) — update these:"
+    printf '      %s\n' "$stale_ver"
+    fail=$((fail + 1))
+fi
+
 assert_exists "README.md exists"                    "README.md"
 assert_exists "README.zh-CN.md exists"              "README.zh-CN.md"
 assert_exists "LICENSE exists"                      "LICENSE"

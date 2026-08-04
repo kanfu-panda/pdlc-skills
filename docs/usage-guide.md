@@ -240,6 +240,8 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
    ```
    构建适配器（`adapters/build_codex.py`）并把 34 个 pdlc skill 装到 `~/.codex/skills/`、模板与方法论到 `~/.codex/pdlc/`。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`），gpt 系模型按描述匹配到对应 skill。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
 
+   > ⚠️ **适用范围——原版 OpenAI Codex 未验证**：本适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上真机验过；我们没有原版环境可测，**不承诺原版可用**。自查方法：装完重启 Codex，用自然语言让它按 pdlc 做一件事——毫无反应即说明它不读该目录。此时退回路线 1（方法论文档进 `AGENTS.md`），那条路不依赖任何适配器机制。欢迎原版用户提 issue 反馈实际布局。
+
 3. **Codex · 自主收敛循环**（无人值守把 `tdd → implement → review` 推到 `review_done`）
    ```bash
    adapters/codex-loop-run.sh <功能ID> --project <项目目录> [--max-steps 4] [--dry-run]
