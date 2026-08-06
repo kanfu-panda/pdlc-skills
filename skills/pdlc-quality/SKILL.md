@@ -7,8 +7,9 @@ layer: 3
 stage: quality
 artifact_type: ledger
 produces:
-  # 主产物（ledger 型，一次一份可看趋势）
+  # 主产物（ledger 型，一次一份可看趋势）；.md 是真源，.html 是同数据的可视化视图
   - docs/07_reviews/quality/<YYYY-MM-DD>.md
+  - docs/07_reviews/quality/<YYYY-MM-DD>.html
   # 仅 --init 时创建（surface 型，就地编辑不累积）
   - docs/00_standards/quality-targets.yml
   - docs/00_standards/e2e-flow-map.yml
@@ -123,13 +124,34 @@ recommended_effort: medium
 > 这样清单维护就从"靠自觉"变成**被产物纪律接管**——PRD 本就被 pdlc 逼着落盘并保持最新，
 > 让它当 `core_flows` 的唯一上游真源，与「状态外化到磁盘」是同一个哲学。
 
-## 段三：出报告
+## 段三：出报告（真源 `.md` + 视图 `.html`）
 
-按 `templates/quality-report-template.md` 生成 `docs/07_reviews/quality/<YYYY-MM-DD>.md`（**ledger 型**：一次一份，
-可 git diff、可看趋势；同日重跑则覆盖当日文件）。必须包含：
+**① 先出 `.md`（真源）**：按 `templates/quality-report-template.md` 生成
+`docs/07_reviews/quality/<YYYY-MM-DD>.md`（**ledger 型**：一次一份，可 git diff、可看趋势；
+同日重跑则覆盖当日文件）。必须包含：
 
 1. 结论红绿表　2. 实测证据（命令 + 退出码 + 关键输出）　3. E2E 覆盖矩阵
 4. **配置健康度**（§2.3）　5. PRD 对账结果　6. 趋势（首次则写「无趋势基线」）　7. **人工确认签字栏**
+
+**② 再出 `.html`（视图）**：按 `templates/quality-report-template.html` 生成同目录同名
+`<YYYY-MM-DD>.html`——给人看的那一份，可直接双击打开、可打印签字、可发给同事。
+
+> **`.md` 是唯一真源**：`/pdlc-ship` 的发布闸门读它、`git diff` 看它、趋势对比取它。
+> `.html` 只是同一份数据的另一种呈现，**没有任何独立信息**。
+>
+> ⛔ **铁律：HTML 里的每个数字都从 `.md` 抄，不得重新计算、不得另行判断。**
+> 双写最容易出的错就是「两份报告各说各话」——那比没有 HTML 更糟：读者不知道该信哪份，
+> 而错的那份通常更好看。两处不一致时一律以 `.md` 为准并改正 `.html`。
+>
+> 填写要求：只替换 `{{...}}` 占位符与各表格的 `<tbody>` 内容；**不要改 `<style>`**
+> （排版由模板负责，改了就失去一致性）；删掉模板顶部的「填写说明」注释块；
+> 保持自包含——**不得引入任何外部 css / js / 字体 / 图片**（报告含项目内部数据，
+> 外链即数据外发面，且离线打不开）。
+>
+> 三态 class 必须对号入座：`st-pass` 达标 / `st-fail` 未达标 / `st-warn` **无法判定** /
+> `st-na` 留空未测量。**`st-warn` 绝不能写成 `st-pass`**——这是 §6.5 那条反模式
+> （「把我判断不了当成没问题」）在报告上的最后一道落地面。未达标时把页头
+> `--verdict-color` 与 `.verdict` 的 class 一并改掉，否则整页顶条还是绿的。
 
 ## 段四：自检（强制）
 
@@ -144,6 +166,9 @@ recommended_effort: medium
 - [ ] 配置健康度已汇报：失效项 / 可收紧项都列了出来，且**没有擅自改动 yml**
 - [ ] 报告落盘到 `docs/07_reviews/quality/`，含生成时间与 commit SHA
 - [ ] 未在报告里替人做 go/no-go 决定
+- [ ] `.html` 已同步产出，且与 `.md` **逐项核对过关键数字**（覆盖率、核心流 M/N、各 check 退出码、不可判份数、总判定）——不一致以 `.md` 为准并已改正
+- [ ] `.html` 里无残留 `{{` 占位符、无外部 css/js/字体引用、`<style>` 未被改动
+- [ ] 「无法判定」的项在 HTML 里用的是 `st-warn` 而非 `st-pass`；总判定未达标时页头顶条颜色已同步
 
 ## 段五：修复（单次，不递归）
 

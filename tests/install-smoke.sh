@@ -419,6 +419,61 @@ else
     fail=$((fail + 1))
 fi
 
+# ─── Test 6: 质量报告 HTML 模板 ───
+echo ""
+echo "Test: quality report HTML template"
+
+qhtml="references/templates/quality-report-template.html"
+assert_exists "quality-report HTML template exists" "$qhtml"
+
+if [[ -f "$qhtml" ]]; then
+    # 零依赖自包含：报告要能离线打开、能直接发给同事，且**不得**在渲染时
+    # 向第三方发请求（公开仓库 + 报告含项目内部数据，外链即数据外发面）。
+    ext_ref="$(grep -nE '<script[^>]+src=|<link[^>]+stylesheet|@import|https?://[^"]*\.(css|js|woff2?|ttf)' "$qhtml" || true)"
+    if [[ -z "$ext_ref" ]]; then
+        echo "  ✓ HTML template is self-contained (no external css/js/font)"
+        pass=$((pass + 1))
+    else
+        echo "  ✗ HTML template pulls external resources — inline them instead:"
+        printf '      %s\n' "$ext_ref"
+        fail=$((fail + 1))
+    fi
+
+    tpl="$(cat "$qhtml")"
+
+    # 三态必须齐全且「无法判定」是独立一态。把它折进「通过」正是 ADR 0005 §6.5
+    # 点名的反模式；报告是这条规则最后的落地面，模板缺了它就等于默许。
+    assert_contains "HTML has undetermined state (not folded into pass)" "无法判定" "$tpl"
+    assert_contains "HTML has pass state"      "达标"   "$tpl"
+    assert_contains "HTML has fail state"      "未达标" "$tpl"
+
+    # 七节结构必须与 Markdown 模板一一对应——两份模板讲的是同一份报告，
+    # 少一节就意味着 HTML 视图悄悄丢了信息。
+    for sec in "结论" "实测证据" "E2E 覆盖矩阵" "配置健康度" "对账" "趋势" "人工确认"; do
+        assert_contains "HTML section: ${sec}" "$sec" "$tpl"
+    done
+
+    # 签字栏是行动项，不能只在 Markdown 里有
+    assert_contains "HTML has sign-off field"  "签字" "$tpl"
+fi
+
+# 分发完整性：随插件走的文件必须**真的进 git**。
+# 本条是被真事咬出来的——`.gitignore` 里一条 `*.html` 把新增的报告模板吞了，
+# 本地测试全绿（文件就在磁盘上），可它从没进过仓库：别人 clone 拿不到，
+# 用户装的插件里也没有。本地绿 ≠ 分发对，这里把两者钉在一起。
+if [[ -d .git ]] && command -v git >/dev/null 2>&1; then
+    ignored_ship="$(git ls-files --others --ignored --exclude-standard \
+        -- references/ skills/ bin/ .claude-plugin/ 2>/dev/null || true)"
+    if [[ -z "$ignored_ship" ]]; then
+        echo "  ✓ no shipped file is swallowed by .gitignore"
+        pass=$((pass + 1))
+    else
+        echo "  ✗ these shipped files are gitignored — add a '!' exception:"
+        printf '      %s\n' "$ignored_ship"
+        fail=$((fail + 1))
+    fi
+fi
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

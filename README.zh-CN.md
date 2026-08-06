@@ -180,7 +180,7 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 同一套「客观 check」纪律，从单功能阶段升级为**常设闸门**：
 
 - **`/pdlc-test-setup`**——立地基：探测技术栈，**把每条候选命令真跑一次、看着退出码**，再写 `docs/00_standards/test-commands.yml`。跑不通的**留空并写明怎么补**，绝不猜——一条「看起来对但跑不了」的命令会让下游每个阶段的 `checks` 静默失真。
-- **`/pdlc-quality`**——跑真实 check、对照 `docs/00_standards/quality-targets.yml`、把带日期的报告写进 `docs/07_reviews/quality/`。**放行由人签字**，工具只陈述事实。
+- **`/pdlc-quality`**——跑真实 check、对照 `docs/00_standards/quality-targets.yml`、把带日期的报告写进 `docs/07_reviews/quality/`：`.md` 是真源（可 `git diff`，`/pdlc-ship` 拿它当发布闸门），外加一份零依赖自包含的 `.html` 视图——同一份数据，双击就开、可打印签字、可直接发给同事。**放行由人签字**，工具只陈述事实。
 
 有两样东西让「核心流程都覆盖了」不再是一句主观判断：
 

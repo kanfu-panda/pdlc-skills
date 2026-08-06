@@ -162,7 +162,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 ### Layer 3 · 工具（24 个，专项叠加）
 
 **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-**🔍 质量（5）**：`/pdlc-quality`（常设闸门——跑真实 check、核对每条核心流都有通过的 E2E、与 PRD 强制对账防 false-green，出报告由人签字）· `/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `docs/00_standards/test-commands.yml`；没验证通过的项留空，绝不写一条没跑过的命令）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+**🔍 质量（5）**：`/pdlc-quality`（常设闸门——跑真实 check、核对每条核心流都有通过的 E2E、与 PRD 强制对账防 false-green，出报告由人签字；报告为 `.md` 真源 + 零依赖自包含 `.html` 视图，后者双击就开、可打印签字）· `/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `docs/00_standards/test-commands.yml`；没验证通过的项留空，绝不写一条没跑过的命令）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`

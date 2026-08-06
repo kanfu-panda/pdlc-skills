@@ -180,7 +180,7 @@ Design: [ADR 0001](./docs/decisions/0001-loop-engineering-integration.md).
 The same objective-checks discipline, promoted from a per-feature stage to a **standing gate**:
 
 - **`/pdlc-test-setup`** — lays the foundation: detects your stack, **runs every candidate command once and watches the exit code**, then writes `docs/00_standards/test-commands.yml`. Commands that don't actually run are **left blank with a note on how to fill them**, never guessed — a plausible-but-broken command would silently corrupt every downstream stage's `checks`.
-- **`/pdlc-quality`** — runs the real checks, compares them against `docs/00_standards/quality-targets.yml`, and writes a dated report to `docs/07_reviews/quality/`. **A human signs off**; the tool only reports facts.
+- **`/pdlc-quality`** — runs the real checks, compares them against `docs/00_standards/quality-targets.yml`, and writes a dated report to `docs/07_reviews/quality/` — Markdown (the source of truth, `git diff`-able and read by `/pdlc-ship` as a release gate) plus a self-contained HTML view of the same data, ready to open, print and sign. **A human signs off**; the tool only reports facts.
 
 Two things keep "all core flows are covered" from becoming an opinion:
 

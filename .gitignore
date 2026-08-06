@@ -14,6 +14,8 @@ Thumbs.db
 # with `!path/to/that-file.html`)
 *.html
 *.html.map
+# 例外：随插件分发的 HTML 模板（不是预览产物，是用户拿来生成报告的源文件）
+!references/templates/*.html
 
 # Local scratch
 *.bak
