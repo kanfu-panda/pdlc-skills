@@ -194,22 +194,32 @@ run_with_timeout() { # <秒> <命令...>
 
 invoke_agent() { # <项目目录> <阶段> <参数> <输出文件>
   local proj="$1" stage="$2" args="$3" out="$4"
+  # `</dev/null` 不可省：两个 CLI 都会读 stdin（实测 `codex exec` 会把管道内容
+  # 当成额外输入吃掉）。不隔离的话，agent 会顺走调用方的 stdin —— 既污染它自己的
+  # 输入，又让外层 while-read 循环提前断流。
   if [ "${PLATFORM}" = "claude" ]; then
     # shellcheck disable=SC2086  # CLAUDE_FLAGS 需要词分割，这是刻意的
     ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
-        claude -p "/pdlc-${stage} ${args}" ${CLAUDE_FLAGS} ) >"${out}" 2>&1
+        claude -p "/pdlc-${stage} ${args}" ${CLAUDE_FLAGS} ) >"${out}" 2>&1 </dev/null
   else
     run_with_timeout "${TIMEOUT_SECS}" \
       codex exec -C "${proj}" -s workspace-write --skip-git-repo-check \
-      "按 pdlc ${stage} ${args}" >"${out}" 2>&1
+      "按 pdlc ${stage} ${args}" >"${out}" 2>&1 </dev/null
   fi
 }
 
 TOTAL_FAIL=0
 TOTAL_INCONCLUSIVE=0
 SUMMARY=""
+RAN_N=0
+EXPECT_N="$(printf '%s\n' "${SCENARIOS}" | grep -c .)"
 
-while IFS= read -r s; do
+# 场景名走 FD 3，不走 stdin。循环体里跑的是真 agent，而 agent 会读 stdin ——
+# 用 `done <<< "${SCENARIOS}"` 的话它一口把剩下的场景名喝干，循环跑完第一个就
+# 静默结束，汇总里还只字不提少跑的那几个。这正是最坏的一种失败：**覆盖面缩水，
+# 报告却照常收尾**。FD 3 从根上隔开，`</dev/null` 是第二道。
+while IFS= read -r s <&3; do
+  RAN_N=$((RAN_N + 1))
   sdir="${FIXTURES_DIR}/${s}"
   # shellcheck source=/dev/null
   . "${sdir}/scenario.sh"
@@ -274,12 +284,19 @@ while IFS= read -r s; do
     TOTAL_FAIL=$((TOTAL_FAIL + 1))
   fi
   SUMMARY="${SUMMARY}${line}"$'\n'
-done <<< "${SCENARIOS}"
+done 3<<< "${SCENARIOS}"
 
 printf '\n══════ 汇总（platform=%s repeat=%s）══════\n' "${PLATFORM}" "${REPEAT}"
 printf '%s' "${SUMMARY}"
 printf '生成时间：%s · 仓库版本：%s\n' \
   "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$(git -C "${EVALS_DIR}" rev-parse --short HEAD 2>/dev/null || printf '未知')"
+
+# 跑够没跑够，必须自己说出来。少跑而汇总照常收尾 = 把「没验」冒充成「验过」，
+# 与 §「无法判定不得记为通过」是同一条纪律。
+if [ "${RAN_N}" -ne "${EXPECT_N}" ]; then
+  printf '❌ 只跑了 %s/%s 个场景——循环提前断流，本次结论不可用。\n' "${RAN_N}" "${EXPECT_N}" >&2
+  exit 3
+fi
 
 if [ "${TOTAL_FAIL}" -gt 0 ]; then exit 1; fi
 if [ "${TOTAL_INCONCLUSIVE}" -gt 0 ]; then exit 2; fi
