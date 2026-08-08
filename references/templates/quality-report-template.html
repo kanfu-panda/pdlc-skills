@@ -22,7 +22,11 @@
           st-warn  ⚠️ 无法判定    st-na   — 留空未测量
         ⚠️ 与 ✅ 是**不同的态**。「没测到 / 判不了」绝不能写成 st-pass，
         这是 ADR 0005 §6.5 点名的反模式：把「我判断不了」当成「没问题」。
+        页头的 {{VERDICT_SHORT}} 只填裸词 pass / fail / warn（不带 st-）。
      4. 整份文件必须保持自包含：不得引入外部 css/js/字体/图片。
+        一个远程 <img> 就足以在每次打开报告时把 IP、时间、referer
+        送给第三方——报告里装的是项目内部数据，外链即外发面。
+        确需图片一律内联成 data: URI。
      ───────────────────────────────────────────────────── -->
 
 <style>
@@ -70,8 +74,14 @@
   }
   .hd::before {
     content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
-    background: var(--verdict-color, var(--accent));
+    background: var(--accent);
   }
+  /* 顶条颜色跟总判定走。这里用 .hd 限定作用域另起一套 v-* 类，而不是直接把
+     st-* 挂到页头：st-* 是徽章样式（自带底色，warn 还带斜纹），铺到整块
+     页头会糊成一片。 */
+  .hd.v-pass::before { background: var(--pass); }
+  .hd.v-fail::before { background: var(--fail); }
+  .hd.v-warn::before { background: var(--warn); }
   .hd-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 24px; letter-spacing: -.2px; flex: 1 1 auto; }
   h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 3px; }
@@ -203,12 +213,12 @@
 <body>
 <main>
 
-<!-- 总判定：把 style 里的 --verdict-color 与 .verdict 的 class 换成
-     st-pass / st-fail / st-warn 三者之一，页头顶条会跟着变色 -->
-<header class="hd" style="--verdict-color: var(--{{VERDICT_CLASS_SHORT}});">
+<!-- 总判定：两处 {{VERDICT_SHORT}} 都填 pass / fail / warn 之一（不带 st- 前缀）。
+     只有这一个占位符，顶条与徽章必然同色，不会一个说达标另一个说不可判。 -->
+<header class="hd v-{{VERDICT_SHORT}}">
   <div class="hd-row">
     <h1>质量报告<small>{{PROJECT_NAME}} · {{DATE}}</small></h1>
-    <span class="verdict {{VERDICT_CLASS}}">{{VERDICT_TEXT}}</span>
+    <span class="verdict st-{{VERDICT_SHORT}}">{{VERDICT_TEXT}}</span>
   </div>
   <div class="meta">
     <span>生成时间 <b>{{GENERATED_AT}}</b></span>

@@ -429,14 +429,35 @@ assert_exists "quality-report HTML template exists" "$qhtml"
 if [[ -f "$qhtml" ]]; then
     # 零依赖自包含：报告要能离线打开、能直接发给同事，且**不得**在渲染时
     # 向第三方发请求（公开仓库 + 报告含项目内部数据，外链即数据外发面）。
-    ext_ref="$(grep -nE '<script[^>]+src=|<link[^>]+stylesheet|@import|https?://[^"]*\.(css|js|woff2?|ttf)' "$qhtml" || true)"
+    #
+    # 这里**不按资源类型白名单**。上一版只盯 css/js/字体后缀，`<img
+    # src="https://…/x.png">` 直接漏过去——而一张远程图片同样会在每次打开
+    # 报告时把 IP、时间、referer 送出去。白名单永远漏，改成禁掉一切绝对 /
+    # 协议相对 URL：模板本身一个 http 都不该有，需要图片就内联 data: URI。
+    ext_pat="https?:|<script[^>]+src=|<link[^>]+stylesheet|@import"
+    ext_pat="${ext_pat}|(src|href)[[:space:]]*=[[:space:]]*['\"]?//|url\\([[:space:]]*['\"]?//"
+    ext_ref="$(grep -nE "$ext_pat" "$qhtml" || true)"
     if [[ -z "$ext_ref" ]]; then
-        echo "  ✓ HTML template is self-contained (no external css/js/font)"
+        echo "  ✓ HTML template is self-contained (no external URL of any kind)"
         pass=$((pass + 1))
     else
-        echo "  ✗ HTML template pulls external resources — inline them instead:"
+        echo "  ✗ HTML template references an external URL — inline it (data: URI):"
         printf '      %s\n' "$ext_ref"
         fail=$((fail + 1))
+    fi
+
+    # 占位符不得嵌在 var(--…) 里。曾经的写法是
+    # `style="--verdict-color: var(--{{VERDICT_CLASS_SHORT}})"`，而填写说明让人
+    # 填 st-pass —— 填进去就成了未定义变量，**静默**回落到中性强调色：一份
+    # 「未达标 / 无法判定」的报告顶着和「达标」一样的页头。报告里最贵的错就是
+    # 错的那份看起来更体面，所以这种形态整个禁掉。
+    if grep -q 'var(--{{' "$qhtml"; then
+        echo "  ✗ HTML template interpolates a placeholder into var(--…) — silent color fallback"
+        grep -n 'var(--{{' "$qhtml" | sed 's/^/      /'
+        fail=$((fail + 1))
+    else
+        echo "  ✓ HTML template has no placeholder inside var(--…)"
+        pass=$((pass + 1))
     fi
 
     tpl="$(cat "$qhtml")"
