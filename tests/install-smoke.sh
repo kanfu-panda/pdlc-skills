@@ -353,6 +353,37 @@ else
     fail=$((fail + 1))
 fi
 
+# 文档版本新鲜度守卫：README 的版本徽章曾硬编码 `1.5.2`，而实际已发到 1.6.0
+# ——过期三个版本没人发现，因为**没有任何断言盯它**。此闸把「文档里声明的当前
+# 版本」钉死到 VERSION 上，两条：
+#   ① 版本徽章不许硬编码，必须用 shields 的 github/v/release 动态取；
+#   ② `Version: X.Y.Z` 这类「预期输出」示例必须与 VERSION 相等。
+# 只管**声明当前版本**的地方；举例用的版本号（如 `--version 1.5.0`）不在此列。
+# 代价是每次 bump VERSION 都要顺手改 README——这正是本闸的目的。
+version_now="$(cat VERSION)"
+doc_files=(README.md README.zh-CN.md docs/usage-guide.md)
+
+hardcoded_badge="$(grep -nE 'img\.shields\.io/badge/version-[0-9]' "${doc_files[@]}" || true)"
+if [[ -z "$hardcoded_badge" ]]; then
+    echo "  ✓ version badge is dynamic (shields github/v/release)"
+    pass=$((pass + 1))
+else
+    echo "  ✗ hardcoded version badge goes stale — use github/v/release instead:"
+    printf '      %s\n' "$hardcoded_badge"
+    fail=$((fail + 1))
+fi
+
+stale_ver="$(grep -nE 'Version[:：][[:space:]]*[0-9]+\.[0-9]+\.[0-9]+' "${doc_files[@]}" \
+    | grep -vE "Version[:：][[:space:]]*${version_now//./\\.}([^0-9]|\$)" || true)"
+if [[ -z "$stale_ver" ]]; then
+    echo "  ✓ documented version matches VERSION (${version_now})"
+    pass=$((pass + 1))
+else
+    echo "  ✗ documented version disagrees with VERSION (${version_now}) — update these:"
+    printf '      %s\n' "$stale_ver"
+    fail=$((fail + 1))
+fi
+
 assert_exists "README.md exists"                    "README.md"
 assert_exists "README.zh-CN.md exists"              "README.zh-CN.md"
 assert_exists "LICENSE exists"                      "LICENSE"
@@ -386,6 +417,82 @@ if [[ ! -e "docs/reference.md" ]]; then
 else
     echo "  ✗ legacy docs/reference.md still present"
     fail=$((fail + 1))
+fi
+
+# ─── Test 6: 质量报告 HTML 模板 ───
+echo ""
+echo "Test: quality report HTML template"
+
+qhtml="references/templates/quality-report-template.html"
+assert_exists "quality-report HTML template exists" "$qhtml"
+
+if [[ -f "$qhtml" ]]; then
+    # 零依赖自包含：报告要能离线打开、能直接发给同事，且**不得**在渲染时
+    # 向第三方发请求（公开仓库 + 报告含项目内部数据，外链即数据外发面）。
+    #
+    # 这里**不按资源类型白名单**。上一版只盯 css/js/字体后缀，`<img
+    # src="https://…/x.png">` 直接漏过去——而一张远程图片同样会在每次打开
+    # 报告时把 IP、时间、referer 送出去。白名单永远漏，改成禁掉一切绝对 /
+    # 协议相对 URL：模板本身一个 http 都不该有，需要图片就内联 data: URI。
+    ext_pat="https?:|<script[^>]+src=|<link[^>]+stylesheet|@import"
+    ext_pat="${ext_pat}|(src|href)[[:space:]]*=[[:space:]]*['\"]?//|url\\([[:space:]]*['\"]?//"
+    ext_ref="$(grep -nE "$ext_pat" "$qhtml" || true)"
+    if [[ -z "$ext_ref" ]]; then
+        echo "  ✓ HTML template is self-contained (no external URL of any kind)"
+        pass=$((pass + 1))
+    else
+        echo "  ✗ HTML template references an external URL — inline it (data: URI):"
+        printf '      %s\n' "$ext_ref"
+        fail=$((fail + 1))
+    fi
+
+    # 占位符不得嵌在 var(--…) 里。曾经的写法是
+    # `style="--verdict-color: var(--{{VERDICT_CLASS_SHORT}})"`，而填写说明让人
+    # 填 st-pass —— 填进去就成了未定义变量，**静默**回落到中性强调色：一份
+    # 「未达标 / 无法判定」的报告顶着和「达标」一样的页头。报告里最贵的错就是
+    # 错的那份看起来更体面，所以这种形态整个禁掉。
+    if grep -q 'var(--{{' "$qhtml"; then
+        echo "  ✗ HTML template interpolates a placeholder into var(--…) — silent color fallback"
+        grep -n 'var(--{{' "$qhtml" | sed 's/^/      /'
+        fail=$((fail + 1))
+    else
+        echo "  ✓ HTML template has no placeholder inside var(--…)"
+        pass=$((pass + 1))
+    fi
+
+    tpl="$(cat "$qhtml")"
+
+    # 三态必须齐全且「无法判定」是独立一态。把它折进「通过」正是 ADR 0005 §6.5
+    # 点名的反模式；报告是这条规则最后的落地面，模板缺了它就等于默许。
+    assert_contains "HTML has undetermined state (not folded into pass)" "无法判定" "$tpl"
+    assert_contains "HTML has pass state"      "达标"   "$tpl"
+    assert_contains "HTML has fail state"      "未达标" "$tpl"
+
+    # 七节结构必须与 Markdown 模板一一对应——两份模板讲的是同一份报告，
+    # 少一节就意味着 HTML 视图悄悄丢了信息。
+    for sec in "结论" "实测证据" "E2E 覆盖矩阵" "配置健康度" "对账" "趋势" "人工确认"; do
+        assert_contains "HTML section: ${sec}" "$sec" "$tpl"
+    done
+
+    # 签字栏是行动项，不能只在 Markdown 里有
+    assert_contains "HTML has sign-off field"  "签字" "$tpl"
+fi
+
+# 分发完整性：随插件走的文件必须**真的进 git**。
+# 本条是被真事咬出来的——`.gitignore` 里一条 `*.html` 把新增的报告模板吞了，
+# 本地测试全绿（文件就在磁盘上），可它从没进过仓库：别人 clone 拿不到，
+# 用户装的插件里也没有。本地绿 ≠ 分发对，这里把两者钉在一起。
+if [[ -d .git ]] && command -v git >/dev/null 2>&1; then
+    ignored_ship="$(git ls-files --others --ignored --exclude-standard \
+        -- references/ skills/ bin/ .claude-plugin/ 2>/dev/null || true)"
+    if [[ -z "$ignored_ship" ]]; then
+        echo "  ✓ no shipped file is swallowed by .gitignore"
+        pass=$((pass + 1))
+    else
+        echo "  ✗ these shipped files are gitignored — add a '!' exception:"
+        printf '      %s\n' "$ignored_ship"
+        fail=$((fail + 1))
+    fi
 fi
 
 echo ""

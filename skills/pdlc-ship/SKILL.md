@@ -34,7 +34,8 @@ terminal_state: ship_done
    - 有 → 列出来并询问是否继续（用户明确同意才继续）
    - 无 → 直接进入下一步
 4. **质量闸门检查**（若项目有 `docs/00_standards/quality-targets.yml`）：
-   读 `docs/07_reviews/quality/` 下**最近一份**报告：
+   读 `docs/07_reviews/quality/` 下**最近一份 `.md` 报告**（同名 `.html` 只是视图，
+   闸门一律以 `.md` 为准——两者若不一致，信 `.md`）：
    - 无任何报告 → 提示先跑 `/pdlc-quality`，询问是继续还是先出报告
    - 报告**总判定未达标** → **默认不放行**；要发必须由人**显式 override 并写明理由**，
      该理由需记入本次发布的 CHANGELOG 或发布说明（不允许无声跳过）

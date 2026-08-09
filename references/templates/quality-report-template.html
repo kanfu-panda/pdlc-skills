@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>质量报告 · {{DATE}}</title>
+
+<!-- PDLC-TRACE
+     产物类型: 质量报告（HTML 视图）
+     生成命令: /pdlc-quality
+     生成时间: {{GENERATED_AT}}
+     仓库版本: {{COMMIT_SHA}}
+     真源:     {{MD_PATH}}
+
+     ── 填写说明（生成后请删除本注释块）─────────────────────────
+     1. 本文件是同名 .md 报告的**视图**，不是真源。所有数字一律从 .md
+        抄写，**不得在此重新计算或另行判断**——两份对不上时以 .md 为准。
+     2. 只替换 {{...}} 占位符与表格 <tbody> 内容。**不要改 <style>**：
+        排版由模板负责，改了就失去一致性。
+     3. 状态用 class 控制，四态各有专属样式：
+          st-pass  ✅ 达标        st-fail  ❌ 未达标
+          st-warn  ⚠️ 无法判定    st-na   — 留空未测量
+        ⚠️ 与 ✅ 是**不同的态**。「没测到 / 判不了」绝不能写成 st-pass，
+        这是 ADR 0005 §6.5 点名的反模式：把「我判断不了」当成「没问题」。
+        页头的 {{VERDICT_SHORT}} 只填裸词 pass / fail / warn（不带 st-）。
+     4. 整份文件必须保持自包含：不得引入外部 css/js/字体/图片。
+        一个远程 <img> 就足以在每次打开报告时把 IP、时间、referer
+        送给第三方——报告里装的是项目内部数据，外链即外发面。
+        确需图片一律内联成 data: URI。
+     ───────────────────────────────────────────────────── -->
+
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1f2933; --muted: #667085;
+    --border: #e4e7ec; --thead: #fafbfc;
+    --pass: #16a34a; --pass-bg: #e8f6ed;
+    --warn: #b45309; --warn-bg: #fdf3e3;
+    --fail: #dc2626; --fail-bg: #fdecec;
+    --na:   #64748b; --na-bg:   #f1f3f6;
+    --accent: #3b5bdb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #171a21; --text: #e6e8eb; --muted: #98a2b3;
+      --border: #262b36; --thead: #1c2029;
+      --pass-bg: #10281a; --warn-bg: #2a1f0c; --fail-bg: #2b1414; --na-bg: #1b1f27;
+      --pass: #4ade80; --warn: #fbbf24; --fail: #f87171; --na: #94a3b8;
+      --accent: #8ba4f9;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 64px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 980px; margin: 0 auto; }
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .88em;
+  }
+  code {
+    background: var(--na-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 5px;
+  }
+
+  /* ── 页头 ── */
+  .hd {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 26px 28px; margin-bottom: 22px; position: relative; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .hd::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
+    background: var(--accent);
+  }
+  /* 顶条颜色跟总判定走。这里用 .hd 限定作用域另起一套 v-* 类，而不是直接把
+     st-* 挂到页头：st-* 是徽章样式（自带底色，warn 还带斜纹），铺到整块
+     页头会糊成一片。 */
+  .hd.v-pass::before { background: var(--pass); }
+  .hd.v-fail::before { background: var(--fail); }
+  .hd.v-warn::before { background: var(--warn); }
+  .hd-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 24px; letter-spacing: -.2px; flex: 1 1 auto; }
+  h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 3px; }
+  .verdict {
+    font-size: 15px; font-weight: 700; padding: 8px 18px; border-radius: 999px;
+    border: 1.5px solid currentColor; white-space: nowrap;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 6px 26px;
+    margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 12.5px; color: var(--muted);
+  }
+  .meta b { font-weight: 600; color: var(--text); }
+
+  .note {
+    border-left: 3px solid var(--accent); background: var(--card);
+    padding: 12px 16px; margin: 0 0 22px; border-radius: 0 8px 8px 0;
+    font-size: 13.5px; color: var(--muted);
+  }
+  .note b { color: var(--text); }
+
+  /* 链接必须显式配色：浏览器默认的深蓝在深色模式下几乎不可见 */
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; margin: 0 0 22px; font-size: 13px;
+  }
+  .toc a {
+    padding: 3px 10px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .toc a:hover { background: var(--na-bg); border-color: var(--border); text-decoration: none; }
+
+  /* ── 章节 ── */
+  section {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 22px 26px 26px; margin-bottom: 18px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  h2 {
+    font-size: 16.5px; margin: 0 0 16px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--border); letter-spacing: -.1px;
+  }
+  h2 .n { color: var(--muted); font-weight: 500; margin-right: 8px; }
+  p { margin: 0 0 12px; }
+  .hint { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+  .hint + .hint { margin-top: 5px; }
+
+  /* ── 结论卡片 ── */
+  .cards {
+    display: grid; gap: 12px; margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+  .card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+    border-left-width: 3px;
+  }
+  .card .k { font-size: 12.5px; color: var(--muted); }
+  .card .v { font-size: 21px; font-weight: 700; margin: 3px 0 2px; letter-spacing: -.4px; }
+  .card .t { font-size: 12px; color: var(--muted); }
+  .card.st-pass { border-left-color: var(--pass); }
+  .card.st-warn { border-left-color: var(--warn); }
+  .card.st-fail { border-left-color: var(--fail); }
+  .card.st-na   { border-left-color: var(--na);   }
+  /* 斜纹是徽章级的强提示，铺满整张卡片会过花——大面积一律纯色底 */
+  .card.st-warn { background: var(--warn-bg); }
+
+  /* ── 表格 ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--thead); font-weight: 600; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  .table-wrap { border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  td.num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
+
+  /* ── 状态徽章：四态各自独立，⚠️ 绝不与 ✅ 同色系 ── */
+  .st {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid transparent;
+  }
+  .st-pass { color: var(--pass); background: var(--pass-bg); border-color: var(--pass); }
+  .st-fail { color: var(--fail); background: var(--fail-bg); border-color: var(--fail); }
+  .st-na   { color: var(--na);   background: var(--na-bg);   border-color: var(--border); }
+  /* 无法判定：琥珀 + 斜纹底，视觉上刻意"未完成"，防止被当成通过 */
+  .st-warn {
+    color: var(--warn); border-color: var(--warn);
+    background: repeating-linear-gradient(-45deg,
+      var(--warn-bg), var(--warn-bg) 5px, transparent 5px, transparent 10px);
+  }
+  tr.row-fail td:first-child { box-shadow: inset 3px 0 0 var(--fail); }
+  tr.row-warn td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+
+  /* ── 三态图例 ── */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+    font-size: 12.5px; color: var(--muted);
+    border: 1px dashed var(--border); border-radius: 9px; padding: 11px 14px; margin-top: 18px;
+  }
+  .legend b { color: var(--warn); }
+
+  /* ── 签字栏 ── */
+  .signoff { border: 1.5px solid var(--accent); border-radius: 10px; padding: 18px 20px; }
+  .signoff .row { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 16px; }
+  .sig { flex: 1 1 200px; }
+  .sig .lbl { font-size: 12px; color: var(--muted); margin-bottom: 22px; }
+  .sig .line { border-bottom: 1.5px solid var(--muted); height: 0; }
+  .ck { font-size: 14px; }
+  .ck input { margin-right: 8px; transform: scale(1.15); }
+  .override {
+    margin-top: 16px; padding: 12px 14px; border-radius: 8px;
+    background: var(--fail-bg); border: 1px solid var(--fail); font-size: 13px;
+  }
+
+  footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 26px; }
+
+  /* ── 打印：报告要能签字存档 ── */
+  @media print {
+    body { background: #fff; padding: 0; font-size: 11pt; }
+    section, .hd { box-shadow: none; border-color: #ccc; break-inside: avoid; }
+    .toc { display: none; }
+    tr, .card { break-inside: avoid; }
+    a { text-decoration: none; color: inherit; }
+  }
+</style>
+</head>
+
+<body>
+<main>
+
+<!-- 总判定：两处 {{VERDICT_SHORT}} 都填 pass / fail / warn 之一（不带 st- 前缀）。
+     只有这一个占位符，顶条与徽章必然同色，不会一个说达标另一个说不可判。 -->
+<header class="hd v-{{VERDICT_SHORT}}">
+  <div class="hd-row">
+    <h1>质量报告<small>{{PROJECT_NAME}} · {{DATE}}</small></h1>
+    <span class="verdict st-{{VERDICT_SHORT}}">{{VERDICT_TEXT}}</span>
+  </div>
+  <div class="meta">
+    <span>生成时间 <b>{{GENERATED_AT}}</b></span>
+    <span>仓库版本 <b class="mono">{{COMMIT_SHA}}</b></span>
+    <span>生成命令 <b class="mono">/pdlc-quality</b></span>
+    <span>真源 <b class="mono">{{MD_PATH}}</b></span>
+  </div>
+</header>
+
+<p class="note">
+  本报告的每一个判定都来自<b>客观数据</b>——真实退出码、覆盖率工具的真实数字、真跑的 E2E 结果。
+  AI 只负责把这些数据整理成报告，<b>不参与达标与否的判定</b>，放行由人。
+</p>
+
+<nav class="toc">
+  <a href="#s1">1 结论</a><a href="#s2">2 实测证据</a><a href="#s3">3 E2E 覆盖矩阵</a><a href="#s4">4 配置健康度</a><a href="#s5">5 PRD 对账</a><a href="#s6">6 趋势</a><a href="#s7">7 人工确认</a>
+</nav>
+
+<section id="s1">
+  <h2><span class="n">1</span>结论</h2>
+
+  <div class="cards">
+    <div class="card {{C1_CLASS}}">
+      <div class="k">单测覆盖率</div><div class="v">{{C1_VALUE}}</div>
+      <div class="t">目标 {{C1_TARGET}}</div>
+    </div>
+    <div class="card {{C2_CLASS}}">
+      <div class="k">E2E 核心流覆盖</div><div class="v">{{C2_VALUE}}</div>
+      <div class="t">共 {{C2_TARGET}} 条</div>
+    </div>
+    <div class="card {{C3_CLASS}}">
+      <div class="k">Lint</div><div class="v">{{C3_VALUE}}</div>
+      <div class="t">目标 {{C3_TARGET}}</div>
+    </div>
+    <div class="card {{C4_CLASS}}">
+      <div class="k">PRD ↔ core_flows 对账</div><div class="v">{{C4_VALUE}}</div>
+      <div class="t">{{C4_TARGET}}</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>项</th><th>目标</th><th>实测</th><th>判定</th></tr></thead>
+      <tbody>
+        <!-- 每行一项；判定单元格用 <span class="st st-pass|st-warn|st-fail|st-na"> -->
+        <tr>
+          <td>单测覆盖率</td><td class="num">{{C1_TARGET}}</td><td class="num">{{C1_VALUE}}</td>
+          <td><span class="st {{C1_CLASS}}">{{C1_STATE}}</span></td>
+        </tr>
+        <tr>
+          <td>E2E 核心流覆盖</td><td class="num">全部 {{C2_TARGET}} 条</td><td class="num">{{C2_VALUE}}</td>
+          <td><span class="st {{C2_CLASS}}">{{C2_STATE}}</span></td>
+        </tr>
+        <tr>
+          <td>Lint</td><td class="num">{{C3_TARGET}}</td><td class="num">{{C3_VALUE}}</td>
+          <td><span class="st {{C3_CLASS}}">{{C3_STATE}}</span></td>
+        </tr>
+        <tr>
+          <td>PRD ↔ core_flows 对账</td><td>无漂移</td><td>{{C4_VALUE}}</td>
+          <td><span class="st {{C4_CLASS}}">{{C4_STATE}}</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <span><span class="st st-pass">达标</span> 有数据且越过阈值</span>
+    <span><span class="st st-fail">未达标</span> 有数据但没到线</span>
+    <span><span class="st st-warn">无法判定</span> <b>没测到 / 判不了 —— 不是通过</b></span>
+    <span><span class="st st-na">留空</span> 项目未配置该项</span>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="n">2</span>实测证据（命令与退出码）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>check</th><th>命令（取自 test-commands.yml）</th><th>退出码</th><th>关键输出</th></tr></thead>
+      <tbody>
+        <!-- 每条 check 一行。命令为空 → 退出码列写 —，关键输出写「留空，未测量」，
+             判定用 st-na；**不得**因命令为空就算通过 -->
+        <tr>
+          <td>coverage</td><td><code>{{EV_COV_CMD}}</code></td>
+          <td class="num">{{EV_COV_RC}}</td><td>{{EV_COV_OUT}}</td>
+        </tr>
+        <tr>
+          <td>e2e</td><td><code>{{EV_E2E_CMD}}</code></td>
+          <td class="num">{{EV_E2E_RC}}</td><td>{{EV_E2E_OUT}}</td>
+        </tr>
+        <tr>
+          <td>lint</td><td><code>{{EV_LINT_CMD}}</code></td>
+          <td class="num">{{EV_LINT_RC}}</td><td>{{EV_LINT_OUT}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">命令为空（项目未配置该项）→ 如实写「留空，未测量」，<b>不得</b>因此判为通过。</p>
+  <p class="hint">退出码 <code>127</code> / <code>command not found</code> = 配置已过期，不是检查没过 —— 见第 4 节。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="n">3</span>E2E 覆盖矩阵</h2>
+  <p><code>core_flows</code> × 是否有真跑且通过的 E2E。缺一条 = 红。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>core_flow</th><th>映射到的测试（e2e-flow-map.yml）</th><th>本次结果</th><th>判定</th></tr></thead>
+      <tbody>
+        <!-- 每条 core_flow 一行；失败行加 class="row-fail" -->
+        {{E2E_MATRIX_ROWS}}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint"><b>未找到</b>表示映射指向了本次 E2E 结果里不存在的测试 —— 属<b>映射腐烂</b>，按红处理。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="n">4</span>配置健康度</h2>
+  <p><code>test-commands.yml</code> 里每条命令本次的可用性（第 2 节已真跑，顺带得出）。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>check</th><th>命令</th><th>状态</th><th>说明</th></tr></thead>
+      <tbody>
+        <!-- 状态取值：✅ 健康 / ⚠️ 已失效 / 💡 可收紧 / — 留空 -->
+        {{CONFIG_HEALTH_ROWS}}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint"><b>⚠️ 已失效</b>（退出码 127 / 命令不存在）= <code>test-commands.yml</code> 已过期，<b>不是「检查没过」</b>。别去查代码，去看配置。补救：<code>/pdlc-test-setup --refresh</code></p>
+  <p class="hint"><b>💡 可收紧</b>：该项现在留空，但已探测到可用命令 —— 补上会让闸门更严。</p>
+  <p class="hint">本节<b>只报告不改配置</b>：改命令等于改「通过」的定义，须走 <code>--refresh</code>（严向自动、松向人确认）。</p>
+</section>
+
+<section id="s5">
+  <h2><span class="n">5</span>PRD ↔ core_flows 对账（防 false-green）</h2>
+  <p>清单腐烂会让矩阵全绿而现实有洞，所以每次都拿 PRD 的 P0/P1 流程与 <code>core_flows</code> 做 diff。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>漂移类型</th><th>条目</th><th>处理建议</th></tr></thead>
+      <tbody>
+        <!-- 「不可判」行必须用 class="row-warn"，且判定写 st-warn，不得省略 -->
+        {{RECONCILE_ROWS}}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">无漂移<b>且无不可判项</b>时才写「无漂移 ✅」。有不可判项时写「无漂移，但另有 N 份 PRD 不可判 ⚠️」，<b>不得判为 ✅</b> —— 否则就是宣称「这些 PRD 的流程都覆盖了」，而事实是它们根本没进闸门视野。</p>
+</section>
+
+<section id="s6">
+  <h2><span class="n">6</span>趋势（对比上一份报告）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>指标</th><th>上次 {{PREV_DATE}}</th><th>本次</th><th>变化</th></tr></thead>
+      <tbody>
+        {{TREND_ROWS}}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">首次运行无上一份 → 整节写「首次运行，无趋势基线」。</p>
+</section>
+
+<section id="s7" class="signoff">
+  <h2><span class="n">7</span>人工确认</h2>
+  <p>报告只陈述事实，<b>go / no-go 由人拍</b> —— 与「发布永远人工」一脉相承。</p>
+
+  <p class="ck"><input type="checkbox"> 我已阅读本报告，确认结论</p>
+
+  <div class="row">
+    <div class="sig"><div class="lbl">签字</div><div class="line"></div></div>
+    <div class="sig"><div class="lbl">日期</div><div class="line"></div></div>
+  </div>
+
+  <!-- 达标时删除下面整块；未达标仍决定放行时必须填写 -->
+  <div class="override">
+    <b>⚠️ 未达标放行（override）</b><br>
+    在未达标情况下仍决定放行，必须在此写明理由与后续计划，并同步记入本次发布的 CHANGELOG：<br>
+    {{OVERRIDE_REASON}}
+  </div>
+</section>
+
+<footer>
+  由 <code>/pdlc-quality</code> 生成 · 真源 <code>{{MD_PATH}}</code> · 本文件为其视图，数字以真源为准
+</footer>
+
+</main>
+</body>
+</html>

@@ -162,7 +162,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 ### Layer 3 · 工具（24 个，专项叠加）
 
 **🎨 设计（4）**：`/pdlc-ui-design` · `/pdlc-ui-design-pro` · `/pdlc-db-design` · `/pdlc-arch`
-**🔍 质量（5）**：`/pdlc-quality`（常设闸门——跑真实 check、核对每条核心流都有通过的 E2E、与 PRD 强制对账防 false-green，出报告由人签字）· `/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `docs/00_standards/test-commands.yml`；没验证通过的项留空，绝不写一条没跑过的命令）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
+**🔍 质量（5）**：`/pdlc-quality`（常设闸门——跑真实 check、核对每条核心流都有通过的 E2E、与 PRD 强制对账防 false-green，出报告由人签字；报告为 `.md` 真源 + 零依赖自包含 `.html` 视图，后者双击就开、可打印签字）· `/pdlc-test-setup`（立客观 check 地基——探测技术栈、逐条验证命令真能跑，再写 `docs/00_standards/test-commands.yml`；没验证通过的项留空，绝不写一条没跑过的命令）· `/pdlc-lint` · `/pdlc-perf` · `/pdlc-security`
 **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
@@ -239,6 +239,8 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
    cd pdlc-skills && bash install.sh --target codex
    ```
    构建适配器（`adapters/build_codex.py`）并把 34 个 pdlc skill 装到 `~/.codex/skills/`、模板与方法论到 `~/.codex/pdlc/`。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`），gpt 系模型按描述匹配到对应 skill。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+
+   > ⚠️ **适用范围——原版 OpenAI Codex 未验证**：本适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上真机验过；我们没有原版环境可测，**不承诺原版可用**。自查方法：装完重启 Codex，用自然语言让它按 pdlc 做一件事——毫无反应即说明它不读该目录。此时退回路线 1（方法论文档进 `AGENTS.md`），那条路不依赖任何适配器机制。欢迎原版用户提 issue 反馈实际布局。
 
 3. **Codex · 自主收敛循环**（无人值守把 `tdd → implement → review` 推到 `review_done`）
    ```bash
