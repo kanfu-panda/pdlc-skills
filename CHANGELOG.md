@@ -5,7 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.6.1] - 2026-08-09
+
+质量报告多了一份**能直接看**的形态，以及三处「本来就该有人盯着」的守卫补位。
+
+本次没有新增 skill（仍 38 个），也没有改动任何流程契约——`.md` 依旧是质量报告的唯一真源、发布闸门读的依旧是它。
 
 ### Added
 
@@ -38,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 这是**最坏的一种失败**：覆盖面缩水，报告却看不出少跑了什么。据此，此前所有"整套跑过"的 Codex 结论都只覆盖了 1 个场景（各场景单独用 `--only` 跑出的结论不受影响）。
   - 修法两道：场景名改走 **FD 3**（与 stdin 彻底隔开），agent 调用另加 `</dev/null`。另加**场景计数闸**——跑到的场景数与发现数不符即报错退出 3，不允许再有"少跑而正常收尾"。
   - 新增 `tests/evals-runner-check.sh`（A-det，用会读 stdin 的 `codex` 桩复现该条件，不烧额度）：断言场景全跑到、桩无产出时判「无结论」而非通过、两道防线各在位。四种回归形态逐一种入验证判别力。
+
+- **CHANGELOG 的 `## [1.6.0]` 标题曾被误删**（v1.6.1 备版时发现）。上一次编辑本文件时，替换范围把版本标题一并吞掉，于是 1.6.0 的全部条目被并进了未发布段——`release.yml` 按标题切段抽发布说明，真发出去会把上个版本的内容当成本次的。已补回标题，并加断言：**每个 git tag 都必须在 CHANGELOG 里有对应的 `## [x.y.z]` 标题**，缺一个即失败。
+
+
+## [1.6.0] - 2026-07-29
 
 ADR 0005 的 B1 + B2 落地：把「客观 check」从单阶段能力升级成**常设质量闸门**。36 → 38 skills。
 
