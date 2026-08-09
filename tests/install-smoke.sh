@@ -493,6 +493,27 @@ if [[ -d .git ]] && command -v git >/dev/null 2>&1; then
         printf '      %s\n' "$ignored_ship"
         fail=$((fail + 1))
     fi
+
+    # 每个已发布的 tag 都必须在 CHANGELOG 里有对应标题。
+    # 也是被真事咬出来的——一次编辑把 `## [1.6.0]` 连同上下文一起替换掉了，
+    # 那一版的条目就整段并进了未发布段。这错**看起来毫无异样**：文件还在、
+    # 内容一字没少、测试全绿；直到 `release.yml` 按标题切段抽发布说明时，
+    # 才会把上个版本的内容当成本次的发出去。标题是切段的锚，锚丢了没人报错。
+    # 必须锚到**行首**：正文里提到 `## [1.6.0]` 的散句（比如本次这条记录本身）
+    # 会让不锚定的匹配命中，守卫当场失效——首版就是这么被自己骗过去的。
+    missing_tags=""
+    while IFS= read -r t; do
+        [[ -n "$t" ]] || continue
+        ver="${t#v}"
+        grep -qE "^## \[${ver//./\\.}\]" CHANGELOG.md || missing_tags="${missing_tags}${t} "
+    done < <(git tag -l 'v[0-9]*' 2>/dev/null)
+    if [[ -z "$missing_tags" ]]; then
+        echo "  ✓ every released tag has a CHANGELOG section"
+        pass=$((pass + 1))
+    else
+        echo "  ✗ these tags have no '## [x.y.z]' section in CHANGELOG.md: $missing_tags"
+        fail=$((fail + 1))
+    fi
 fi
 
 echo ""
