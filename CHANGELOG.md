@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **CI 收口到「只在发布那一刻跑」**：`secret-scan.yml` 原先是 `push: branches:[main]` + `pull_request`，累计触发 89 次（PR 55 / push 34）——改一行文档也要跑一遍全历史扫描。改为 `workflow_dispatch` + `push: tags: v*.*.*`，月预计用量从约 15-20 min 降到约 1 min。发版前那次仍用 `fetch-depth: 0` 扫完整历史，**公开发布前的最后一道兜底保持不变**。
+  - 日常防护落到本地：新增 `.githooks/pre-commit`（`git config core.hooksPath .githooks` 启用一次）。有 `gitleaks` 就用它扫暂存内容；**没有时不静默放行**——降级为正则兜底并明确告知覆盖面更弱（「跑不了」不等于「没问题」，与三态语义同一条纪律）。命中时只回显截断后的模式，不把密钥再打印一遍到终端和日志。
+  - 三条路径均实测：gitleaks 在→拦(exit 1)、gitleaks 不可见→正则兜底仍拦(exit 1)、干净内容→放行(exit 0)。
+
+### Fixed
+
+- **ADR 0004 §5 的诚实边界已过时**，补更正纪要（正文保留作时间点快照）：「本仓库的自动化无法自己调 `codex exec`」实测不成立；`tdd → implement → review` 三步连跑已端到端验证——`design → tdd → impl → review_done` 收敛、退出码 0、独立复跑单测 9/9 绿、发布侧零改动。撞上 provider 限流那次，驱动按设计 fail-stop(4) 且现场零改动。
+
+
 ## [1.6.1] - 2026-08-09
 
 质量报告多了一份**能直接看**的形态，以及三处「本来就该有人盯着」的守卫补位。

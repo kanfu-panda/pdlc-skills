@@ -68,13 +68,21 @@ claude plugin marketplace add /Users/me/projects/pdlc-skills
 claude plugin install pdlc@pdlc-skills
 ```
 
-Tests (run via GitHub Actions on every PR; can also be run manually):
+Tests — **run these locally**; CI only fires on release tags and manual dispatch (see "CI scope" below):
 
 ```bash
 bash tests/frontmatter-check.sh   # validate skills/*/SKILL.md frontmatter
 bash tests/install-smoke.sh       # end-to-end install layout assertions
 shellcheck install.sh tests/*.sh  # bash linting
 ```
+
+Enable the pre-commit secret scan once per clone (`.githooks/pre-commit`, uses `gitleaks` when present and falls back to a pattern scan with a loud warning when it isn't — "can't scan" must never read as "clean"):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+**CI scope**: every workflow is `workflow_dispatch` or release-tag triggered — nothing runs on push-to-main or on PRs. Day-to-day checks belong on your machine; CI is reserved for the moment something gets published (`secret-scan` re-scans the full history with `fetch-depth: 0` before a release goes out). Adding a workflow, or widening an existing trigger, needs the maintainer's explicit go-ahead.
 
 Behavioural evals (`evals/`, added v1.5.3) — verify contracts that only hold when a skill *really runs*:
 
