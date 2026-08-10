@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# 提交前扫描暂存内容里的密钥。
+#
+# 这道闸原本在 CI（`secret-scan.yml` 的 push/PR 触发），但那样每改一行文档都要跑一遍
+# 全历史扫描，累计烧了 89 次 runner。日常防护挪到这里——本地跑一次不到一秒，且**在密钥
+# 进入历史之前**就拦住；CI 只保留发版那一刻的全历史兜底。
+#
+# 启用（每个克隆做一次）：
+#   git config core.hooksPath .githooks
+#
+# 绕过（仅限确认误报时）：
+#   git commit --no-verify
+set -uo pipefail
+
+# 没有暂存内容就没什么可扫的（比如 `git commit --amend` 空提交）
+git diff --cached --quiet && exit 0
+
+if command -v gitleaks >/dev/null 2>&1; then
+    if ! gitleaks protect --staged --redact --no-banner 2>&1; then
+        echo ""
+        echo "⛔ gitleaks 在暂存内容里发现疑似密钥，已阻止提交。"
+        echo "   确认是误报再用 git commit --no-verify；真泄漏了就轮换密钥，别只删文件。"
+        exit 1
+    fi
+    exit 0
+fi
+
+# gitleaks 不在时**不能当成扫过了**——「跑不了」不等于「没问题」，这是本仓库
+# 三态语义的同一条纪律。降级成正则兜底，并明确说清它比 gitleaks 弱。
+echo "⚠️  未找到 gitleaks，降级为正则兜底扫描（覆盖面弱于 gitleaks）。"
+echo "   装上以获得完整防护：brew install gitleaks"
+
+# 常见密钥前缀 + 连接串。故意写得保守，宁可漏报也别把正常提交拦成噪音——
+# 真正的完整扫描是 gitleaks 的活。
+pattern='(sk-[A-Za-z0-9]{16,}|sk-ant-|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[bpsar]-[0-9]|-----BEGIN [A-Z ]*PRIVATE KEY-----|(postgres|postgresql|mysql|mongodb(\+srv)?)://[^:@/[:space:]]+:[^@/[:space:]]+@)'
+
+hits="$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -nE "$pattern" || true)"
+if [[ -n "$hits" ]]; then
+    echo ""
+    echo "⛔ 暂存内容里出现疑似密钥，已阻止提交："
+    # 只回显匹配到的模式类别，不回显整行——别把密钥又打印一遍到终端和日志里
+    printf '%s\n' "$hits" | grep -oE "$pattern" | sed 's/^\(.\{8\}\).*/  \1…（已截断）/' | sort -u
+    echo ""
+    echo "   真泄漏了就轮换密钥 + 用 git filter-repo 清历史，别只 git rm。"
+    echo "   确认是误报再用 git commit --no-verify。"
+    exit 1
+fi
+
+exit 0

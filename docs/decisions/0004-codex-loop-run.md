@@ -96,6 +96,16 @@ docs/usage-guide.md（新增）             ← 「在 Codex 上跑自主收敛�
 ## 5. 局限与诚实边界
 
 - **未做端到端多步真机跑**：作者环境的 Codex 走自定义 provider（`qqqrouter`），其 API key 只在 Codex 运行环境注入、不在普通 subprocess 里——**本仓库的自动化无法自己调 `codex exec`**。因此准入闸的那一步 `implement` 是**用户在真机跑、我读状态机核对**的；完整的 `tdd → implement → review` 三步连跑尚未端到端验证（每个阶段的诚实性由准入闸单点坐实，但多步链式推进的真机连跑留待后续）。驱动的**映射与护栏逻辑**已由 `--dry-run` + mock 状态全覆盖测试。
+
+  > 📌 **更正（2026-08-09，v1.6.1 期间）**：上面这条的两个分句都已不成立，正文保留原样作时间点快照。
+  >
+  > ① **「本仓库的自动化无法自己调 `codex exec`」——实测可以**，从普通 subprocess 直接调通，无需人在 Codex 环境里代跑。
+  >
+  > ② **三步连跑已端到端验证**：起点是一份只有设计文档、无测试无实现的 fixture，跑 `adapters/codex-loop-run.sh`，`design → tdd → impl → review_done` 三步收敛、退出码 0。不采信模型自述，独立复跑单测 **9/9 绿**；实现与测试均为真实产物（处理负数、前导零、参数个数、非整数拒绝）。**发布侧零改动**——无 tag、无 VERSION、无根 CHANGELOG，符合「终态焊死在 `review_done`，发布永远人工」。
+  >
+  > 期间撞上一次 provider 限流：驱动按设计 **fail-stop（退出码 4）且现场零改动**，状态机原封不动。
+  >
+  > 与此同时暴露出 Codex 臂在 `checks` schema 上不稳定（键名 / 类型 / 三态），**与本驱动无关**（驱动只读 `.ok` 与 `.current_stage`），详见 `evals/EVALS.md`「已知限制」第 3 条。
 - **预算护栏靠 `--max-steps`**：外部 Runbook 长跑烧 token，`--max-steps` 是硬上限。更细的美元预算（`--max-budget-usd`）留待需要时加。
 - **vanilla Codex 未覆盖**：见 ADR 0003 实现纪要。
 
