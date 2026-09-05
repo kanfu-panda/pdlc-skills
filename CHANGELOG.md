@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **状态栏懒解析循环去掉 `basename` 子进程**：`bin/pdlc-statusline.sh` 每渲染一次提示符，窗口内每个候选文件都要调两次 `basename`（判 `statusline.json` 一次、判 `_` 前缀一次），默认窗口 5 个文件即 10+ 次 fork。改为 `${f##*/}` 取一次文件名再判两次，循环内子进程降到 0。实测 6 个状态文件的场景由 12 次 `basename` 调用降到 0，渲染输出逐字节不变。
 
+- **`CLAUDE.md` 的本地测试清单补全**：「Common commands」原先只列了 `tests/` 下 6 个脚本中的 2 个（`frontmatter-check` / `install-smoke`），照文档跑只覆盖 221/304 条断言——`statusline-check`、`adapter-codex-check`、`adapter-codex-loop-run-check`、`evals-runner-check` 全在清单外，目录树那一段也用 `└──` 收在第 3 个脚本上、读起来像「就这些」。现已列全 6 个、给出一次跑完的命令，并把 `shellcheck` 的覆盖面对齐实际（补 `bin/*.sh`、`evals/run.sh`、`.githooks/pre-commit`）。另注明 `statusline-check.sh` 需额外用 macOS 自带 `/bin/bash` 3.2 跑一遍——PATH 上的 Homebrew bash 5 会放过在原生 Mac 上跑不了的代码。
+
 ### Fixed
 
 - **ADR 0004 §5 的诚实边界已过时**，补更正纪要（正文保留作时间点快照）：「本仓库的自动化无法自己调 `codex exec`」实测不成立；`tdd → implement → review` 三步连跑已端到端验证——`design → tdd → impl → review_done` 收敛、退出码 0、独立复跑单测 9/9 绿、发布侧零改动。撞上 provider 限流那次，驱动按设计 fail-stop(4) 且现场零改动。
