@@ -120,12 +120,14 @@ col() { # col <ansi-code> <text>
 }
 
 # ─── 懒解析：按 mtime 取最近 N 个状态文件 ───
-# ls -t 按修改时间新→旧排序，跨平台可用；剔除 statusline.json 后取前 N 个。
+# ls -t 按修改时间新→旧排序，跨平台可用；剔除 statusline.json 及 _ 前缀的索引文件（如
+# pdlc-relate 写出的 _relations.json，不是功能状态文件）后取前 N 个。
 # 用 while-read 而非 mapfile（后者为 bash 4+，macOS 自带 bash 3.2 没有）。
 files=()
 while IFS= read -r f; do
     [[ -z "$f" ]] && continue
     [[ "$(basename "$f")" == "statusline.json" ]] && continue
+    [[ "$(basename "$f")" == _* ]] && continue
     files+=("$f")
     [[ ${#files[@]} -ge "$C_WINDOW" ]] && break
 done < <(ls -t "$state_dir"/*.json 2>/dev/null)
@@ -139,6 +141,9 @@ done < <(ls -t "$state_dir"/*.json 2>/dev/null)
 declare -a rows=()
 while IFS= read -r line; do
     [[ -z "$line" ]] && continue
+    # 第二道保险：feature_id 为空则丢弃这行（非功能状态文件混进来的兜底，
+    # 避免它被当成「最新且非终态」抢占显示权，参见上面 _ 前缀过滤）
+    [[ -z "${line%%"$US"*}" ]] && continue
     rows+=("$line")
 done < <(jq -r '
     def s(x): (x // "") | tostring | gsub("[\r\n\t]"; " ");
