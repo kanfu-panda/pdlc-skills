@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **ADR 0004 §5 的诚实边界已过时**，补更正纪要（正文保留作时间点快照）：「本仓库的自动化无法自己调 `codex exec`」实测不成立；`tdd → implement → review` 三步连跑已端到端验证——`design → tdd → impl → review_done` 收敛、退出码 0、独立复跑单测 9/9 绿、发布侧零改动。撞上 provider 限流那次，驱动按设计 fail-stop(4) 且现场零改动。
+- **状态栏在 `pdlc-relate rebuild`/`set` 之后变空**：`bin/pdlc-statusline.sh` 按 mtime 取最近状态文件时，只排除了 `statusline.json`，没排除 `pdlc-relate` 写出的 `_relations.json`（关系反向索引，不是功能状态文件）。`_relations.json` 写出后 mtime 最新，被当成「最新且非终态」抢占显示，解析出的 `feature_id`/`feature_name`/`current_stage` 全为空，状态栏整行显示成 `● PDLC  · 👤`。现在懒解析循环跳过所有 `_` 前缀文件，jq 解析后再对 `feature_id` 为空的行做一道兜底丢弃。`tests/statusline-check.sh` 新增场景 8 覆盖该回归。
 
 
 ## [1.6.1] - 2026-08-09

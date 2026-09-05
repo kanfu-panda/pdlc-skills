@@ -200,6 +200,23 @@ out="$(render; echo "rc=$?")"
 assert_contains "空 state 目录退出码 0" "rc=0" "$out"
 assert_empty "空 state 目录吐空" "${out%rc=0}"
 
+# ─── 场景 8：_relations.json 最新时不抢显示权 ───
+# /pdlc-relate rebuild 会在 state 目录写出 _relations.json（关系反向索引，不是功能状态
+# 文件）。它 mtime 最新也不该被当成"最新且非终态"抢权，否则功能名和阶段全部丢失。
+echo "场景 8：_relations.json 最新时不抢显示权"
+clear_state
+write_state "F20260718-150000.json" "$(cat <<JSON
+{"feature_id":"F20260718-150000","feature_name":"orders","current_stage":"impl",
+ "run_mode":"interactive","next_step":"pdlc-review",
+ "last_phase_result":{"checks":{},"blocked_reason":null,"at":"$(now_iso)"}}
+JSON
+)"
+sleep 1
+write_state "_relations.json" '{"nodes":{},"edges":[],"index":{}}'
+out="$(render)"
+assert_contains "仍显示功能名 orders" "orders" "$out"
+assert_not_contains "不出现空名行" "● PDLC  ·" "$out"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
