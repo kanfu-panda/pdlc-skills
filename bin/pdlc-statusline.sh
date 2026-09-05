@@ -123,11 +123,13 @@ col() { # col <ansi-code> <text>
 # ls -t 按修改时间新→旧排序，跨平台可用；剔除 statusline.json 及 _ 前缀的索引文件（如
 # pdlc-relate 写出的 _relations.json，不是功能状态文件）后取前 N 个。
 # 用 while-read 而非 mapfile（后者为 bash 4+，macOS 自带 bash 3.2 没有）。
+# 取文件名用 ${f##*/} 而非 basename：状态栏每次渲染提示符都会跑，能不起子进程就不起。
 files=()
 while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    [[ "$(basename "$f")" == "statusline.json" ]] && continue
-    [[ "$(basename "$f")" == _* ]] && continue
+    base="${f##*/}"
+    [[ "$base" == "statusline.json" ]] && continue
+    [[ "$base" == _* ]] && continue
     files+=("$f")
     [[ ${#files[@]} -ge "$C_WINDOW" ]] && break
 done < <(ls -t "$state_dir"/*.json 2>/dev/null)
