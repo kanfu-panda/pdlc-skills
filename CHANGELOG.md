@@ -5,13 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.6.2] - 2026-09-05
+
+一次「把噪音关掉」的维护版：CI 收口到只在发版那一刻跑，日常防护落回本地 pre-commit 钩子；顺带修掉状态栏在 `/pdlc-relate rebuild` 之后整行变空的回归。
+
+没有新增 skill（仍 38 个），流程契约与产物路径零改动，升级不需要任何迁移动作。
 
 ### Changed
 
 - **CI 收口到「只在发布那一刻跑」**：`secret-scan.yml` 原先是 `push: branches:[main]` + `pull_request`，累计触发 89 次（PR 55 / push 34）——改一行文档也要跑一遍全历史扫描。改为 `workflow_dispatch` + `push: tags: v*.*.*`，月预计用量从约 15-20 min 降到约 1 min。发版前那次仍用 `fetch-depth: 0` 扫完整历史，**公开发布前的最后一道兜底保持不变**。
   - 日常防护落到本地：新增 `.githooks/pre-commit`（`git config core.hooksPath .githooks` 启用一次）。有 `gitleaks` 就用它扫暂存内容；**没有时不静默放行**——降级为正则兜底并明确告知覆盖面更弱（「跑不了」不等于「没问题」，与三态语义同一条纪律）。命中时只回显截断后的模式，不把密钥再打印一遍到终端和日志。
   - 三条路径均实测：gitleaks 在→拦(exit 1)、gitleaks 不可见→正则兜底仍拦(exit 1)、干净内容→放行(exit 0)。
+
+- **状态栏懒解析循环去掉 `basename` 子进程**：`bin/pdlc-statusline.sh` 每渲染一次提示符，窗口内每个候选文件都要调两次 `basename`（判 `statusline.json` 一次、判 `_` 前缀一次），默认窗口 5 个文件即 10+ 次 fork。改为 `${f##*/}` 取一次文件名再判两次，循环内子进程降到 0。实测 6 个状态文件的场景由 12 次 `basename` 调用降到 0，渲染输出逐字节不变。
 
 ### Fixed
 
