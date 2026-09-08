@@ -75,9 +75,27 @@
    > ⚠️ **没有检查命令可跑的阶段（如 requirements/design 只产文档，或项目无 `test-commands.yml`）→ `checks: {}` 留空。绝不因为「本阶段成功」就把 `tests_pass`/`lint_clean` 等填 `true`——那是虚报，会污染跨工具共用的状态机、误导自主循环判停。** 上面 schema 示例里 `checks` 之所以是空的，正是这个原因——**空是"没跑"的意思，不是键名的示范**。
 2. **`self_audit` 单列**：只放自检未通过数，**仅供参考，不作循环判停依据**。
 3. **`ok` 的定义**：本阶段全部 `checks` 通过且未命中 `blocked_reason` → `true`；否则 `false`。
-4. **命名空间**：`advanced_to` = **下一阶段的短名**（= `next_step` 命令去掉 `pdlc-` 前缀，如 `next_step=pdlc-review` → `advanced_to=review`），**不是命令名、也不是本阶段的 `current_stage`**。三者关系：`stage`=本阶段短名、`current_stage`=本阶段完成后的当前短名、`advanced_to`=下一阶段短名、`next_step`=下一跳命令名。
-   > ⛔ **短名不等于命令名去前缀**，各阶段的短名以本 skill 正文写明的为准。最容易踩的是
-   > `pdlc-implement` → 短名是 **`impl`**，不是 `implement`。写错的后果与键名写错同类：
-   > 消费方按契约名匹配，认不出就当没这个阶段。
+4. **命名空间**：`advanced_to` = **下一阶段的短名**，**不是命令名、也不是本阶段的 `current_stage`**。三者关系：`stage`=本阶段短名、`current_stage`=本阶段完成后的当前短名、`advanced_to`=下一阶段短名、`next_step`=下一跳命令名。
+
+   ⛔ **短名不是「命令名去掉 `pdlc-` 前缀」**——`pdlc-implement` 的短名是 **`impl`**，不是 `implement`。别推导，查下表：
+
+<!-- stage-map:start -->
+   | `next_step`（下一跳命令名） | `advanced_to`（下一阶段短名） |
+   |---|---|
+   | `pdlc-tdd` | `tdd` |
+   | `pdlc-implement` | `impl` |
+   | `pdlc-review` | `review` |
+   | `pdlc-design` | `design` |
+   | `pdlc-ship` | `ship` |
+   | `pdlc-deploy` | `deploy` |
+<!-- stage-map:end -->
+
+   `next_step` 为 `null`（终态或无后续）时 `advanced_to` 也是 `null`。
+
+   > 📌 **本表是唯一真源，且是被断言钉住的**：每行的短名必须等于该 skill 自己 frontmatter
+   > 里声明的 `stage:`，且任何 skill 的非 `null` `next_step` 都必须在表里有行——两个方向
+   > 都由 `tests/frontmatter-check.sh` 检查，所以表不会和实现各自漂移。
+   >
+   > 写错短名的后果与键名写错同类：消费方按契约名匹配，认不出就当没这个阶段。
 5. **推进一致**：`ok=true` 时本阶段必须真的推进了 `current_stage`（与第 6 条 IRON LAW 呼应）；到达终态或无后续时 `advanced_to=null`。`ok=false`（含 blocked）时 `current_stage` 不变、`advanced_to=null`、`blocked_reason` 写明原因。
 6. **`run_mode`**：镜像本次调用是否带 `--autonomous`（见 `noninteractive.md`）。

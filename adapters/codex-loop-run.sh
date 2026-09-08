@@ -48,6 +48,13 @@ fi
 
 # loop-next 映射（复刻 pdlc-loop-next：以 next_step 为主键，blocked_reason/终态优先）。
 # 输出白名单单 token：pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
+#
+# ⛔ next_step 缺失 / 为 null → blocked，**不是** done。机械收敛段里没有任何阶段会
+# 合法写出 null：pdlc-implement → pdlc-review、pdlc-review → pdlc-ship、
+# pdlc-fix → pdlc-ship。收敛完成的信号是 next_step=pdlc-ship（下面单独映射到 done），
+# 不是 null。所以 null 只可能是状态残缺——判 done 等于把「什么都没发生」报成
+# 「机械阶段已完成」，而 `{}` 这种合法但空的 JSON 走不到解析失败的兜底。
+# 展示层早有同一结论：见 bin/pdlc-statusline.sh 的 is_terminal 注释。
 compute_next() {
   local n
   n="$(jq -r '
@@ -55,7 +62,7 @@ compute_next() {
     elif ((.current_stage // "") | endswith("_done")) then "done"
     else (.next_step // "null") as $ns
       | if ($ns == "pdlc-tdd" or $ns == "pdlc-implement" or $ns == "pdlc-review") then $ns
-        elif ($ns == "pdlc-ship" or $ns == "pdlc-deploy" or $ns == "null") then "done"
+        elif ($ns == "pdlc-ship" or $ns == "pdlc-deploy") then "done"
         else "blocked" end
     end
   ' "$STATE" 2>/dev/null)"
@@ -78,7 +85,7 @@ while :; do
       exit 0 ;;
     blocked)
       reason="$(jq -r '.last_phase_result.blocked_reason // empty' "$STATE" 2>/dev/null)"
-      echo "⛔ blocked：${reason:-（状态机无法解析，或 next_step 超出收敛段——需人工）}"
+      echo "⛔ blocked：${reason:-（状态机无法解析、结构残缺/缺 next_step，或 next_step 超出收敛段——需人工）}"
       exit 2 ;;
     pdlc-tdd|pdlc-implement|pdlc-review) ;;
     *)

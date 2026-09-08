@@ -113,7 +113,7 @@ Product Development Life Cycle——把一个功能的开发切成有序、有�
    阶段语义不同则用对应键（如 TDD 段用 `{ "red_verified": true }` 表示红灯已验证）。
 2. **`self_audit` 单列**：只放自检未通过数，**仅供参考，不作判停依据**。
 3. **`ok` 定义**：本阶段全部 `checks` 通过且未命中 `blocked_reason` → `true`；否则 `false`。
-4. **命名空间**：`advanced_to` = 下一阶段短名（= `next_step` 去掉 `pdlc-` 前缀）；到终态或无后续时 `advanced_to=null`。
+4. **命名空间**：`advanced_to` = 下一阶段短名；到终态或无后续时 `advanced_to=null`。短名**不是**命令名去掉 `pdlc-` 前缀（`pdlc-implement` → `impl`），唯一真源是 `references/templates/prompts/state-update.md` 里的映射表，该表由 `tests/frontmatter-check.sh` 与各 skill 的 `stage:` frontmatter 双向对齐。
 5. **推进一致**：`ok=true` 时本阶段必须真的推进了 `current_stage`（呼应 IRON LAW #6）；
    `ok=false`（含 blocked）时 `current_stage` 不变、`advanced_to=null`、`blocked_reason` 写明原因。
 

@@ -72,10 +72,26 @@ write_state ship-next     review pdlc-ship      null
 assert_run "next=pdlc-ship → done"                   ship-next     0 "review_done"
 write_state deploy-next   deploy pdlc-deploy    null
 assert_run "next=pdlc-deploy → done"                 deploy-next   0 "review_done"
-write_state null-next     review null           null
-assert_run "next=null → done"                        null-next     0 "review_done"
 write_state terminal      feature_done null      null
 assert_run "current_stage=feature_done → done"       terminal      0 "review_done"
+
+echo ""
+echo "Test: 结构残缺 → blocked（绝不判成收敛完成）"
+# 机械收敛段里没有任何阶段会合法写出 next_step=null：
+#   pdlc-implement → pdlc-review、pdlc-review → pdlc-ship、pdlc-fix → pdlc-ship。
+# 所以 next_step 缺失/为 null 只可能是状态残缺，判 done 等于把「什么都没发生」报成
+# 「机械阶段已完成」。展示层早有同样结论（bin/pdlc-statusline.sh 的 is_terminal 注释）。
+printf '%s' '{}' > "$MK/docs/.pdlc-state/empty-obj.json"
+assert_run "空对象 {} → blocked"                     empty-obj     2 "blocked"
+printf '%s' '{"feature_id":"no-next","current_stage":"tdd"}' > "$MK/docs/.pdlc-state/no-next.json"
+assert_run "current_stage=tdd 但缺 next_step → blocked" no-next     2 "blocked"
+cat > "$MK/docs/.pdlc-state/failed-null.json" <<'JSON'
+{ "feature_id": "failed-null", "current_stage": "impl", "next_step": null,
+  "last_phase_result": { "ok": false, "checks": { "tests_pass": false }, "blocked_reason": null } }
+JSON
+assert_run "ok=false/测试失败/next=null/无阻塞原因 → blocked" failed-null 2 "blocked"
+write_state null-next     review null           null
+assert_run "next=null（结构完整但无下一跳）→ blocked"  null-next     2 "blocked"
 
 echo ""
 echo "Test: 超出收敛段 / blocked → blocked（退出 2）"
