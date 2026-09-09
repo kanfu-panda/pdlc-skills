@@ -138,7 +138,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.6.2（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.6.3（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。

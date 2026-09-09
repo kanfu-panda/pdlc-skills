@@ -5,7 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.6.3] - 2026-09-09
+
+一次**判停正确性**的修复版：循环引擎不再把残缺状态报成「收敛完成」，`advanced_to` 的短名规则从一条会给错答案的推导改成被断言钉住的映射表。两条都来自一次外部评审，均已复现后修复。
+
+> ⚠️ **行为变更（请留意退出码）**：`next_step` 缺失或为 `null` 时，`adapters/codex-loop-run.sh` 与 `/pdlc-loop-next` 现在判 **`blocked`（退出码 2）**，此前判 `done`（退出码 0）。这是把**假成功**纠正为真实状态——机械收敛段里没有任何阶段会合法写出 `null`，所以正常流程不受影响；但如果你的外层循环把退出码 0 当作"可以进发布评估"，残缺状态现在会正确地停下来交还人工。
+
+没有新增 skill（仍 38 个），产物路径与目录契约零改动。
 
 ### Fixed
 
