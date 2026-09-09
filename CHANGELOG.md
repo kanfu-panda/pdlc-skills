@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **循环判停会把残缺状态报成「收敛完成」**（外部评审提出，已复现）：`compute_next()` 把缺失的 `next_step` 折成 `"null"` 后映射到 `done`，于是三种输入全部返回退出码 0 + 「✅ 收敛到 review_done」——① 空对象 `{}`；② `current_stage=tdd` 但缺 `next_step`；③ `ok=false`、测试失败、`next_step=null` 且无 `blocked_reason`。这类输入**逃得过「无法解析 → blocked」的兜底**，因为 `{}` 是合法 JSON，解析得了、只是什么都没有。
+  - 根因不在驱动而在契约：`skills/pdlc-loop-next/SKILL.md` 的映射表把 `null → done`，注释写「机械收敛已完成（review 通过）」。查各 skill frontmatter 可知这句是**事实错误**——机械收敛段里没有任何阶段会合法写出 `null`（`pdlc-implement` → `pdlc-review`，`pdlc-review` 与 `pdlc-fix` → `pdlc-ship`），收敛完成的信号是 `next_step=pdlc-ship`，本就单独映射到 `done`。**这条分支没有合法生产者，只在状态残缺时触发。**
+  - 现改为 `null` / 缺失 → `blocked`。展示层早有同一结论（`bin/pdlc-statusline.sh` 的 `is_terminal`：原子 fix 流程 `next` 恒为 `null` 却未完成，误判会显示「✅ done」）——判停层现在与它对齐。
+  - `tests/adapter-codex-loop-run-check.sh` 新增 4 条断言覆盖上述输入，原先那条把 `next=null` 断言成 `done` 的用例一并翻正。ADR 0004 §决策 补更正纪要（正文保留作时间点快照）。
+- **`docs/usage-guide.md` 的状态机范例把 `next_step` 写成短名 `"ship"`**：契约要求的是**下一跳命令名** `"pdlc-ship"`。照抄这份范例会让循环拿到白名单外的 token，直接判 `blocked`。全仓 15 处 `next_step` 字面量里只有这一处写错，已改。
+
+### Changed
+
+- **`advanced_to` 的短名规则改为一张被断言钉住的映射表**：原文写「`advanced_to` = `next_step` 命令去掉 `pdlc-` 前缀」，紧接着又用 ⛔ 块声明「短名不等于命令名去前缀，`pdlc-implement` → `impl`」——**规则与规则的反例挨着写**，而这两段会一起被内联进 Codex skill，模型两边都读得到。实测「去前缀」对 6 个目标里的 `pdlc-implement` 直接给错答案。
+  - 现在 `references/templates/prompts/state-update.md` 用 `<!-- stage-map -->` 锚点给出 6 行显式映射表，并由 `tests/frontmatter-check.sh` **双向**钉死：① 表里每行短名必须等于该 skill 自己 frontmatter 的 `stage:`；② 任何 skill 的非 `null` `next_step` 都必须在表里有行（防止新增阶段时表腐烂）。四种变异（改错短名 / 删一行 / 删整表 / 回退判停规则）均实测变红。
+  - `docs/pdlc-methodology.md` 里重复的同一条「去前缀」规则同步改为指向该表。
+
+
 ## [1.6.2] - 2026-09-05
 
 一次「把噪音关掉」的维护版：CI 收口到只在发版那一刻跑，日常防护落回本地 pre-commit 钩子；顺带修掉状态栏在 `/pdlc-relate rebuild` 之后整行变空的回归。

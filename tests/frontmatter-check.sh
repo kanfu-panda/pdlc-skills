@@ -168,6 +168,58 @@ for f in skills/*/SKILL.md; do
     fi
 done
 
+
+# ─── 检查 7：阶段短名映射表必须与各 skill 的 stage frontmatter 一致 ───
+# state-update.md 原先写「advanced_to = next_step 命令去掉 pdlc- 前缀」，这条规则对
+# pdlc-implement 直接给错答案（短名是 impl 不是 implement），文档只能在紧邻处用 ⛔ 打
+# 补丁——规则与规则的反例挨着写，模型两边都读得到。改为一张显式映射表后，由本断言
+# 双向钉死，防止表和实现各自漂移：
+#   ① 表里每一行的短名，必须等于该 skill 自己 frontmatter 声明的 stage
+#   ② 任何 skill 的非 null next_step，都必须在表里有一行（防止新增阶段时表腐烂）
+echo ""
+echo "Check: 阶段短名映射表（advanced_to）"
+MAP_FILE="references/templates/prompts/state-update.md"
+
+stage_map() { # → 每行「<命令名> <短名>」
+    awk '/<!-- stage-map:start -->/{f=1;next} /<!-- stage-map:end -->/{f=0} f' "$MAP_FILE" 2>/dev/null \
+      | awk -F'|' 'NF>=3 { c=$2; s=$3; gsub(/[ `]/,"",c); gsub(/[ `]/,"",s);
+                           if (c ~ /^pdlc-/) print c, s }'
+}
+
+map_n=0
+while read -r cmd short; do
+    [[ -z "$cmd" ]] && continue
+    map_n=$((map_n + 1))
+    if [[ ! -f "skills/$cmd/SKILL.md" ]]; then
+        echo "  ✗ 映射表引用了不存在的 skill: $cmd"; fail=$((fail + 1)); continue
+    fi
+    declared="$(awk -F': *' '/^stage:/{print $2; exit}' "skills/$cmd/SKILL.md" | tr -d '\r')"
+    if [[ "$declared" != "$short" ]]; then
+        echo "  ✗ $cmd: 映射表写 '$short'，但该 skill frontmatter 声明 stage: '$declared'"
+        fail=$((fail + 1))
+    else
+        echo "  ✓ ${cmd} → ${short}（与 frontmatter 一致）"; pass=$((pass + 1))
+    fi
+done < <(stage_map)
+
+if [[ "$map_n" -eq 0 ]]; then
+    echo "  ✗ 未在 $MAP_FILE 找到 stage-map 表（缺 <!-- stage-map:start --> 锚点？）"
+    fail=$((fail + 1))
+fi
+
+# ② 反向：每个非 null 的 next_step 都必须在表里
+missing_rows=""
+for f in skills/*/SKILL.md; do
+    ns="$(awk -F': *' '/^next_step:/{print $2; exit}' "$f" | tr -d '\r')"
+    [[ -z "$ns" || "$ns" == "null" ]] && continue
+    stage_map | grep -qE "^$ns " || missing_rows="${missing_rows}${ns} "
+done
+if [[ -z "$missing_rows" ]]; then
+    echo "  ✓ 每个非 null 的 next_step 在映射表里都有对应行"; pass=$((pass + 1))
+else
+    echo "  ✗ 这些 next_step 在映射表里没有行（表已腐烂）: $missing_rows"; fail=$((fail + 1))
+fi
+
 echo ""
 echo "Result: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

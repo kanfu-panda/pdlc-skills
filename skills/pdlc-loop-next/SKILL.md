@@ -44,9 +44,20 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
    | `pdlc-tdd` | `pdlc-tdd` | |
    | `pdlc-implement` | `pdlc-implement` | |
    | `pdlc-review` | `pdlc-review` | |
-   | `pdlc-ship` / `pdlc-deploy` / `null` | `done` | 机械收敛已完成（review 通过），发布留人 |
+   | `pdlc-ship` / `pdlc-deploy` | `done` | 机械收敛已完成（review 通过），发布留人 |
+   | `null` / 缺失 | `blocked` | **状态残缺**——收敛段无阶段会合法写出 null，见下 |
    | `pdlc-prd` / `pdlc-design` | `blocked` | 尚在 tdd 之前，需人工（超出循环范围） |
    | 其它 | `blocked` | |
+
+   > ⛔ **`null` 判 `blocked` 而不是 `done`**：机械收敛段里没有任何阶段会合法写出
+   > `next_step: null`——`pdlc-implement` 写 `pdlc-review`、`pdlc-review` 与 `pdlc-fix`
+   > 都写 `pdlc-ship`。**收敛完成的信号是 `next_step=pdlc-ship`**（上表已单独映射到
+   > `done`），不是 `null`。所以 `null` 只可能是状态残缺，判 `done` 等于把「什么都
+   > 没发生」报成「机械阶段已完成」——上层会以为可以进发布评估了。
+   >
+   > 注意这类输入**逃得过「无法解析 → blocked」的兜底**：`{}` 是合法 JSON，
+   > 解析得了、只是什么都没有。展示层早有同一结论（`bin/pdlc-statusline.sh` 的
+   > `is_terminal`：原子 fix 流程 `next` 恒为 `null` 却未完成，误判会显示「✅ done」）。
 
 6. 不写文件、不产任何 artifact。
 

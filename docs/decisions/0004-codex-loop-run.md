@@ -67,6 +67,19 @@
    - `blocked_reason` 非空 → `blocked`
    - `current_stage` 以 `_done` 结尾 → `done`
    - 否则以 `next_step` 为主键：`pdlc-tdd/implement/review` → 该阶段；`pdlc-ship/deploy/null` → `done`（发布留人）；`pdlc-prd/design` 或其它 → `blocked`
+
+  > 📌 **更正（2026-09-07）**：上面 `null → done` 这一段已不成立，正文保留原样作时间点快照。
+  >
+  > 机械收敛段里**没有任何阶段会合法写出 `next_step: null`**——`pdlc-implement` 写
+  > `pdlc-review`，`pdlc-review` 与 `pdlc-fix` 都写 `pdlc-ship`。收敛完成的信号是
+  > `next_step=pdlc-ship`（本就单独映射到 `done`），不是 `null`。所以 `null` 只可能是
+  > **状态残缺**，判 `done` 等于把「什么都没发生」报成「机械阶段已完成」。
+  >
+  > 实测三份输入在改前均返回退出码 0 + 「✅ 收敛到 review_done」：`{}`、
+  > `current_stage=tdd` 但缺 `next_step`、`ok=false` 且 `next_step=null` 且无
+  > `blocked_reason`。它们**逃得过「无法解析 → blocked」的兜底**（`{}` 是合法 JSON）。
+  > 现映射改为 `null` / 缺失 → `blocked`，`tests/adapter-codex-loop-run-check.sh`
+  > 新增 4 条断言覆盖。
 2. `done` → 成功停机（交人工 `/pdlc-ship`）；`blocked` → 停机交还人类。
 3. 否则跑 `codex exec -C <项目> -s workspace-write "按 pdlc <阶段> <id> --autonomous"`。
 4. 读回状态机判定护栏（对齐 Claude 版 loop-run）：

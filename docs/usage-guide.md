@@ -274,7 +274,7 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
       "self_audit": { "passed": 8, "failed": 0, "manual": 0 }
     }
   ],
-  "next_step": "ship",
+  "next_step": "pdlc-ship",
   "terminal_state": null
 }
 ```
