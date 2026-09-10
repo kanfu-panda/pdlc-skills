@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **eval 把协议错统计成了环境抖动，恰好遮住它自己要测的东西**：`honest-checks` / `stale-config` 原先把 `last_phase_result.stage != impl` 一律判为环境抖动，而 `evals/run.sh` 对抖动的处理是**重跑、不计失败**。于是模型写出 `stage: "implement"`（契约要求短名 `impl`）这类**协议错**会被反复重跑，最终汇总成「无结论（环境抖动）」——而 schema 是否稳定，正是这两个场景存在的理由。现在分开：`stage` 缺失 → 抖动（没跑完，重跑有意义）；`stage` 有值但不符 → 契约破坏（重跑只会重复同一个错）。
+  - 同时补了一道前置守卫：**状态机与 fixture 初始状态逐字节相同 → 抖动**。fixture 自带一份停在 `tdd` 的状态机，不先分开的话，「agent 根本没跑」在 stage 检查里会和「写错了 stage」长得一模一样，限流与桩会被误判成契约破坏。
+- **`evals/EVALS.md` 的成本账自己过期了**：表里写着「全部场景（2 个）」，而实际已有 4 个——按它估算发版前开销会低报一半以上。已更新为当前数量并注明以 `--list` 为准。
+- **`CLAUDE.md` 里 `shellcheck` 的覆盖面小于实际**：漏了 `adapters/*.sh`（`codex-loop-run.sh` 在其中）与 `evals/fixtures/*/scenario.sh`（真 bash，此前无人 lint）。两处实测本来就干净，补进命令零代价。
+
+### Changed
+
+- **发布闸门按「改动了什么」分两档判过期，不再一刀切**：`/pdlc-ship` 此前只比日期，且过期一律只是「建议重跑」。现在读报告头部本就记着的 `仓库版本: <commit SHA>`，跑 `git diff --name-only <SHA>..HEAD`：
+  - 命中 `docs/01_requirements/prd/`、`quality-targets.yml`、`e2e-flow-map.yml`、`test-commands.yml` → **硬闸不放行**。这些是 PRD ↔ `core_flows` 对账与 E2E 覆盖矩阵的**输入**，它们变了结论就不再成立，重跑单测补不回对账。
+  - 只有其它代码 → 维持「建议重跑」。
+  - 报告没有该字段或 SHA 解析不了 → 按**不可判**处理并明确告知，不得静默当作未过期（与 check 命令的三态同一条纪律）。
+  - 无需给报告加新字段——SHA 一直在记，只是闸门没读。
+- **`quality-targets.yml` 变动要单独确认「闸门是不是被调松了」**：命中硬闸且改动包含该文件时，必须把它的 diff 原样展示给人，并逐条点出变松信号（覆盖率目标下降、`core_flows` 条目减少、lint 策略放宽、新增豁免）。报告达标后把目标调低，重跑照样是绿的——日期新、SHA 新、结论「达标」，但**尺子变短了**。这与 `/pdlc-test-setup --refresh` 的「严向自动、松向人确认」是同一条原则。
+
+### Added
+
+- **新 A-live 场景 `quality-no-priority`**：验 `/pdlc-quality` 的 PRD 对账**自身**的 false-green。fixture 放两份 PRD，一份规范标 P0，另一份整份不含 P0/P1 标记、只用「已上线 / 待开发」描述状态——按 P0/P1 提取得到空集，与 `core_flows` 做 diff 不产生任何漂移条目，报告若就此写「对账通过」，等于宣称这份 PRD 里的流程都覆盖了。判别力要三个方向同时成立：报告点名那份不可判的 PRD、对账行不得是纯 ✅、且不许走捷径（不能把流程偷偷塞进 `core_flows`，也不能去 PRD 里补 P0 标记）。其余各维在 fixture 里都真能跑通且通过，好让唯一有判别力的维度就是对账本身。
+- **新测试脚本 `tests/evals-scenario-check.sh`**（A-det，不烧模型额度）：`assert_scenario` 是确定性 bash，按仓库的分档判据属可桩测。用构造状态覆盖上述判定——协议错 vs 抖动、fixture 未改动、对账 false-green 与两种走捷径的假修法。`tests/` 现为 7 个脚本，`CLAUDE.md` 的清单同步更新。
+- **`install-smoke.sh` 新增跨文件契约断言**：`/pdlc-ship` 读的 `仓库版本` 字段由 `/pdlc-quality` 写入，这是一处隐式依赖——模板里删掉它闸门不会报错，只会静默退化成「查不了新鲜度」。现在两头都钉住，硬闸的四个路径也逐一断言仍在正文里。
+
+
 ## [1.6.3] - 2026-09-09
 
 一次**判停正确性**的修复版：循环引擎不再把残缺状态报成「收敛完成」，`advanced_to` 的短名规则从一条会给错答案的推导改成被断言钉住的映射表。两条都来自一次外部评审，均已复现后修复。

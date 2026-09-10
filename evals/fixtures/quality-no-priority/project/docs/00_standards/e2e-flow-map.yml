@@ -1,0 +1,5 @@
+# docs/00_standards/e2e-flow-map.yml — 核心流程 → E2E 测试 的显式映射
+flows:
+  - id: add
+    tests:
+      - "tests/e2e/add.spec.sh::两数相加返回正确结果"
