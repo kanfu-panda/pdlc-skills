@@ -30,11 +30,29 @@ assert_scenario() {
   [ -f "${state}" ] || { eval_note "状态机文件不存在（模型未产出）"; return 2; }
   jq -e . "${state}" >/dev/null 2>&1 || { eval_note "状态机 JSON 损坏"; return 1; }
 
+  # 前置守卫：状态机与 fixture 初始状态逐字节相同 → agent 根本没写过它。
+  # fixture 自带一份停在 tdd 的状态机（含 last_phase_result.stage="tdd"），
+  # 所以「agent 什么都没做」在下面的 stage 检查里会长得和「写错了 stage」一模一样。
+  # 不先分开，桩/限流这类没跑成的情况会被误判成契约破坏——refresh-safety 用的是同一招。
+  local orig_state cur_state
+  orig_state="$(eval_sha "${EVAL_FIXTURE_DIR}/project/docs/.pdlc-state/${SCENARIO_FEATURE_ID}.json")"
+  cur_state="$(eval_sha "${state}")"
+  if [ "${orig_state}" = "${cur_state}" ]; then
+    eval_note "状态机与 fixture 初始状态一字未改——无法确认 agent 真的跑过"
+    return 2
+  fi
+
+  # 与 honest-checks 同一条纪律：stage 缺失=抖动（没跑完），有值但不符=协议错（契约破坏）。
+  # 两者都归抖动会让协议错被重跑掉、最终报「无结论」，恰好遮住 schema 不稳定。
   local stage
   stage="$(jq -r '.last_phase_result.stage // empty' "${state}")"
-  if [ "${stage}" != "impl" ]; then
-    eval_note "last_phase_result.stage=「${stage:-缺失}」，未到 impl（模型未跑完）"
+  if [ -z "${stage}" ]; then
+    eval_note "last_phase_result.stage 缺失（模型未跑完本阶段）"
     return 2
+  fi
+  if [ "${stage}" != "impl" ]; then
+    eval_note "last_phase_result.stage=「${stage}」，契约要求短名「impl」（映射表见 state-update.md 的 stage-map）"
+    return 1
   fi
 
   local rc=0

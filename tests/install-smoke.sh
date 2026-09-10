@@ -516,6 +516,25 @@ if [[ -d .git ]] && command -v git >/dev/null 2>&1; then
     fi
 fi
 
+
+# ─── 质量闸门的跨文件契约：ship 读的字段，quality 必须还在写 ───
+# pdlc-ship 的过期判定依赖报告头部的 `仓库版本: <commit SHA>`——那是 pdlc-quality
+# 落盘时写进去的。这是一处**跨文件的隐式依赖**：模板里删掉这个字段，闸门不会报错，
+# 只会静默退化成「查不了新鲜度」。同理，硬闸挡的那四个路径若从 skill 正文里漏掉一个，
+# 对应那类改动就会悄悄降级成「建议重跑」。两头都用断言钉住。
+ship_gate="$(cat skills/pdlc-ship/SKILL.md)"
+assert_contains "quality report template carries 仓库版本 field" \
+  "仓库版本" "$(cat references/templates/quality-report-template.md)"
+assert_contains "pdlc-quality self-check requires commit SHA in report" \
+  "commit SHA" "$(cat skills/pdlc-quality/SKILL.md)"
+assert_contains "pdlc-ship gate reads 仓库版本 from the report" "仓库版本" "$ship_gate"
+for _p in "docs/01_requirements/prd/" \
+          "docs/00_standards/quality-targets.yml" \
+          "docs/00_standards/e2e-flow-map.yml" \
+          "docs/00_standards/test-commands.yml"; do
+    assert_contains "pdlc-ship hard-gate lists $_p" "$_p" "$ship_gate"
+done
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

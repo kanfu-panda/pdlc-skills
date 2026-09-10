@@ -1,0 +1,7 @@
+# docs/00_standards/test-commands.yml — 本项目 check 命令的唯一真源
+# 约定「退出码 0 = 通过」。
+
+unit:     "bash scripts/unit.sh"
+coverage: "bash scripts/coverage.sh"
+lint:     "bash scripts/lint.sh"
+e2e:      "bash scripts/e2e.sh"

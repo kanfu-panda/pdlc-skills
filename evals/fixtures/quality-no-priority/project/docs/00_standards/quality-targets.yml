@@ -1,0 +1,14 @@
+# docs/00_standards/quality-targets.yml — 本项目质量目标的唯一真源
+
+coverage:
+  unit: ">= 85%"
+
+e2e:
+  policy: all-core-flows-covered
+  core_flows:
+    - id: add
+      desc: 两数相加
+      prd: docs/01_requirements/prd/F20260728-102000-calc-add-prd.md
+
+lint:
+  policy: zero-warnings
