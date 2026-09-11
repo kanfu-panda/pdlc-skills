@@ -66,6 +66,13 @@ else
     fail=$((fail + 1))
 fi
 
+# codex 臂只能测已安装的投影（~/.codex），汇总必须照实说，不能只盖一个仓库 commit 了事
+if grep -qF '被测技能：已安装的 Codex 投影' <<< "$out"; then
+    echo "  ✓ codex 臂汇总写明被测的是已安装投影"; pass=$((pass + 1))
+else
+    echo "  ✗ codex 臂汇总没写被测的是哪份技能"; fail=$((fail + 1))
+fi
+
 # 上面的行为断言只在**两道防线同时失守**时才变红（任一道单独还在，循环就不会断流）。
 # 所以两道各配一条静态断言，单层被拆掉时就报出来，而不是等到都没了才发现。
 if grep -q 'read -r s <&3' "$RUNNER" && grep -q 'done 3<<<' "$RUNNER"; then
@@ -84,6 +91,57 @@ if [[ "$agent_calls" -eq 2 ]]; then
 else
     echo "  ✗ 第二道失守：只有 ${agent_calls}/2 条 agent 调用隔离了 stdin"
     fail=$((fail + 1))
+fi
+
+
+# ─── claude 臂默认测工作树，而不是已安装版本 ───
+# 真事：一次发版前核验里，eval 汇总盖着「仓库版本：<HEAD>」，实际加载的却是已安装的上一个版本——
+# /pdlc-* 解析到的是装好的插件。于是新规则的场景「失败」了，差点据此去改一个本来已经修好的问题。
+# claude 有 --plugin-dir，可以直接加载工作树；这里断言它默认就这么做，并在汇总里说清楚测的是哪份。
+echo ""
+echo "Test: claude 臂默认加载工作树（--plugin-dir），汇总写明被测的是哪份插件"
+cat > "$BIN/claude" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$@" > "$BIN/claude-argv"
+cat >/dev/null 2>&1
+exit 0
+STUB
+chmod +x "$BIN/claude"
+one="$(basename "$(find evals/fixtures -mindepth 1 -maxdepth 1 -type d | sort | head -1)")"
+
+rm -f "$BIN/claude-argv"
+out="$(PATH="$BIN:$PATH" bash "$RUNNER" --platform claude --only "$one" </dev/null 2>&1)"
+if grep -qx -- '--plugin-dir' "$BIN/claude-argv" 2>/dev/null && grep -qxF "$SCRIPT_DIR" "$BIN/claude-argv" 2>/dev/null; then
+    echo "  ✓ 默认把 --plugin-dir <仓库根> 传给 claude"; pass=$((pass + 1))
+else
+    echo "  ✗ 默认没有传 --plugin-dir <仓库根>——跑到的是已安装版本"; fail=$((fail + 1))
+fi
+if grep -qF '被测插件：工作树' <<< "$out"; then
+    echo "  ✓ 汇总写明「被测插件：工作树」"; pass=$((pass + 1))
+else
+    echo "  ✗ 汇总没写被测的是工作树"; fail=$((fail + 1))
+fi
+
+# EVAL_PLUGIN_DIR 显式置空 → 测已安装版本（发版后回头验线上版本时用），汇总照实说
+rm -f "$BIN/claude-argv"
+out="$(EVAL_PLUGIN_DIR='' PATH="$BIN:$PATH" bash "$RUNNER" --platform claude --only "$one" </dev/null 2>&1)"
+if grep -qx -- '--plugin-dir' "$BIN/claude-argv" 2>/dev/null; then
+    echo "  ✗ EVAL_PLUGIN_DIR 置空仍传了 --plugin-dir"; fail=$((fail + 1))
+else
+    echo "  ✓ EVAL_PLUGIN_DIR 置空 → 不传 --plugin-dir"; pass=$((pass + 1))
+fi
+if grep -qF '被测插件：已安装版本' <<< "$out"; then
+    echo "  ✓ 汇总写明「被测插件：已安装版本」"; pass=$((pass + 1))
+else
+    echo "  ✗ 汇总没写被测的是已安装版本"; fail=$((fail + 1))
+fi
+
+# 设了 CLAUDE_FLAGS 却没设 EVAL_CLAUDE_FLAGS：run.sh 读的是后者，前者会被静默覆盖——必须出声
+out="$(CLAUDE_FLAGS='--model x' PATH="$BIN:$PATH" bash "$RUNNER" --platform claude --only "$one" </dev/null 2>&1)"
+if grep -qF 'EVAL_CLAUDE_FLAGS' <<< "$out"; then
+    echo "  ✓ 设了 CLAUDE_FLAGS 却没设 EVAL_CLAUDE_FLAGS → 告警"; pass=$((pass + 1))
+else
+    echo "  ✗ CLAUDE_FLAGS 被静默忽略，没有告警"; fail=$((fail + 1))
 fi
 
 echo ""

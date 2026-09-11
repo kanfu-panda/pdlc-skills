@@ -46,7 +46,8 @@ CODEX_TEMPLATES = "~/.codex/pdlc/templates"
 INCLUDE_RE = re.compile(r"<!--\s*@include\s+templates/prompts/([a-z0-9-]+)\.md\s*-->")
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 # 通用机制：源里被 <!-- adapter:claude-only-start/end --> 包裹的块是 Claude 专属内容
-# （如用 `claude -p` 驱动的示例管线），投影到其它平台时整段剥掉。Claude Code 看不见 HTML 注释、行为不变。
+# （如用 `claude -p` 驱动的示例管线、到 ~/.claude/plugins 下找脚本），投影到其它平台时整段剥掉。
+# skill 正文与共享片段里都可能有——所以内联前后各剥一次（见 transpile）。Claude Code 看不见 HTML 注释、行为不变。
 CLAUDE_ONLY_RE = re.compile(
     r"[ \t]*<!--\s*adapter:claude-only-start\s*-->.*?<!--\s*adapter:claude-only-end\s*-->\n?",
     re.DOTALL,
@@ -117,8 +118,9 @@ TRIGGER_SUFFIX = " 当用户用自然语言要求执行该 PDLC 阶段（如「�
 
 def transpile(text):
     fm, body = parse_frontmatter(text)
-    body = CLAUDE_ONLY_RE.sub("", body)   # 先剥 Claude 专属块
+    body = CLAUDE_ONLY_RE.sub("", body)   # 先剥 skill 正文里的 Claude 专属块（免得去内联块里引用的片段）
     body = inline_includes(body)
+    body = CLAUDE_ONLY_RE.sub("", body)   # 再剥一次：片段里的 Claude 专属块，内联之后才看得见
     body = rewrite_template_refs(body)
 
     # Codex skill frontmatter：name + description（description 追加 pdlc 触发提示）

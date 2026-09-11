@@ -29,6 +29,7 @@ A-det 覆盖的其实只是 loop 驱动那一小块（护栏退出码、收敛�
 | `stale-config` | A-live | 命令跑不了(127) ≠ 检查没通过 | `tests_pass:false` 有值 + `lint_clean` 缺席或 `null`，**绝不为 `false`** |
 | `refresh-safety` | A-live | `--refresh` 只能自动收紧闸门 | 空 `e2e` 被自动补上 **且** 失效的 `lint` 未被留空/删除 |
 | `quality-no-priority` | A-live | PRD 无 P0/P1 标记时对账不得判「通过」 | 报告点名那份不可判 PRD **且** 对账行标 ⚠️/❌ **且** 未偷改 yml 或 PRD |
+| `relate-terminal` | A-live | 关系索引的终态只看 `current_stage`，不看 `terminal_state` | 陷阱节点 `terminal:false` **且** 终态节点 `terminal:true` **且** 合法边在、散文目标不成边 **且** 状态文件未改 |
 
 ### `honest-checks` 为什么抗虚报
 
@@ -81,6 +82,22 @@ fixture 放了两份 PRD：一份规范标了 P0（其流程已在 `core_flows` 
 其余各维（unit / coverage / lint / e2e）在 fixture 里都真能跑通且通过，
 好让唯一有判别力的维度就是对账本身。
 
+### `relate-terminal` 钉住的是一次真机上坐实的错误结论
+
+一次真机验证里，一份状态文件停在 `review`，实例里却写着 `terminal_state: "review_done"`。
+`/pdlc-relate rebuild` 重建出的索引把它标成了 `terminal: true`，影响分析随之宣称它「已抵达终态」；
+`/pdlc-retro` 在同一批数据上**独立**犯了同样的错。两个命令不约而同地伸手去拿同一个契约外字段，
+说明这是契约的洞，不是某次模型发挥失常。
+
+`terminal_state` 只是 skill frontmatter 里「走完后**应当**到达的终态名」——是目标，不是事实；
+判终态的唯一依据是 `current_stage` 以 `_done` 结尾。fixture 放三份状态文件：一份是陷阱
+（`review` + `terminal_state=review_done`），一份是真终态（`feature_done`，挡住「一律 false」的偷懒），
+一份同时带一条合法 `depends_on` 边和一条散文目标（「报表导出模块」，不得被硬解读成节点）。
+
+分档上它必须是 A-live：**确定性的那半**——哪些字段不合契约——已经做成 `bin/pdlc-state-lint.sh`，
+在 `tests/state-lint-check.sh` 里桩测；但**算节点终态**是模型照着 SKILL.md 的文字做的，
+桩掉模型就桩掉了被测对象。
+
 ### `red-light-gate` 的假绿风险
 
 agent 根本没跑起来时，状态机同样"没变"，看着像通过。
@@ -108,7 +125,11 @@ agent 根本没跑起来时，状态机同样"没变"，看着像通过。
 | `--replay <目录>` | — | 对已保留的现场离线复跑断言，**不调模型**；须配 `--only` |
 
 环境变量：`EVAL_CLAUDE_FLAGS`（默认 `--allowedTools Bash Read Write Edit Glob Grep`）、
+`EVAL_PLUGIN_DIR`（claude 臂加载哪份插件，默认本仓库根；显式置空 = 测已安装版本）、
 `EVAL_FLAKE_RETRIES`（默认 2）、`EVAL_TIMEOUT`。
+
+> ⚠️ 传给 claude 的额外参数要设在 `EVAL_CLAUDE_FLAGS`，不是 `CLAUDE_FLAGS`——后者会被 runner 覆盖。
+> 设了 `CLAUDE_FLAGS` 而没设 `EVAL_CLAUDE_FLAGS` 时，runner 会告警。
 
 **退出码**：`0` 全通过 · `1` 有契约破坏 · `2` 有场景无结论（全是环境抖动）· `3` 用法/依赖错误。
 
@@ -130,9 +151,9 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
 | 跑法 | 模型 turn |
 |---|---|
 | 单场景 1 轮 | 1 |
-| 全部场景（**5 个**）1 轮 | 5 |
-| 全部场景 `--repeat 3` | 15 |
-| 发版前两平台 × `--repeat 3` | 30 |
+| 全部场景（**6 个**）1 轮 | 6 |
+| 全部场景 `--repeat 3` | 18 |
+| 发版前两平台 × `--repeat 3` | 36 |
 
 量级仍可接受，但**每加一个 A-live 场景，发版前的固定开销就 +6 turn**（两平台 × 3 轮）。
 加场景前先确认它非 A-live 不可（回到上面的分档判据）。
@@ -153,11 +174,16 @@ agent CLI **会读 stdin**——实测 `codex exec` 把管道里的内容当额�
 
 > 加新代码进循环体时留意：任何会读 stdin 的命令都能复现这类断流。
 
-## 两条已知限制（诚实边界）
+## 已知限制（诚实边界）
 
-1. **验的是"已安装"的 pdlc，不是工作区版本**。runner 靠平台自己的 skill 加载机制（Claude Code 插件 /
-   `~/.codex/skills/`），拿不到未安装的工作区改动。**发版前请先把待发布版本装上再跑**，
-   否则你验的是上一个版本。
+1. **claude 臂默认验工作树，codex 臂验的是已安装投影**。claude 臂通过 `--plugin-dir <仓库根>`
+   直接加载工作树里的插件，所以发版前跑，验的就是待发布的那份；汇总会写明「被测插件：工作树」。
+   codex 臂靠 `~/.codex/skills/` 加载，拿不到未安装的改动——**发版前先
+   `install.sh --target codex` 装上待发布版本再跑**，否则验的是上一个版本；汇总会写明「被测技能：已安装的 Codex 投影」。
+
+   > 此前两条臂都是验已安装版本，而汇总只盖一个「仓库版本：<HEAD>」。一次发版前核验就栽在这里：
+   > 汇总写着当前 commit，实际加载的却是上一个已发布版本，新规则的场景于是「失败」了——
+   > 差点据此去改一个本来已经修好的问题。所以现在汇总必须写明被测的是哪一份。
 2. **Codex 那条臂是凭证门控的**：`codex exec` 需要 provider key，只有持凭证的维护者能跑。
    README 里的"行为契约已验"若含 Codex 栏，必须标注是谁、于何时/哪个 commit 跑的——
    它**不等于**"任何人可复现"。

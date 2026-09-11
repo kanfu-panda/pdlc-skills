@@ -15,34 +15,40 @@ terminal_state: null
 
 读取 `docs/.pdlc-state/` 目录下所有状态机文件，输出项目当前的 PDLC 进度、阶段分布、待办建议。
 
+<!-- @include templates/prompts/state-read.md -->
+
 ## 执行流程
 
 ### 1. 扫描状态机
 
-1. 列出 `docs/.pdlc-state/*.json` 所有文件
+1. 列出 `docs/.pdlc-state/*.json` 所有文件（跳过 `_` 前缀的索引文件与 `statusline.json`）
 2. 若无文件 → 输出：`📭 尚无 PDLC 追踪记录。运行 /pdlc-feature 或 /pdlc-fix 开始第一个功能。`
-3. 否则进入下一步
+3. **跑契约体检**（见上方「读状态机之前：先做契约体检」）。有偏差或无法体检时，体检块放在总览**最前面**
+4. 进入下一步
 
 ### 2. 解析与分类
 
 按 `current_stage` 字段分组：
 
-- 🚧 进行中：`current_stage` 不在 `[feature_done, fix_done, null]`
-- ✅ 已完成：`current_stage` 在 `[feature_done, fix_done]`
-- ❓ 异常：JSON 无法解析或字段缺失
+- ✅ 已完成：`current_stage` 以 `_done` 结尾——**判终态的唯一依据**，不看 `terminal_state`、不用封闭列表（见上方「判终态的唯一依据」）
+- 🚧 进行中：`current_stage` 有值且不以 `_done` 结尾
+- ❓ 异常：JSON 无法解析、缺 `current_stage`，或体检对 `current_stage` 报 `current_stage-unknown` / `field-type-invalid`
 
 ### 3. 输出概览
 
 ```
+⚠️ 输入契约体检：<N> 份状态文件，<M> 处偏差——以下结论建立在这些处理之上
+  · …（仅在体检有偏差或无法体检时出现，且必须放在最前面）
+
 📊 PDLC 状态总览（共 <N> 个功能）
 
 🚧 进行中（<M> 个）
   - F20260419-090000 user-auth      当前：design       下一步：/pdlc-tdd
   - F20260419-100000 pwd-reset      当前：impl         下一步：/pdlc-review
-  - B20260418-090000 login-crash    当前：fix_done     下一步：（完成）
 
 ✅ 已完成（<K> 个）
   - F20260415-110000 feature-xyz    完成于 2026-04-16
+  - B20260418-090000 login-crash    完成于 2026-04-18（fix_done）
 
 ⚠️ 待办建议
   - F20260419-090000 停留在 design 超过 2 天，建议推进 /pdlc-tdd

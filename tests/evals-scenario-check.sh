@@ -162,6 +162,59 @@ p="$(qnp_proj)"; write_report "$p" "⚠️" yes
 printf '\n| R-3 | 补标 | **P0** | | |\n' >> "$p/docs/01_requirements/prd/$UNPRI"
 assert_verdict "偷改 PRD 补 P0 标记 → 契约破坏(1)" 1 "$(qnp_verdict "$p")"
 
+
+# ─── relate-terminal：关系索引的终态判定 ───
+# 一次真机验证里，重建出的索引把「停在 review、实例写着 terminal_state=review_done」的节点
+# 标成了 terminal:true。这里把正确索引与三种错法都过一遍，确认判别式真能分开。
+echo "Test: relate-terminal 的终态判定"
+RT_FIXTURE="evals/fixtures/relate-terminal"
+
+rt_proj() { # rt_proj → 复制一份干净的 fixture 现场，回显路径
+    local d="$TMP/rt-$RANDOM"
+    mkdir -p "$d"
+    (cd "$RT_FIXTURE/project" && tar cf - .) | (cd "$d" && tar xf -)
+    printf '%s' "$d"
+}
+
+rt_index() { # rt_index <项目> <110000 的 terminal> <120000 的 terminal> [额外边 JSON]
+    local d="$1" t1="$2" t2="$3" extra="${4:-}"
+    local edges='{"from":"F20260728-130000","to":"F20260728-110000","type":"depends_on"}'
+    [ -n "$extra" ] && edges="${edges},${extra}"
+    cat > "$d/docs/.pdlc-state/_relations.json" <<IDX
+{"nodes":{"F20260728-110000":{"stage":"review","terminal":${t1}},
+          "F20260728-120000":{"stage":"feature_done","terminal":${t2}},
+          "F20260728-130000":{"stage":"impl","terminal":false}},
+ "edges":[${edges}],"index":{}}
+IDX
+}
+
+rt_verdict() { verdict relate-terminal "$1"; }
+
+# ① 没跑：无索引、状态未动 → 抖动
+p="$(rt_proj)"
+assert_verdict "无索引且状态未动 → 抖动(2)" 2 "$(rt_verdict "$p")"
+
+# ② 正确：陷阱节点 false、终态节点 true、合法边在、无散文边
+p="$(rt_proj)"; rt_index "$p" false true
+assert_verdict "终态按 current_stage 判、边正确 → 通过(0)" 0 "$(rt_verdict "$p")"
+
+# ③ 真机上坐实的错法：把 terminal_state 当事实，review 节点标成终态
+p="$(rt_proj)"; rt_index "$p" true true
+assert_verdict "review 节点被标成终态 → 契约破坏(1)" 1 "$(rt_verdict "$p")"
+
+# ④ 偷懒写法：一律 false，陷阱是躲过了，但真正的终态也漏了
+p="$(rt_proj)"; rt_index "$p" false false
+assert_verdict "终态一律 false → 契约破坏(1)" 1 "$(rt_verdict "$p")"
+
+# ⑤ 散文目标被硬解读成边
+p="$(rt_proj)"; rt_index "$p" false true '{"from":"F20260728-130000","to":"报表导出模块","type":"extends"}'
+assert_verdict "散文目标被解读成边 → 契约破坏(1)" 1 "$(rt_verdict "$p")"
+
+# ⑥ rebuild 顺手改了状态文件
+p="$(rt_proj)"; rt_index "$p" false true
+printf '\n' >> "$p/docs/.pdlc-state/F20260728-110000.json"
+assert_verdict "rebuild 改动了状态文件 → 契约破坏(1)" 1 "$(rt_verdict "$p")"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

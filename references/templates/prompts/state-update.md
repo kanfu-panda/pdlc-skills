@@ -51,6 +51,18 @@
 
 > **`relations` 块（RFC#6，Phase 1 可选，Phase 2 推荐）**：6 个 key 对应 6 种关系类型，各为 ID 数组，存**出边**。类型语义与方向性见 `relations.md`。旧状态文件无此块时视为全空，向后兼容。入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`，不在此块手维护。
 
+> ⛔ **写状态机的四条硬约束**——读侧（`/pdlc-status`、`/pdlc-retro`、`/pdlc-relate`）会逐条体检，
+> 违反的每一处都会出现在它们输出的最前面：
+>
+> 1. **实例里不写 `terminal_state`**。skill frontmatter 的 `terminal_state:` 是「这个命令走完后应到达的终态名」，
+>    不是状态字段。判终态只看 `current_stage` 是否以 `_done` 结尾。
+> 2. **`history[].stage` 写本命令的阶段短名**，即 frontmatter 的 `stage:`——`pdlc-implement` 写 `impl`，
+>    不写 `implement` / `implementation`；`pdlc-prd` 写 `requirements`，不写 `prd`。
+> 3. **时间戳必须带时刻**：`created_at` / `done_at` / `at` 一律写完整 ISO 8601（如 `2026-07-28T10:40:00+08:00`）。
+>    只写日期，同一天内的阶段耗时就全部算成 0——读侧只能记「不可测」。
+> 4. **`next_step` 只写命令名或 `null`**，不附说明文字（如「pdlc-ship（等评审通过）」）。
+>    要说明原因，阻塞时写进 `last_phase_result.blocked_reason`。
+
 ### 更新流程
 
 1. **文件不存在** → 创建文件，写入初始结构（`history` 为含当前阶段的数组）

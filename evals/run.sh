@@ -27,7 +27,17 @@ FLAKE_RETRIES="${EVAL_FLAKE_RETRIES:-2}"
 # 默认放行 pdlc-implement 在 frontmatter 里声明的那组工具。
 # 模型必须真能跑 Bash，否则跑不了 unit/lint，honest-checks 判别式无从产生。
 DEFAULT_CLAUDE_FLAGS="--allowedTools Bash Read Write Edit Glob Grep"
+# 常见误用：把额外参数设在 CLAUDE_FLAGS 上——下一行会把它覆盖掉，设了等于没设，却照样跑出结论。
+if [ -n "${CLAUDE_FLAGS:-}" ] && [ -z "${EVAL_CLAUDE_FLAGS:-}" ]; then
+  printf '⚠️  检测到 CLAUDE_FLAGS=%s，但本脚本读的是 EVAL_CLAUDE_FLAGS——CLAUDE_FLAGS 不会生效\n' "${CLAUDE_FLAGS}" >&2
+fi
 CLAUDE_FLAGS="${EVAL_CLAUDE_FLAGS:-${DEFAULT_CLAUDE_FLAGS}}"
+
+# claude 臂加载哪份插件：默认本仓库根（--plugin-dir），发版前验的就是待发布的那份。
+# 不加的话 /pdlc-* 解析到的是已安装的插件——汇总照样盖着当前 commit，验的却是上一个版本。
+# 显式置空（EVAL_PLUGIN_DIR=）= 不加 --plugin-dir，验已安装版本（发版后回头验线上版本时用）。
+REPO_ROOT="$(cd "${EVALS_DIR}/.." && pwd)"
+PLUGIN_DIR="${EVAL_PLUGIN_DIR-${REPO_ROOT}}"
 
 die() { printf '❌ %s\n' "$1" >&2; exit "${2:-3}"; }
 
@@ -198,9 +208,13 @@ invoke_agent() { # <项目目录> <阶段> <参数> <输出文件>
   # 当成额外输入吃掉）。不隔离的话，agent 会顺走调用方的 stdin —— 既污染它自己的
   # 输入，又让外层 while-read 循环提前断流。
   if [ "${PLATFORM}" = "claude" ]; then
+    # --plugin-dir 单独成数组、保持带引号（路径可能含空格，不能混进要词分割的 CLAUDE_FLAGS）。
+    # 空数组用 ${a[@]+"${a[@]}"} 展开：bash 3.2 在 set -u 下直接展开空数组会报 unbound variable。
+    local plugin_args=()
+    if [ -n "${PLUGIN_DIR}" ]; then plugin_args=(--plugin-dir "${PLUGIN_DIR}"); fi
     # shellcheck disable=SC2086  # CLAUDE_FLAGS 需要词分割，这是刻意的
     ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
-        claude -p "/pdlc-${stage} ${args}" ${CLAUDE_FLAGS} ) >"${out}" 2>&1 </dev/null
+        claude -p "/pdlc-${stage} ${args}" ${CLAUDE_FLAGS} ${plugin_args[@]+"${plugin_args[@]}"} ) >"${out}" 2>&1 </dev/null
   else
     run_with_timeout "${TIMEOUT_SECS}" \
       codex exec -C "${proj}" -s workspace-write --skip-git-repo-check \
@@ -290,6 +304,16 @@ printf '\n══════ 汇总（platform=%s repeat=%s）══════
 printf '%s' "${SUMMARY}"
 printf '生成时间：%s · 仓库版本：%s\n' \
   "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$(git -C "${EVALS_DIR}" rev-parse --short HEAD 2>/dev/null || printf '未知')"
+# 仓库版本只说明「runner 在哪个 commit 上」，不说明「被测的是哪份代码」——两者必须分开写
+if [ "${PLATFORM}" = "claude" ]; then
+  if [ -n "${PLUGIN_DIR}" ]; then
+    printf '被测插件：工作树 %s（--plugin-dir）\n' "${PLUGIN_DIR}"
+  else
+    printf '被测插件：已安装版本（未加 --plugin-dir；上面的仓库版本不代表被测代码）\n'
+  fi
+else
+  printf '被测技能：已安装的 Codex 投影（~/.codex，不是工作树；发版前先 install.sh --target codex）\n'
+fi
 
 # 跑够没跑够，必须自己说出来。少跑而汇总照常收尾 = 把「没验」冒充成「验过」，
 # 与 §「无法判定不得记为通过」是同一条纪律。

@@ -45,6 +45,7 @@ Skills inline reusable instruction blocks via `<!-- @include templates/prompts/X
 - `iron-law.md` — the six non-negotiable gates (the sixth, *state-must-advance*, added in v1.2).
 - `pdlc-trace.md` — the document traceability header.
 - `state-update.md` — the per-feature state machine schema + update flow (incl. the v1.2 `last_phase_result`).
+- `state-read.md` — the reader-side contract for `pdlc-status` / `pdlc-retro` / `pdlc-relate`: run the deterministic contract check (`bin/pdlc-state-lint.sh`, read-only, three-state exit code) before computing anything, surface every deviation at the **top** of the output, and judge "terminal" solely by `current_stage` ending in `_done` — never by `terminal_state`, which is a skill-frontmatter *target*, not a state fact.
 - `self-audit.md` / `loop-prevention.md` / `handoff.md` — the four-phase skeleton.
 - `feature-id.md` / `defect-id.md` — ID allocation.
 - `output-language.md` — output language rules.
@@ -53,7 +54,7 @@ Skills inline reusable instruction blocks via `<!-- @include templates/prompts/X
 - `test-location.md` — layout-agnostic test discovery: defer to the project's own `test-commands.yml`, then conventions, then filename scan. The red-light guard must distinguish *no tests* from *tests not where I expected* — the latter would wrongly block ordinary layouts.
 - `noninteractive.md` — the v1.2 `--autonomous` contract (auto-advance procedural confirmations, block on judgement calls, destructive actions always human).
 
-(13 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
+(14 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
 
 ## 4. Target-project contract
 
@@ -106,6 +107,7 @@ Design: `docs/decisions/0001-loop-engineering-integration.md`.
 An optional, **off-by-default** one-line PDLC status for the Claude Code statusline:
 
 - `bin/pdlc-statusline.sh` — self-contained shell segment (not a Claude skill, since the statusline runs a shell command). Reads the session JSON from stdin, scans `<cwd>/docs/.pdlc-state/`, prints one line (feature · progress bar · next step · run icon · checks · elapsed; `blocked` rendered most-prominent). Empty outside PDLC projects; degrades silently without `jq`; bash 3.2 compatible.
+- `bin/pdlc-state-lint.sh` — deterministic, read-only contract check for `docs/.pdlc-state/*.json`, run by the three state readers before they compute anything. Prints one `file<TAB>code<TAB>detail` line per deviation (17 codes, documented in `state-read.md`); exit `0` clean / `1` deviations / `2` cannot check. Its embedded stage-name and code lists are asserted against `state-read.md` and the skills by `tests/frontmatter-check.sh`; bash 3.2 compatible.
 - `pdlc-settings` (Layer 3, interactive) wires it up: a stable-path symlink `~/.claude/pdlc-statusline` (upgrade-safe) **appended** idempotently to the single `statusLine.command` (never overwrites an existing HUD). Editing global `~/.claude/settings.json` is backup+diff+confirm-gated and degrades gracefully to "here's the line, paste it" when the security layer blocks the write.
 
 Design: `docs/decisions/0002-statusline-pdlc-status.md`.
@@ -119,6 +121,7 @@ Two tiers, both run locally (no CI by default).
 - `tests/frontmatter-check.sh` — required frontmatter fields, layer values, `@include` resolvability, `name == dir`, `next_step` resolves, manifest version sync.
 - `tests/install-smoke.sh` — skill / template / fragment counts, manifest fields, key invariants.
 - `tests/statusline-check.sh` — `pdlc-statusline.sh` render scenarios (interactive / autonomous / blocked / terminal / multi-feature pick / non-PDLC empty).
+- `tests/state-lint-check.sh` — `pdlc-state-lint.sh` findings per deviation class, no false positives on conforming files, index/config files skipped, three-state exit codes, and a byte-level read-only check.
 - `tests/adapter-codex-check.sh` / `tests/adapter-codex-loop-run-check.sh` — Codex projection layout and loop-driver guardrails (the latter already stub-driven).
 
 **Behavioural (v1.5.3, `evals/`) — does a contract actually hold when a skill really runs:**

@@ -23,7 +23,8 @@ pdlc-skills/
 │   ├── pdlc-tdd/SKILL.md           → /pdlc-tdd
 │   └── ... (38 dirs total)
 ├── bin/
-│   └── pdlc-statusline.sh          ← optional statusline segment (scanned by /pdlc-settings)
+│   ├── pdlc-statusline.sh          ← optional statusline segment (scanned by /pdlc-settings)
+│   └── pdlc-state-lint.sh          ← read-side contract check run by /pdlc-status · /pdlc-retro · /pdlc-relate
 ├── references/
 │   └── templates/
 │       ├── *-template.md           ← user-facing document templates
@@ -31,14 +32,15 @@ pdlc-skills/
 ├── install.sh                      ← curl-based one-line installer wrapping `claude plugin install`
 ├── docs/
 │   └── usage-guide.md              ← single user manual (architecture + reference + scenarios)
-├── tests/                          ← 7 scripts, all of them part of the local gate
+├── tests/                          ← 8 scripts, all of them part of the local gate
 │   ├── frontmatter-check.sh        ← validates skills/<name>/SKILL.md frontmatter
 │   ├── install-smoke.sh            ← end-to-end install layout test
 │   ├── statusline-check.sh         ← pdlc-statusline.sh scenario regression
 │   ├── adapter-codex-check.sh      ← adapters/build_codex.py projection output
 │   ├── adapter-codex-loop-run-check.sh ← Codex loop-run mapping + guardrails
 │   ├── evals-runner-check.sh       ← evals/run.sh driver (stubbed, no model spend)
-│   └── evals-scenario-check.sh     ← assert_scenario verdicts (stubbed, no model spend)
+│   ├── evals-scenario-check.sh     ← assert_scenario verdicts (stubbed, no model spend)
+│   └── state-lint-check.sh         ← bin/pdlc-state-lint.sh findings + read-only check
 └── VERSION                         ← canonical version (mirrored in plugin.json)
 ```
 
@@ -82,6 +84,7 @@ bash tests/adapter-codex-check.sh            # adapters/build_codex.py projectio
 bash tests/adapter-codex-loop-run-check.sh   # Codex loop-run mapping + guardrails
 bash tests/evals-runner-check.sh             # evals/run.sh driver (stubbed, no model spend)
 bash tests/evals-scenario-check.sh           # assert_scenario verdicts (stubbed, no model spend)
+bash tests/state-lint-check.sh               # bin/pdlc-state-lint.sh contract-check findings
 
 # or the lot, stopping at the first red script
 for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done
@@ -90,13 +93,14 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All seven count** — 337 assertions at the time of writing; run them for the current number rather
+**All eight count** — 421 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
 `statusline-check.sh` additionally needs a run under macOS's stock `/bin/bash` (3.2.57) — the
 statusline script is deliberately bash-3.2 compatible (no `mapfile`, no bash-4 syntax), and a
-Homebrew bash 5 on `PATH` will happily pass code that breaks on a stock Mac.
+Homebrew bash 5 on `PATH` will happily pass code that breaks on a stock Mac. `state-lint-check.sh`
+already invokes `bin/pdlc-state-lint.sh` through `/bin/bash` whenever it exists, for the same reason.
 
 Enable the pre-commit secret scan once per clone (`.githooks/pre-commit`, uses `gitleaks` when present and falls back to a pattern scan with a loud warning when it isn't — "can't scan" must never read as "clean"):
 
@@ -175,7 +179,7 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 
 - Edit sources under `skills/pdlc-<name>/SKILL.md` (sub-skill bodies), `references/templates/prompts/*.md` (shared fragments), or `references/templates/*-template.md` (user document templates). Don't edit installed copies in `~/.claude/plugins/cache/`.
 - New required frontmatter fields → also update `required_fields` in `tests/frontmatter-check.sh`.
-- Run all seven test scripts and shellcheck before committing (see "Common commands").
+- Run all eight test scripts and shellcheck before committing (see "Common commands").
 - New shared prompt fragments → put under `references/templates/prompts/` and reference via `<!-- @include templates/prompts/<name>.md -->` (path is relative to `references/`).
 - New sub-skill: create `skills/pdlc-<name>/SKILL.md` with the standard frontmatter (`name: pdlc-<name>`, layer/stage, produces/requires, etc.). The `pdlc-` prefix in directory and `name:` is mandatory.
 
