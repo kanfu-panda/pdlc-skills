@@ -5,19 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.6.4] - 2026-09-11
+## [1.6.4] - 2026-09-12
 
-一次**读侧可信度**的修复版：读状态机的三条命令在输入不合契约时，不再边猜边算、把猜测当结论；发布闸门与行为 eval 也各补了一处「以为验过、其实没验」的洞。
+一次**读侧可信度**的修复版：读状态机的三条命令在输入不合契约时，不再边猜边算、把猜测当结论；发布闸门与行为 eval 也各补了一处「以为验过、其实没验」的洞；发版前的行为 eval 还发现 `/pdlc-test-setup --refresh` 会自动替换失效命令，一并修掉。
 
 > ⚠️ **行为变更（请留意）**：
 > - **`/pdlc-ship`**：质量报告生成之后，若 PRD 或质量配置（`quality-targets.yml` / `e2e-flow-map.yml` / `test-commands.yml`）有改动，从「建议重跑」变为**硬闸**——需重跑 `/pdlc-quality`，或显式 override 并写明理由。只改了其它代码时仍是建议。
 > - **`/pdlc-relate`**：`query` / `impact` / `orphans` / `validate` 不再写任何文件（此前 `impact` 会在索引缺失时自行 rebuild 并落盘）；`set` 遇到非六键对象形态的 `relations` 会停下、不写。
 > - **`/pdlc-status` / `/pdlc-retro` / `/pdlc-relate`**：状态文件不合契约时，输出最前面会先出现一块「⚠️ 输入契约体检」，写明每一处偏差是怎么处理的。状态文件合契约时不出现。
+> - **`/pdlc-test-setup --refresh`**：已存在但跑不通的检查命令，不再被自动替换成另一条命令（哪怕新命令能跑），原值保持不动，替换方案写进报告等人确认。
 
 没有新增 skill（仍 38 个），产物路径与目录契约零改动，升级不需要迁移。
 
 ### Fixed
 
+- **`/pdlc-test-setup --refresh` 会把失效的检查命令自动「替换」掉**：总则里必须人工确认的动作只列了「留空 / 删除 / 降阈值」，没列「替换」。发版前的行为 eval 坐实：模型把失效的 lint 命令自动换成了另一条能跑的命令，理由是「变严」——可原命令的规则已不可考，新旧是否等价无从证明，方向不可判。现在「替换」明确列入人工确认，`--autonomous` 下原值同样不动，替换方案只写进报告；自检清单与防回退断言各补一条。相关文字在本版之前就是如此，不是本版引入；修后该场景连跑 3 轮均通过，逐轮核对 `lint` 原值未动。
 - **读状态机的命令把「目标」当成了「已完成」**：`/pdlc-relate rebuild` 与 `/pdlc-retro` 在同一批数据上各自拿状态文件里的 `terminal_state` 判终态——一份停在 `review`、只写着目标 `review_done` 的状态文件被标成了已抵达终态。`terminal_state` 只是 skill frontmatter 里「走完后应到达的终态名」，状态机实例根本没有这个字段；判终态的唯一依据是 `current_stage` 以 `_done` 结尾。现在三个读命令与 `state-update.md` 都写死了这一条；`/pdlc-status`、`/pdlc-retro` 原先的封闭列表 `[feature_done, fix_done]` 也改为后缀规则——封闭列表会把合法终态漏判成「进行中」，正是读侧转去找 `terminal_state` 的诱因。
 - **`/pdlc-relate` 的只读子命令会写文件**：`impact` 在 `_relations.json` 缺失时自行 rebuild，落盘了 `_relations.json` 与 `_graph.md`。现在子命令分写入类（`set` / `rebuild`）与只读类（`query` / `impact` / `orphans` / `validate`），只读类遇到索引缺失或过期时当场现算、不落盘；handoff 模板也按类别拆开（原模板对所有子命令都输出「📦 已更新 …」）。`impact` 的 🔴 / 🟡 明确只算 `extends` / `depends_on`，`relates_to` 这类弱关系不再被升格成直接影响；`rebuild` 只收六键对象形态、目标为合法 feature ID 的关系，不再为悬空目标造占位节点。
 - **`/pdlc-retro` 在字段不全时照样出数**：`done_at` 只有日期时，同一天内的阶段耗时全部算成 0.0h，会被读成「快到不耗时」。现在任一端缺时刻即记「不可测」、不输出 0.0h；某阶段没有自检记录写「无数据」、不写 0%；缺 `created_at` 改用 `history` 末条 `done_at` 过滤时间窗，并作为口径替换写进体检块。

@@ -151,6 +151,10 @@ assert_contains "state-read looks up the lint script from the skill's own dir fi
   "1. **本 skill 所在目录的上两级**" "$(cat references/templates/prompts/state-read.md)"
 assert_contains "relate set refuses to overwrite non-object relations" \
   "**停下，不写**" "$(cat skills/pdlc-relate/SKILL.md)"
+# 行为 eval 坐实：--refresh 把失效的 lint 命令自动「替换」成另一条能跑的命令，理由是「变严」——
+# 但新旧命令是否等价不可证，方向不可判。替换必须列在人工确认清单里，防退回。
+assert_contains "test-setup --refresh requires confirmation for replacing a command" \
+  "留空 / 删除 / 降阈值 / **替换**一律走人工确认" "$(cat skills/pdlc-test-setup/SKILL.md)"
 
 # ─── multi-platform adapters (v1.5) invariants ───
 assert_exists "docs/pdlc-methodology.md (Tier 1 core) exists" "docs/pdlc-methodology.md"
