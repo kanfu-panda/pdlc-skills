@@ -286,6 +286,15 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
 - `/pdlc-status --stale 3` → 列出停 3 天以上的功能
 - `/pdlc-retro --range 30d` → 月度复盘趋势报告
 
+> **读状态机之前先体检**：`/pdlc-status`、`/pdlc-retro`、`/pdlc-relate` 会先对 `docs/.pdlc-state/`
+> 跑一次契约体检（`bin/pdlc-state-lint.sh`，只读）。状态文件若不是 `/pdlc-*` 命令写出来的——缺 `created_at`、
+> 阶段名写成 `prd` / `implementation`、`relations` 不是六键对象、时间戳只有日期、实例里多出 `terminal_state`
+> 等——偏差会汇总成一个「⚠️ 输入契约体检」块，**放在结论最前面**，逐类写明是怎么处理的
+> （忽略 / 归一化 / 记为不可测）。判终态只看 `current_stage` 是否以 `_done` 结尾。
+>
+> `/pdlc-relate` 的 `query` / `impact` / `orphans` / `validate` 是只读的：索引 `_relations.json`
+> 缺失或过期时当场现算、不落盘；要持久化请显式跑 `/pdlc-relate rebuild`。
+
 ### 提交 git
 
 **建议提交**。这是项目交付审计记录，别加 `.gitignore`。

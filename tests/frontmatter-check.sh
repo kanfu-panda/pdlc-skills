@@ -220,6 +220,85 @@ else
     echo "  ✗ 这些 next_step 在映射表里没有行（表已腐烂）: $missing_rows"; fail=$((fail + 1))
 fi
 
+
+# ─── 检查 8：阶段短名全集——state-read.md 的表、写状态机的各 skill、体检脚本三方一致 ───
+# 读侧（status / retro / relate）要判断 history[].stage 合不合法，得有一份合法值清单；
+# 体检脚本 bin/pdlc-state-lint.sh 里也嵌着同一份（它在目标项目里跑，读不到本仓库的 skills/）。
+# 两份清单都得和「谁真的会写状态机」对得上：否则新增一个阶段时，读侧会把合法写法报成偏差，
+# 或者反过来放过别名。三方用断言钉在一起。
+echo ""
+echo "Check: 阶段短名全集（history[].stage 的合法值）"
+READ_FRAG="references/templates/prompts/state-read.md"
+LINT_SH="bin/pdlc-state-lint.sh"
+
+stage_rows() { # → 每行「<短名> <命令名> <逗号分隔别名|->」
+    awk '/<!-- stage-names:start -->/{f=1;next} /<!-- stage-names:end -->/{f=0} f' "$READ_FRAG" 2>/dev/null \
+      | awk -F'|' 'NF>=4 { s=$2; c=$3; a=$4; gsub(/[ `]/,"",s); gsub(/[ `]/,"",c); gsub(/[ `]/,"",a);
+                           if (c ~ /^pdlc-/) print s, c, (a=="" ? "-" : a) }' || true
+}
+rows="$(stage_rows)"
+
+if [[ -z "$rows" ]]; then
+    echo "  ✗ 未在 $READ_FRAG 找到 stage-names 表（缺 <!-- stage-names:start --> 锚点？）"
+    fail=$((fail + 1))
+fi
+
+# ① 每个写状态机的 skill 都在表里，且短名等于它 frontmatter 的 stage:
+writers="$(grep -l '@include templates/prompts/state-update.md' skills/*/SKILL.md || true)"
+for f in $writers; do
+    sk="$(basename "$(dirname "$f")")"
+    st="$(awk -F': *' '/^stage:/{print $2; exit}' "$f" | tr -d '\r')"
+    got="$(awk -v c="$sk" '$2==c{print $1}' <<< "$rows")"
+    if [[ "$got" == "$st" ]]; then
+        echo "  ✓ ${sk} 写 stage=${st}，表里有对应行"; pass=$((pass + 1))
+    else
+        echo "  ✗ ${sk} 写 stage=${st}，表里是「${got:-缺行}」"; fail=$((fail + 1))
+    fi
+done
+
+# ② 反向：表里每一行的命令都真的会写状态机（防止表里挂着一个不写状态机的「阶段」）
+while read -r _s c _a; do
+    [[ -z "${c:-}" ]] && continue
+    if ! grep -q '@include templates/prompts/state-update.md' "skills/$c/SKILL.md" 2>/dev/null; then
+        echo "  ✗ 表里的 ${c} 并不写状态机（未 @include state-update.md）"; fail=$((fail + 1))
+    fi
+done <<< "$rows"
+
+# ③ 体检脚本内嵌的合法集合与别名，必须与表一致
+table_stages="$(awk '{print $1}' <<< "$rows" | sort -u | tr '\n' ' ')"
+lint_stages="$( (sed -n 's/^LEGAL_STAGES="\(.*\)".*/\1/p' "$LINT_SH" 2>/dev/null || true) | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')"
+if [[ -n "${lint_stages// /}" && "$table_stages" == "$lint_stages" ]]; then
+    echo "  ✓ 体检脚本的 LEGAL_STAGES 与表一致"; pass=$((pass + 1))
+else
+    echo "  ✗ 体检脚本的 LEGAL_STAGES（${lint_stages:-缺}）与表（${table_stages}）不一致"; fail=$((fail + 1))
+fi
+table_alias="$(awk '$3!="-"{n=split($3,a,","); for(i=1;i<=n;i++) print a[i]":"$1}' <<< "$rows" | sort -u | tr '\n' ' ')"
+lint_alias="$( (sed -n 's/^STAGE_ALIASES="\(.*\)".*/\1/p' "$LINT_SH" 2>/dev/null || true) | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')"
+if [[ -n "${lint_alias// /}" && "$table_alias" == "$lint_alias" ]]; then
+    echo "  ✓ 体检脚本的 STAGE_ALIASES 与表一致"; pass=$((pass + 1))
+else
+    echo "  ✗ 体检脚本的 STAGE_ALIASES（${lint_alias:-缺}）与表（${table_alias}）不一致"; fail=$((fail + 1))
+fi
+
+# ④ 偏差代码双向对应：脚本声明能发的，片段里都有说明；片段里写了的，脚本也都真能发
+lint_codes="$( (sed -n 's/^FINDING_CODES="\(.*\)".*/\1/p' "$LINT_SH" 2>/dev/null || true) | tr ' ' '\n' | sed '/^$/d' | sort -u)"
+doc_codes="$(awk '/<!-- finding-codes:start -->/{f=1;next} /<!-- finding-codes:end -->/{f=0} f' "$READ_FRAG" 2>/dev/null \
+    | awk -F'|' 'NF>=3 { c=$2; gsub(/[ `]/,"",c); if (c ~ /^[a-z][a-z_-]*$/) print c }' | sort -u || true)"
+if [[ -n "$lint_codes" && "$lint_codes" == "$doc_codes" ]]; then
+    echo "  ✓ 偏差代码：脚本声明与片段说明逐一对应（$(wc -l <<< "$lint_codes" | tr -d ' ') 个）"; pass=$((pass + 1))
+else
+    echo "  ✗ 偏差代码不一致——脚本：$(tr '\n' ' ' <<< "$lint_codes")／片段：$(tr '\n' ' ' <<< "$doc_codes")"; fail=$((fail + 1))
+fi
+
+# ⑤ 读状态机的三个命令都必须带上这份体检契约
+for sk in pdlc-status pdlc-retro pdlc-relate; do
+    if grep -q '@include templates/prompts/state-read.md' "skills/$sk/SKILL.md"; then
+        echo "  ✓ ${sk} @include state-read.md"; pass=$((pass + 1))
+    else
+        echo "  ✗ ${sk} 未 @include state-read.md（读状态机却不做契约体检）"; fail=$((fail + 1))
+    fi
+done
+
 echo ""
 echo "Result: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

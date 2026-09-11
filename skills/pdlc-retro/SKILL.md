@@ -19,6 +19,8 @@ terminal_state: retro_done
 
 <!-- @include templates/prompts/iron-law.md -->
 
+<!-- @include templates/prompts/state-read.md -->
+
 ## 段一：聚合统计
 
 ### 1.1 参数解析
@@ -28,25 +30,27 @@ terminal_state: retro_done
 
 ### 1.2 读取与过滤
 
-1. 列出 `docs/.pdlc-state/*.json`
-2. 按 `created_at` 字段过滤到时间窗口内
-3. 解析每份文件的 `history` 数组
+1. 列出 `docs/.pdlc-state/*.json`（跳过 `_` 前缀的索引文件与 `statusline.json`）
+2. **跑契约体检**（见上方「读状态机之前：先做契约体检」），结果写进报告开头的「输入契约体检」节
+3. 按 `created_at` 过滤到时间窗口内。缺 `created_at` 的文件改用 `history` 末条 `done_at`——**这是口径替换，必须计入体检块**，不得静默
+4. 解析每份文件的 `history` 数组
 
 ### 1.3 计算指标
 
 对时间窗口内的所有功能聚合：
 
 **交付量**：
-- 完成功能数（`current_stage` 在 `[feature_done, fix_done]`）
-- 修复缺陷数（`feature_id` 以 `B` 开头）
+- 完成功能数：`current_stage` 以 `_done` 结尾——**判终态的唯一依据**，不看 `terminal_state`（它是目标不是事实）、不用封闭列表
+- 修复缺陷数：`feature_id` 以 `B` 开头（契约口径）。体检报 `id-prefix-mismatch` 的文件在体检块点名，**不据此改口径**——两个口径打架时，报出来比悄悄挑一个更有用
 
 **质量趋势**：
-- 每阶段自检通过率（`passed / (passed + failed + manual)`）
+- 每阶段自检通过率（`passed / (passed + failed + manual)`）；某阶段一条自检记录都没有 → 写「无数据」，不写 0%
 - 各阶段自检平均 `failed`、`manual` 数
+- 行按阶段短名：`stage-alias` 按 `别名→短名` 归一化后计数（归一化了哪些写进体检块）；`stage-unknown` 单独成行，不并入任何阶段
 
 **阶段耗时**：
-- 相邻 history 条目的 `done_at` 差值作为阶段耗时
-- 输出各阶段中位数
+- 相邻 history 条目的 `done_at` 差值作为阶段耗时，输出各阶段中位数
+- 任一端时间戳没有时刻（体检报 `timestamp-no-time`）→ 该间隔**不可测**，不计入中位数；全部不可测 → 整节写「不可测：<原因>」。**不得输出 0.0h**——它会被读成「快到不耗时」，实际是精度不够
 
 **卡点案例**：
 - 自检 `failed > 2` 或 `manual > 1` 的阶段
@@ -60,6 +64,8 @@ terminal_state: retro_done
 - [ ] 时间窗口正确（参数解析无误）
 - [ ] 数值可加总（交付量、质量趋势）
 - [ ] 列出了至少 1 个卡点案例或明确说明"无卡点"
+- [ ] 体检有偏差时，报告**开头**有「输入契约体检」节，且后文计算没有再用已声明忽略的字段（如 `terminal_state`）
+- [ ] 阶段耗时没有把「不可测」写成 0.0h
 
 <!-- @include templates/prompts/loop-prevention.md -->
 
@@ -73,6 +79,9 @@ terminal_state: retro_done
 
 > 时间窗口：<起> ~ <止>
 > 生成时间：<ISO 时间>
+
+## 输入契约体检
+（仅在体检有偏差或无法体检时出现；按「偏差类 × 份数 × 处理方式」汇总，放在全文最前面）
 
 ## 交付量
 - 完成功能：<N> 个
@@ -89,6 +98,7 @@ terminal_state: retro_done
 
 ## 阶段耗时中位数
 - 需求: X.Xh  设计: X.Xh  TDD: X.Xh  实现: X.Xh  评审: X.Xh
+  （时间戳缺时刻导致不可测时，写「不可测：<原因>」，不写 0.0h）
 
 ## 卡点案例
 - <feature-id> 在 <stage> 阶段: <原因>
@@ -108,6 +118,7 @@ terminal_state: retro_done
 ```
 ✅ 复盘报告已生成：docs/07_reviews/retro/<YYYY-MM>-retro.md
 📊 时间窗口：<起> ~ <止>，共 <N> 个功能
+⚠️ 输入契约体检：<M> 处偏差（见报告开头；无偏差则省略本行）
 👉 下一步：（本次流程结束，建议人工 review 报告）
 ```
 

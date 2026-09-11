@@ -95,6 +95,14 @@ loopnext="$(cat "$(sk pdlc-loop-next)")"
 assert_eq "loop-next 剥掉 claude -p 驱动 helper" "" "$(grep -c 'claude -p' <<< "$loopnext" | sed 's/0//')"
 sentinel_left="$(grep -rl 'adapter:claude-only' "$OUT/skills/" 2>/dev/null || true)"
 assert_eq "无 adapter:claude-only 哨兵残留" "" "$sentinel_left"
+# 片段里的 Claude 专属块同样要剥。读侧体检片段 state-read.md 里「到 ~/.claude/plugins 找脚本」
+# 那段只对 Claude Code 成立，Codex 侧只该留下人工核对的兜底。曾经只剥 skill 正文、不剥内联后的
+# 片段，这段就原样漏进了投影——此前没有片段用过哨兵，所以一直没暴露。
+for _sk in pdlc-status pdlc-retro pdlc-relate; do
+    _body="$(cat "$(sk "$_sk")")"
+    assert_eq "$_sk 投影不含 Claude 专属的脚本定位" "0" "$(grep -c 'CLAUDE_PLUGIN_ROOT\|~/.claude/plugins' <<< "$_body")"
+    assert_contains "$_sk 投影保留人工核对兜底" "体检脚本不可用" "$_body"
+done
 
 # ─── frontmatter：Codex skill 格式 name + description，剥离 Claude 内部字段 ───
 echo ""

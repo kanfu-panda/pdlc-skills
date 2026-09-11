@@ -1,0 +1,20 @@
+{
+  "feature_id": "F20260728-110000",
+  "feature_name": "calc-export",
+  "created_at": "2026-07-28T11:00:00+08:00",
+  "current_stage": "review",
+  "run_mode": "interactive",
+  "history": [
+    { "stage": "review", "done_at": "2026-07-28T15:00:00+08:00", "produced": [] }
+  ],
+  "last_phase_result": {
+    "stage": "review", "ok": true, "advanced_to": "ship", "checks": {},
+    "blocked_reason": null, "at": "2026-07-28T15:00:00+08:00"
+  },
+  "relations": {
+    "extends": [], "depends_on": [], "supersedes": [], "resolves": [],
+    "conflicts_with": [], "relates_to": []
+  },
+  "next_step": "pdlc-ship",
+  "terminal_state": "review_done"
+}
