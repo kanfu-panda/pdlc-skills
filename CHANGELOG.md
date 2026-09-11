@@ -5,6 +5,8 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [1.6.4] - 2026-09-12
 
 一次**读侧可信度**的修复版：读状态机的三条命令在输入不合契约时，不再边猜边算、把猜测当结论；发布闸门与行为 eval 也各补了一处「以为验过、其实没验」的洞；发版前的行为 eval 还发现 `/pdlc-test-setup --refresh` 会自动替换失效命令，一并修掉。
@@ -400,5 +402,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.6.4...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0
