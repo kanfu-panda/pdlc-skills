@@ -41,6 +41,7 @@
 |---|---|---|
 | `json-invalid` | 文件不是合法 JSON | 跳过该文件，列入体检块 |
 | `missing-field` | 缺 `feature_id` / `current_stage` / `history` / `next_step` / `created_at` 之一 | 用到该字段的指标，对这份文件记「不可判」 |
+| `field-type-invalid` | 字段在、类型不对（如 `current_stage` 不是字符串、`history` 不是数组、`last_phase_result` 不是对象、history 条目不是对象） | **按缺失处理**：用到它的指标对这份文件记「不可判」。类型不对的时间戳不再另报 `timestamp-no-time` |
 | `missing-last_phase_result` | 缺 `last_phase_result`（多为旧文件） | 不推断本阶段结果与 checks |
 | `terminal_state-in-instance` | 实例里出现 `terminal_state` | **忽略该字段**，判终态只看 §4 |
 | `non-contract-field` | 其它表外顶层字段（如 `title`） | 忽略 |

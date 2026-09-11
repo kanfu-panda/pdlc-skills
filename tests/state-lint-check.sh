@@ -181,6 +181,41 @@ assert_none "合契约的那份不被误报"                                  mi
 # 输出格式是给 skill 与后续工具消费的：每行恰好三列（文件 / 代码 / 说明）
 if awk -F'\t' 'NF!=3{b=1} END{exit b}' <<< "$OUT"; then ok "每行恰好三列（文件 / 代码 / 说明）"; else bad "每行恰好三列" "$OUT"; fi
 
+echo "Test: 字段在、但类型不对（只查「有没有」会把它们放过去）"
+# 评审指出：missing-field 只用 has() 判断，current_stage 是数字、history 不是数组这类文件
+# 会一路绿到底，报成「合契约」——正是体检最该防的假绿。
+assert_detail() { # assert_detail <描述> <代码> <文件名子串> <说明子串>
+    if has_detail "$2" "$3" "$4"; then ok "$1"; else bad "$1" "未找到 $2（$3 / $4）；输出：$OUT"; fi
+}
+P="$(new_proj)"
+put "$P" F20260727-090000.json "$CLEAN_B"
+# ① current_stage、created_at 是数字
+put "$P" F20260802-01.json '{"feature_id":"F20260802-01","feature_name":"t1",
+ "created_at":20260802,"current_stage":123,"history":[],
+ "last_phase_result":{"stage":"review","ok":true,"at":"2026-08-02T09:00:00+08:00"},
+ "next_step":"pdlc-ship"}'
+# ② history、last_phase_result 是字符串
+put "$P" F20260802-02.json '{"feature_id":"F20260802-02","feature_name":"t2",
+ "created_at":"2026-08-02T09:00:00+08:00","current_stage":"review","history":"见 PR 描述",
+ "last_phase_result":"ok","next_step":"pdlc-ship"}'
+# ③ history 里混了非对象条目，另一条的 stage 是数字
+put "$P" F20260802-03.json '{"feature_id":"F20260802-03","feature_name":"t3",
+ "created_at":"2026-08-02T09:00:00+08:00","current_stage":"review",
+ "history":["tdd 已完成",{"stage":5,"done_at":"2026-08-02T10:00:00+08:00"}],
+ "last_phase_result":{"stage":"review","ok":true,"at":"2026-08-02T10:00:00+08:00"},
+ "next_step":"pdlc-ship"}'
+lint "$P"
+assert_rc "类型不对 → 退出 1，不能当成合契约" 1
+assert_detail "current_stage 是数字 → field-type-invalid"          field-type-invalid F20260802-01 current_stage
+assert_detail "created_at 是数字 → field-type-invalid"             field-type-invalid F20260802-01 created_at
+assert_none   "类型不对的 created_at 不再报成 timestamp-no-time"   timestamp-no-time F20260802-01
+assert_none   "类型不对的 current_stage 不再报成 current_stage-unknown" current_stage-unknown F20260802-01
+assert_detail "history 是字符串 → field-type-invalid"              field-type-invalid F20260802-02 history
+assert_detail "last_phase_result 是字符串 → field-type-invalid"    field-type-invalid F20260802-02 last_phase_result
+assert_detail "history 混入非对象条目 → field-type-invalid"        field-type-invalid F20260802-03 "history[0]"
+assert_detail "history 条目的 stage 是数字 → field-type-invalid"   field-type-invalid F20260802-03 "history[1].stage"
+assert_none   "合契约的那份仍不误报"                               field-type-invalid F20260727-090000
+
 echo "Test: 仓库根另有一个 .pdlc-state/"
 P="$(new_proj)"
 put "$P" F20260728-101500.json "$CLEAN_A"

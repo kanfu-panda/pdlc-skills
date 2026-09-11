@@ -32,7 +32,7 @@ terminal_state: null
 
 - ✅ 已完成：`current_stage` 以 `_done` 结尾——**判终态的唯一依据**，不看 `terminal_state`、不用封闭列表（见上方「判终态的唯一依据」）
 - 🚧 进行中：`current_stage` 有值且不以 `_done` 结尾
-- ❓ 异常：JSON 无法解析、缺 `current_stage`，或体检报 `current_stage-unknown`
+- ❓ 异常：JSON 无法解析、缺 `current_stage`，或体检对 `current_stage` 报 `current_stage-unknown` / `field-type-invalid`
 
 ### 3. 输出概览
 

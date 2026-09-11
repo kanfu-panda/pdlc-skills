@@ -28,7 +28,7 @@ set -u
 LEGAL_STAGES="requirements design tdd impl review e2e ship deploy fix refactor task feature"
 STAGE_ALIASES="prd:requirements implement:impl implementation:impl bugfix:fix"
 # shellcheck disable=SC2034  # 脚本自己不读它：它是偏差代码的声明清单，供 frontmatter-check 与片段对账
-FINDING_CODES="json-invalid missing-field missing-last_phase_result terminal_state-in-instance non-contract-field stage-alias stage-unknown current_stage-unknown next_step-not-command timestamp-no-time relations-not-object relations-unknown-type relations-target-not-id relations-dangling id-prefix-mismatch second-state-dir"
+FINDING_CODES="json-invalid missing-field field-type-invalid missing-last_phase_result terminal_state-in-instance non-contract-field stage-alias stage-unknown current_stage-unknown next_step-not-command timestamp-no-time relations-not-object relations-unknown-type relations-target-not-id relations-dangling id-prefix-mismatch second-state-dir"
 
 ROOT="${1:-.}"
 STATE_DIR="$ROOT/docs/.pdlc-state"
@@ -91,6 +91,10 @@ for f in "$STATE_DIR"/*.json; do
                       "history", "last_phase_result", "relations", "next_step"];
         def idre: "^[FB][0-9]{8}-([0-9]{6}|[0-9]{2})$";
         def hist: (.history | if type == "array" then to_entries[] | select(.value | type == "object") else empty end);
+        # 字段在、类型不对：只查 has() 会把 current_stage 是数字、history 不是数组这类文件放过去
+        def typecheck($k; $want):
+            select(has($k)) | .[$k] as $v | select(($v | type) != $want)
+            | emit("field-type-invalid"; "\($k) 应为 \($want)，实际是 \($v | type)，按缺失处理");
         def stage_check($where; $v):
             if ($v | type) != "string" then empty
             elif inarr(legal; $v) then empty
@@ -104,6 +108,24 @@ for f in "$STATE_DIR"/*.json; do
         else
           ( ["feature_id", "current_stage", "history", "next_step", "created_at"][] as $k
             | select(has($k) | not) | emit("missing-field"; "缺 \($k)") ),
+          ( typecheck("feature_id"; "string"), typecheck("feature_name"; "string"),
+            typecheck("created_at"; "string"), typecheck("current_stage"; "string"),
+            typecheck("run_mode"; "string"), typecheck("history"; "array"),
+            typecheck("last_phase_result"; "object") ),
+          ( .history | if type == "array" then
+              to_entries[] | select(.value | type != "object")
+              | emit("field-type-invalid"; "history[\(.key)] 应为 object，实际是 \(.value | type)，该条跳过")
+            else empty end ),
+          ( hist | .key as $i | .value
+            | ( select(has("stage") and (.stage | type) != "string")
+                | emit("field-type-invalid"; "history[\($i)].stage 应为 string，实际是 \(.stage | type)") ),
+              ( select(has("done_at") and (.done_at | type) != "string")
+                | emit("field-type-invalid"; "history[\($i)].done_at 应为 string，实际是 \(.done_at | type)") ) ),
+          ( select((.last_phase_result | type) == "object") | .last_phase_result
+            | ( select(has("stage") and (.stage | type) != "string")
+                | emit("field-type-invalid"; "last_phase_result.stage 应为 string，实际是 \(.stage | type)") ),
+              ( select(has("at") and (.at | type) != "string")
+                | emit("field-type-invalid"; "last_phase_result.at 应为 string，实际是 \(.at | type)") ) ),
           ( select(has("last_phase_result") | not)
             | emit("missing-last_phase_result"; "缺 last_phase_result（多为旧文件），不推断本阶段结果与 checks") ),
           ( select(has("terminal_state"))
@@ -119,11 +141,11 @@ for f in "$STATE_DIR"/*.json; do
           ( select(has("next_step")) | .next_step as $n | select($n != null)
             | select((($n | type) == "string" and ($n | test("^pdlc-[a-z][a-z-]*$"))) | not)
             | emit("next_step-not-command"; "next_step=\($n) 不是纯命令名，不据此推断下一步") ),
-          ( select(has("created_at")) | select(.created_at | hastime | not)
+          ( select((.created_at | type) == "string") | select(.created_at | hastime | not)
             | emit("timestamp-no-time"; "created_at=\(.created_at) 没有时刻") ),
-          ( hist | .key as $i | .value | select(has("done_at")) | select(.done_at | hastime | not)
+          ( hist | .key as $i | .value | select((.done_at | type) == "string") | select(.done_at | hastime | not)
             | emit("timestamp-no-time"; "history[\($i)].done_at=\(.done_at) 没有时刻，耗时类指标不可测") ),
-          ( select((.last_phase_result | type) == "object" and (.last_phase_result | has("at")))
+          ( select((.last_phase_result | type) == "object" and ((.last_phase_result.at | type) == "string"))
             | select(.last_phase_result.at | hastime | not)
             | emit("timestamp-no-time"; "last_phase_result.at=\(.last_phase_result.at) 没有时刻") ),
           ( select(has("relations")) | .relations as $r
