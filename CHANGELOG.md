@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-09-12
+
+一次**读侧可信度**的修复版：读状态机的三条命令在输入不合契约时，不再边猜边算、把猜测当结论；发布闸门与行为 eval 也各补了一处「以为验过、其实没验」的洞；发版前的行为 eval 还发现 `/pdlc-test-setup --refresh` 会自动替换失效命令，一并修掉。
+
+> ⚠️ **行为变更（请留意）**：
+> - **`/pdlc-ship`**：质量报告生成之后，若 PRD 或质量配置（`quality-targets.yml` / `e2e-flow-map.yml` / `test-commands.yml`）有改动，从「建议重跑」变为**硬闸**——需重跑 `/pdlc-quality`，或显式 override 并写明理由。只改了其它代码时仍是建议。
+> - **`/pdlc-relate`**：`query` / `impact` / `orphans` / `validate` 不再写任何文件（此前 `impact` 会在索引缺失时自行 rebuild 并落盘）；`set` 遇到非六键对象形态的 `relations` 会停下、不写。
+> - **`/pdlc-status` / `/pdlc-retro` / `/pdlc-relate`**：状态文件不合契约时，输出最前面会先出现一块「⚠️ 输入契约体检」，写明每一处偏差是怎么处理的。状态文件合契约时不出现。
+> - **`/pdlc-test-setup --refresh`**：已存在但跑不通的检查命令，不再被自动替换成另一条命令（哪怕新命令能跑），原值保持不动，替换方案写进报告等人确认。
+
+没有新增 skill（仍 38 个），产物路径与目录契约零改动，升级不需要迁移。
+
 ### Fixed
 
+- **`/pdlc-test-setup --refresh` 会把失效的检查命令自动「替换」掉**：总则里必须人工确认的动作只列了「留空 / 删除 / 降阈值」，没列「替换」。发版前的行为 eval 坐实：模型把失效的 lint 命令自动换成了另一条能跑的命令，理由是「变严」——可原命令的规则已不可考，新旧是否等价无从证明，方向不可判。现在「替换」明确列入人工确认，`--autonomous` 下原值同样不动，替换方案只写进报告；自检清单与防回退断言各补一条。相关文字在本版之前就是如此，不是本版引入；修后该场景连跑 3 轮均通过，逐轮核对 `lint` 原值未动。
 - **读状态机的命令把「目标」当成了「已完成」**：`/pdlc-relate rebuild` 与 `/pdlc-retro` 在同一批数据上各自拿状态文件里的 `terminal_state` 判终态——一份停在 `review`、只写着目标 `review_done` 的状态文件被标成了已抵达终态。`terminal_state` 只是 skill frontmatter 里「走完后应到达的终态名」，状态机实例根本没有这个字段；判终态的唯一依据是 `current_stage` 以 `_done` 结尾。现在三个读命令与 `state-update.md` 都写死了这一条；`/pdlc-status`、`/pdlc-retro` 原先的封闭列表 `[feature_done, fix_done]` 也改为后缀规则——封闭列表会把合法终态漏判成「进行中」，正是读侧转去找 `terminal_state` 的诱因。
 - **`/pdlc-relate` 的只读子命令会写文件**：`impact` 在 `_relations.json` 缺失时自行 rebuild，落盘了 `_relations.json` 与 `_graph.md`。现在子命令分写入类（`set` / `rebuild`）与只读类（`query` / `impact` / `orphans` / `validate`），只读类遇到索引缺失或过期时当场现算、不落盘；handoff 模板也按类别拆开（原模板对所有子命令都输出「📦 已更新 …」）。`impact` 的 🔴 / 🟡 明确只算 `extends` / `depends_on`，`relates_to` 这类弱关系不再被升格成直接影响；`rebuild` 只收六键对象形态、目标为合法 feature ID 的关系，不再为悬空目标造占位节点。
 - **`/pdlc-retro` 在字段不全时照样出数**：`done_at` 只有日期时，同一天内的阶段耗时全部算成 0.0h，会被读成「快到不耗时」。现在任一端缺时刻即记「不可测」、不输出 0.0h；某阶段没有自检记录写「无数据」、不写 0%；缺 `created_at` 改用 `history` 末条 `done_at` 过滤时间窗，并作为口径替换写进体检块。
@@ -20,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **eval 把协议错统计成了环境抖动，恰好遮住它自己要测的东西**：`honest-checks` / `stale-config` 原先把 `last_phase_result.stage != impl` 一律判为环境抖动，而 `evals/run.sh` 对抖动的处理是**重跑、不计失败**。于是模型写出 `stage: "implement"`（契约要求短名 `impl`）这类**协议错**会被反复重跑，最终汇总成「无结论（环境抖动）」——而 schema 是否稳定，正是这两个场景存在的理由。现在分开：`stage` 缺失 → 抖动（没跑完，重跑有意义）；`stage` 有值但不符 → 契约破坏（重跑只会重复同一个错）。
   - 同时补了一道前置守卫：**状态机与 fixture 初始状态逐字节相同 → 抖动**。fixture 自带一份停在 `tdd` 的状态机，不先分开的话，「agent 根本没跑」在 stage 检查里会和「写错了 stage」长得一模一样，限流与桩会被误判成契约破坏。
 - **`evals/EVALS.md` 的成本账自己过期了**：表里写着「全部场景（2 个）」，而实际已有 4 个——按它估算发版前开销会低报一半以上。已更新为当前数量并注明以 `--list` 为准。
-- **`CLAUDE.md` 里 `shellcheck` 的覆盖面小于实际**：漏了 `adapters/*.sh`（`codex-loop-run.sh` 在其中）与 `evals/fixtures/*/scenario.sh`（真 bash，此前无人 lint）。两处实测本来就干净，补进命令零代价。
+- **贡献者指引里 `shellcheck` 的覆盖面小于实际**：漏了 `adapters/*.sh`（`codex-loop-run.sh` 在其中）与 `evals/fixtures/*/scenario.sh`（真 bash，此前无人 lint）。两处实测本来就干净，补进命令零代价。
 
 ### Changed
 
@@ -42,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **新测试脚本 `tests/state-lint-check.sh`**（33 条，被测脚本用 macOS 自带 bash 3.2 跑）：逐类偏差对得上、合契约的文件不误报、索引与配置文件不参与、无状态目录退出 2、体检前后项目文件逐字节不变。`tests/` 现为 8 个脚本。
 - **新 A-live 场景 `relate-terminal`**：`rebuild` 必须把「停在 review、实例写着 `terminal_state`」的节点标成非终态，同时把真正的终态标对、合法边入图、散文目标不成边、不改状态文件。判定逻辑另在 `evals-scenario-check` 里桩测 6 例。同一场景在上一发布版上红（陷阱节点被标成 `terminal:true`）、在本版上绿。发版前固定开销 +6 turn，成本表已更新为 6 个场景。
 - **新 A-live 场景 `quality-no-priority`**：验 `/pdlc-quality` 的 PRD 对账**自身**的 false-green。fixture 放两份 PRD，一份规范标 P0，另一份整份不含 P0/P1 标记、只用「已上线 / 待开发」描述状态——按 P0/P1 提取得到空集，与 `core_flows` 做 diff 不产生任何漂移条目，报告若就此写「对账通过」，等于宣称这份 PRD 里的流程都覆盖了。判别力要三个方向同时成立：报告点名那份不可判的 PRD、对账行不得是纯 ✅、且不许走捷径（不能把流程偷偷塞进 `core_flows`，也不能去 PRD 里补 P0 标记）。其余各维在 fixture 里都真能跑通且通过，好让唯一有判别力的维度就是对账本身。
-- **新测试脚本 `tests/evals-scenario-check.sh`**（A-det，不烧模型额度）：`assert_scenario` 是确定性 bash，按仓库的分档判据属可桩测。用构造状态覆盖上述判定——协议错 vs 抖动、fixture 未改动、对账 false-green 与两种走捷径的假修法。`tests/` 现为 7 个脚本，`CLAUDE.md` 的清单同步更新。
+- **新测试脚本 `tests/evals-scenario-check.sh`**（A-det，不烧模型额度）：`assert_scenario` 是确定性 bash，按仓库的分档判据属可桩测。用构造状态覆盖上述判定——协议错 vs 抖动、fixture 未改动、对账 false-green 与两种走捷径的假修法。贡献者指引里的测试清单同步更新。
 - **`install-smoke.sh` 新增跨文件契约断言**：`/pdlc-ship` 读的 `仓库版本` 字段由 `/pdlc-quality` 写入，这是一处隐式依赖——模板里删掉它闸门不会报错，只会静默退化成「查不了新鲜度」。现在两头都钉住，硬闸的四个路径也逐一断言仍在正文里。
 
 
@@ -389,5 +402,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.6.4...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0
