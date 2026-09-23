@@ -31,7 +31,7 @@ PDLC 用扁平 feature ID 空间。关系链在 5 个位置冗余表达，本文
 
 ### 表达位置 2：状态机关系块（state JSON）
 
-见 `state-update.md` 的 `relations` block。存**出边**；入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`。
+即状态机文件里的 `relations` 块（六键对象，每键一个 ID 数组）。存**出边**；入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`。
 
 ### 表达位置 3：反向索引 `_relations.json`（自动生成）
 
@@ -43,7 +43,7 @@ mermaid 可视化。边样式按类型区分：`supersedes` 虚线、`conflicts_
 
 ### 表达位置 5：PRD §6.1 关系表
 
-见 `prd-template.md` §6.1。
+见 PRD 文档的 §6.1「关系」一节。
 
 ### 校验规则（`/pdlc-relate validate`）
 

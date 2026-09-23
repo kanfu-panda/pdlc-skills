@@ -6,7 +6,7 @@
 `~/.codex/prompts/*.md` 斜杠命令。这套机制已在真机验证（gpt-5.6-sol 自然语言触发 pdlc-prd 成功）。
 
 单一源 = skills/*/SKILL.md；本脚本按 ADR 0003 §5 做「构建期投影」：
-  1. 内联 @include 片段 → 每个 skill 自包含（不依赖 Claude 的运行时约定）
+  1. 内联 @include 片段 → 每个 skill 自包含（源里的内联区块先折叠回裸标记，再按本平台规则内联）
   2. 重写 frontmatter → Codex skill 格式 name + description（description 追加 pdlc 触发提示）
   3. 物化命名空间 → 把 next_step 写成正文里的「下一步」指令（自然语言，非斜杠命令）
   4. 丢弃 Claude-Code-only 能力（statusline 配置、自主收敛引擎）
@@ -14,8 +14,7 @@
 用法：
   python3 adapters/build_codex.py [输出目录]   # 默认 dist/codex
 产物：
-  <out>/skills/pdlc-*/SKILL.md  转译后的 Codex skills（拷到 ~/.codex/skills/）
-  <out>/templates/              文档模板（拷到 ~/.codex/pdlc/templates/）
+  <out>/skills/pdlc-*/          转译后的 Codex skills：SKILL.md + 自带的 assets/ scripts/（拷到 ~/.codex/skills/）
   <out>/pdlc-methodology.md     平台中立方法论（供自然语言路径按需引用）
 
 详见 adapters/README.md 与 docs/decisions/0003-multi-platform-adapters.md。
@@ -25,10 +24,11 @@ import shutil
 import sys
 from pathlib import Path
 
+from sync_skills import collapse_regions
+
 REPO = Path(__file__).resolve().parent.parent
 SKILLS = REPO / "skills"
 PROMPTS_SRC = REPO / "references" / "templates" / "prompts"
-TEMPLATES_SRC = REPO / "references" / "templates"
 METHODOLOGY = REPO / "docs" / "pdlc-methodology.md"
 
 # 本 PoC 暂不投影：
@@ -40,23 +40,16 @@ METHODOLOGY = REPO / "docs" / "pdlc-methodology.md"
 #     其正文里「用 claude -p 驱动外层循环」的参考 helper 是 Claude 专属管线，用 adapter:claude-only 哨兵剥掉。
 DENYLIST = {"pdlc-settings", "pdlc-loop-run"}
 
-# 模板在 Codex 侧的安装位置（install.sh --target codex 会把模板拷到这里）
-CODEX_TEMPLATES = "~/.codex/pdlc/templates"
-
 INCLUDE_RE = re.compile(r"<!--\s*@include\s+templates/prompts/([a-z0-9-]+)\.md\s*-->")
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 # 通用机制：源里被 <!-- adapter:claude-only-start/end --> 包裹的块是 Claude 专属内容
 # （如用 `claude -p` 驱动的示例管线、到 ~/.claude/plugins 下找脚本），投影到其它平台时整段剥掉。
-# skill 正文与共享片段里都可能有——所以内联前后各剥一次（见 transpile）。Claude Code 看不见 HTML 注释、行为不变。
+# skill 正文与共享片段里都可能有——所以内联前后各剥一次（见 transpile）。Claude 侧保留这些块：
+# 模型看得见 HTML 注释标记（已实测），但标记只起分隔作用，块里的内容本来就是给 Claude 的。
 CLAUDE_ONLY_RE = re.compile(
     r"[ \t]*<!--\s*adapter:claude-only-start\s*-->.*?<!--\s*adapter:claude-only-end\s*-->\n?",
     re.DOTALL,
 )
-# 模板引用有两种形态，都归一到 Codex 安装位置。单次 re.sub（输出不回扫，替换串里的 templates/ 不会被二次替换）：
-#   .claude/templates/pdlc/<f>  —— 已安装的 Claude Code 路径（pdlc-adopt / pdlc-db-migrate 用）
-#   templates/<f>               —— 插件相对路径（多数 skill 用）
-# bare `templates/` 用 (?<!/) 负向后顾防误伤 `.claude/templates/` 那段（后者整体由前一分支命中）。
-TEMPLATE_REF_RE = re.compile(r"\.claude/templates/pdlc/|(?<!/)templates/")
 
 
 def parse_frontmatter(text):
@@ -91,11 +84,6 @@ def inline_includes(body):
     return INCLUDE_RE.sub(repl, body)
 
 
-def rewrite_template_refs(body):
-    """@include 已内联，剩余的模板引用（两种形态）改写到 Codex 安装位置 CODEX_TEMPLATES。"""
-    return TEMPLATE_REF_RE.sub(f"{CODEX_TEMPLATES}/", body)
-
-
 def next_step_note(fm):
     """把 frontmatter 的 next_step 物化成正文指令（Codex 不把 frontmatter 当逻辑）。"""
     nxt = fm.get("next_step", "").strip().strip("'\"")
@@ -118,10 +106,10 @@ TRIGGER_SUFFIX = " 当用户用自然语言要求执行该 PDLC 阶段（如「�
 
 def transpile(text):
     fm, body = parse_frontmatter(text)
+    body = collapse_regions(body)         # 源里的内联区块 → 裸标记，下面按本平台规则重新内联
     body = CLAUDE_ONLY_RE.sub("", body)   # 先剥 skill 正文里的 Claude 专属块（免得去内联块里引用的片段）
     body = inline_includes(body)
     body = CLAUDE_ONLY_RE.sub("", body)   # 再剥一次：片段里的 Claude 专属块，内联之后才看得见
-    body = rewrite_template_refs(body)
 
     # Codex skill frontmatter：name + description（description 追加 pdlc 触发提示）
     name = fm.get("name", "").strip()
@@ -134,12 +122,12 @@ def transpile(text):
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "dist" / "codex"
     skills_out = out / "skills"
-    templates_out = out / "templates"
 
     # 全新构建：清掉旧产物。但 out 是 CLI 传入的任意路径——只删「看起来纯是本脚本产物」的目录，
     # 含任何非产物条目即拒绝，防用户手滑指向 ~/.codex 等真实目录被递归删除（Copilot 评审）。
     # "prompts" 是 v1.5.0 的旧产物名（当时投影到 prompts/）——保留在白名单里，否则从 v1.5.0
     # 升级时旧的 dist/codex/prompts/ 会让本守卫误判、install.sh --target codex 硬失败（Copilot 评审）。
+    # "templates" 是 v1.6.4 及以前的产物（模板当时统一拷到这里），同理保留
     known_outputs = {"skills", "templates", "pdlc-methodology.md", "prompts"}
     if out.exists() and any(out.iterdir()):
         foreign = sorted(p.name for p in out.iterdir() if p.name not in known_outputs)
@@ -150,7 +138,6 @@ def main():
             )
         shutil.rmtree(out)
     skills_out.mkdir(parents=True)
-    templates_out.mkdir(parents=True)
 
     ported, skipped = [], []
     for skill_dir in sorted(SKILLS.iterdir()):
@@ -166,11 +153,11 @@ def main():
             sys.exit(f"错误：{name} 转译后仍残留 @include（片段缺失？）")
         (skills_out / name).mkdir(parents=True)
         (skills_out / name / "SKILL.md").write_text(result, encoding="utf-8")
+        # 模板与脚本随 skill 自带（adapters/sync_skills.py 同步），正文里的 assets/ scripts/ 引用原样可解析
+        for sub in ("assets", "scripts"):
+            if (skill_dir / sub).is_dir():
+                shutil.copytree(skill_dir / sub, skills_out / name / sub)
         ported.append(name)
-
-    # 拷文档模板（供改写后的 templates/ 引用解析）
-    for tpl in sorted(TEMPLATES_SRC.glob("*-template.*")):
-        shutil.copy2(tpl, templates_out / tpl.name)
 
     # 拷平台中立方法论（自然语言路径按需引用）
     if METHODOLOGY.exists():
@@ -178,7 +165,7 @@ def main():
 
     print(f"✅ Codex 适配器构建完成 → {out}")
     print(f"   skills: {len(ported)} 个（denylist 跳过 {len(skipped)}：{', '.join(skipped)}）")
-    print(f"   templates: {len(list(templates_out.glob('*')))} 个")
+    print(f"   自带 assets/ scripts/ 的 skill：{sum(1 for p in skills_out.iterdir() if (p / 'assets').is_dir() or (p / 'scripts').is_dir())} 个")
     return 0
 
 

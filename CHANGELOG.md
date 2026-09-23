@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter 看不见，插件根目录下的 `references/`、`bin/` 也没有任何路径指过去。此前共享片段、模板、体检脚本都放在 skill 文件夹外，读不读得到全凭模型临场发挥。本版让每个 skill 文件夹自包含。
+
+> ⚠️ **行为变更（请留意）**：
+> - **安装体积**：每个 skill 自带它用到的片段、模板和脚本，插件从约 1.2 MB 增至约 1.7 MB。常驻上下文的 token 不变（仍只有 38 条 skill 描述）；命令被调用时加载的正文变长，内容就是此前本该去读的那些片段。
+> - **`install.sh --target codex`**：模板不再统一装到 `~/.codex/pdlc/templates/`，改为随各 skill 自带；安装时会删掉这个旧目录。
+
+### Fixed
+
+- **共享片段在运行时读不到**：148 处 `<!-- @include templates/prompts/X.md -->` 自 v1.0.0 起都依赖模型「看到注释、自己去读文件」。可路径相对的是 `references/`，skill 运行时的基准目录却是 `skills/<name>/`，正文里也没有一句话告诉模型该去哪找。一次实际使用中，`/pdlc-fix` 与 `/pdlc-ship` 都没有读到状态机片段。现在片段在构建期由 `adapters/sync_skills.py` 内联进每个 skill，起止标记之间就是片段原文。
+- **模板引用解析不了**：13 个 skill 里有 25 处写的是 `templates/X`（缺 `references/` 前缀），另有 2 处指向早已不存在的 v1 路径 `.claude/templates/pdlc/`，`/pdlc-review` 还泛指「`templates/` 目录」。现在每个 skill 用到的模板复制进自己的 `assets/`，正文按相对 skill 根目录的 `assets/X` 引用；`/pdlc-review` 按文档类型列出要对照的 6 份模板。
+- **体检脚本的备选路径会挑到旧版本**：三个读命令找 `pdlc-state-lint.sh` 的最后一条备选按修改时间取「最新」缓存目录，实测升级后旧版本目录的修改时间反而更新。现在脚本随 skill 自带在 `scripts/` 下，只有这一条查找路径；`/pdlc-settings` 找状态栏脚本的同类备选改为按版本号排序。
+- **写状态机的命令看不见自己的阶段短名和下一跳**：片段要求「按 frontmatter 的 `stage` / `next_step` 取值」，但 skill 运行时 frontmatter 对模型不可见（已实测）。现在这两个值由同步脚本写进 12 个写状态机命令的正文。
+- **`$ARGUMENTS` 嵌在句子里**：Claude Code 会把正文里每一处 `$ARGUMENTS` 都替换成实际参数，没带参数时替换成空串，于是「若选 B：`$ARGUMENTS` 必须含 `--skip-tests`」这类句子读不通——实测不带参数运行 `/pdlc-status`，正文里出现了「`` 为空或 `--all`」。现在每个 skill 只在独立的「参数：」一行里用它一次。内联之后，`--autonomous` 片段里的同类写法也会被替换，已一并改写。
+- **片段之间按文件名互相引用**：内联后，「见 `relations.md`」这类引用在没有内联该片段的 skill 里解析不了。改为就地写全必要的信息；`/pdlc-prd`、`/pdlc-feature` 真正要写关系，改为内联关系链片段。`/pdlc-test-setup` 里还有一处引用了它根本没有引入的片段，一并改掉。
+
+### Added
+
+- **`adapters/sync_skills.py`**：把唯一源头（`references/templates/prompts/`、`references/templates/`、`bin/`）同步进每个 skill 文件夹；`--check` 只检查、有漂移则退出 1。改了片段、模板或脚本后重跑它。
+- **`tests/skills-selfcontained-check.sh`**（19 条断言）：片段已内联且与源头逐字一致；模板与脚本副本与源头逐字节一致、脚本可执行、没有多余副本；写状态机的命令正文里有阶段短名与下一跳；参数占位符至多一处且独占一行；正文提到的片段都内联在本 skill 里；不再按修改时间挑版本。针对它做的 16 组变异全部变红。
+
+### Changed
+
+- **Codex 适配器**：先把 skill 里的内联区块折叠回裸标记，再按本平台规则内联；模板与脚本随 skill 目录一起拷贝，不再改写路径；删掉统一的 `templates/` 产物。
+- 更正 `build_codex.py` 与 `adapters/README.md` 里「Claude Code 看不见 HTML 注释」的说法：实测模型看得见。
+
 ## [1.6.4] - 2026-09-12
 
 一次**读侧可信度**的修复版：读状态机的三条命令在输入不合契约时，不再边猜边算、把猜测当结论；发布闸门与行为 eval 也各补了一处「以为验过、其实没验」的洞；发版前的行为 eval 还发现 `/pdlc-test-setup --refresh` 会自动替换失效命令，一并修掉。

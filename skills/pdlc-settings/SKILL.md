@@ -23,7 +23,7 @@ terminal_state: null
 
 ## 交互入口
 
-根据 `$ARGUMENTS` 分派；为空则显示主菜单：
+根据本命令的参数分派；参数为空则显示主菜单：
 
 ```
 ⚙️ PDLC 设置
@@ -36,8 +36,8 @@ terminal_state: null
   请选择（1-4）：
 ```
 
-- `$ARGUMENTS` 含 `status` → 直接走「状态栏 · 状态」
-- `$ARGUMENTS` 含 `statusline` → 进入状态栏子菜单
+- 参数含 `status` → 直接走「状态栏 · 状态」
+- 参数含 `statusline` → 进入状态栏子菜单
 - 否则显示上面主菜单，等用户选
 
 ## 定位脚本（稳定源优先）
@@ -47,7 +47,7 @@ terminal_state: null
 
 1. `~/.claude/plugins/marketplaces/pdlc-skills/bin/pdlc-statusline.sh` （marketplace 克隆，最稳）
 2. `${CLAUDE_PLUGIN_ROOT}/bin/pdlc-statusline.sh` （当前插件根，若该环境变量存在）
-3. 最新版本缓存：`ls -td ~/.claude/plugins/cache/pdlc-skills/pdlc/*/bin/pdlc-statusline.sh | head -1`
+3. 最新版本缓存：`ls -d ~/.claude/plugins/cache/pdlc-skills/pdlc/*/bin/pdlc-statusline.sh | sort -V | tail -1`（按版本号取最大，不按修改时间：升级时旧版本目录的修改时间可能反而更新）
 
 用 Bash 依次探测，记下命中的路径记为 `$SL`。都找不到 → 提示用户先 `claude plugin install pdlc@pdlc-skills` 再来。
 
@@ -112,7 +112,35 @@ terminal_state: null
 
 ## 要求
 
-<!-- @include templates/prompts/output-language.md -->
+<!-- @include templates/prompts/output-language.md（已内联于下方，无需另读） -->
+🌐 **Output language for generated artifacts**
+
+All generated artifacts (PRDs, design docs, code comments, review reports,
+test plans, deployment manuals, changelog entries, etc.) follow this policy:
+
+1. **Default — match the conversation language exactly**:
+   - 用户用中文与 Claude 对话 → 产中文文档、中文代码注释、中文报告
+   - User talks to Claude in English → produce English artifacts
+   - User talks in another language → produce artifacts in that language
+   - **Never silently default to a fixed language regardless of the user's input.**
+
+2. **Explicit override always wins**: when the user specifies a language for
+   an artifact (e.g. "write the PRD in English", "用英文写 API 设计文档",
+   "output the deploy doc in Japanese"), use that language for that artifact,
+   regardless of conversation language.
+
+3. **Mixed-language requirements**: if the user wants some artifacts in one
+   language and others in a different language (common: Chinese PRD + English
+   API docs for partners), honour each per-artifact instruction.
+
+4. **Uncertain**: if you cannot reliably detect the conversation language,
+   ask once before producing the first artifact.
+
+This policy applies to **content** (prose, comments, headings). It does
+**not** override technical conventions like English variable names, English
+git commit subjects, or English error codes when the project's conventions
+require them.
+<!-- @include-end templates/prompts/output-language.md -->
 - **只读脚本、不改状态机**：本命令不读写 `docs/.pdlc-state/<id>.json` 的业务字段，只读它们用于预览。
 - 写 `settings.json` **必须**备份 + diff + 确认；被 gate 时降级为「算好 + 用户粘贴」，**严禁**假装已写成功。
 - 幂等：重复启用不叠加；停用只摘本段。

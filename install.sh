@@ -64,8 +64,8 @@ After install, restart Claude Code and type \`/pdlc-\`. You should see 38
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
 
 --target codex builds the adapter (see
-docs/decisions/0003-multi-platform-adapters.md) and installs 34 pdlc skills
-into ~/.codex/skills/ (the 2 Claude Code-only skills are skipped). Codex skills
+docs/decisions/0003-multi-platform-adapters.md) and installs the pdlc skills
+into ~/.codex/skills/ (all but the 2 Claude Code-only ones). Codex skills
 are description-triggered — after restarting Codex, drive PDLC in natural
 language ("用 pdlc 写个 PRD"), not slash commands. Requires a local clone + python3.
 
@@ -159,12 +159,13 @@ EOF
 
   echo ""
   echo "Installing Codex skills → ${CODEX_SKILLS_DIR}"
-  mkdir -p "$CODEX_SKILLS_DIR" "$CODEX_PDLC_DIR/templates"
+  mkdir -p "$CODEX_SKILLS_DIR" "$CODEX_PDLC_DIR"
+  # v1.6.4 and earlier copied templates here; each skill now ships its own under assets/.
+  rm -rf "${CODEX_PDLC_DIR:?}/templates"
   # Refresh our skill dirs (remove old copies first so renamed/removed files don't linger).
   # No trailing slash on the source glob: BSD cp -R copies each dir itself, not its contents.
   rm -rf "${CODEX_SKILLS_DIR}"/pdlc-*/
   cp -R "$build_dir"/skills/pdlc-* "$CODEX_SKILLS_DIR"/
-  cp "$build_dir"/templates/*  "$CODEX_PDLC_DIR/templates"/
   cp "$build_dir/pdlc-methodology.md" "$CODEX_PDLC_DIR"/
 
   local n
@@ -173,7 +174,7 @@ EOF
   echo "✅ Done. ${n} pdlc skills installed for Codex."
   echo "   Restart Codex, then drive PDLC in natural language (skills are description-triggered,"
   echo "   NOT slash commands), e.g.:  用 pdlc 写个 PRD：<一句话需求>"
-  echo "   Methodology + templates: ${CODEX_PDLC_DIR}"
+  echo "   Methodology: ${CODEX_PDLC_DIR}"
   echo "   Note: the statusline and the autonomous loop engine are Claude Code-only (not ported)."
   echo ""
   echo "   ⚠️  Scope: this adapter targets Codex distributions that read ~/.codex/skills/"

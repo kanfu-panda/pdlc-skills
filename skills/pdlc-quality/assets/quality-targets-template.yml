@@ -1,0 +1,37 @@
+# docs/00_standards/quality-targets.yml — 本项目质量目标的唯一真源
+#
+# 与 test-commands.yml 并列：那份说「怎么量」（命令），这份说「量到多少算达标」。
+# /pdlc-quality 读这两份，跑出真实数字与退出码，再出报告交人签字。
+#
+# ⚠️ 达标判定必须来自客观数据：覆盖率数字来自覆盖率工具、E2E 覆盖来自
+#    flow→test 映射 + 真跑结果、lint 来自退出码。**任何一项都不接受模型自评。**
+
+coverage:
+  # 达标线。真正的强制点应写死在 test-commands.yml 的 coverage 命令参数里
+  # （如 --cov-fail-under=85），那样「达标」就是退出码本身；这里的数字用于
+  # 报告展示与趋势对比。两处不一致时以命令参数为准，报告会提示你对齐。
+  unit: ">= 85%"
+
+e2e:
+  # all-core-flows-covered：下面每条 core_flow 都必须有一个「真跑且通过」的
+  # E2E 测试与之对应（对应关系见 e2e-flow-map.yml）。缺一条 = 红。
+  policy: all-core-flows-covered
+
+  # 核心业务流程清单——这是「覆盖全部核心流」这句话的唯一真源。
+  #
+  # ⚠️ 这份清单腐烂 = false-green：新增的核心流没进清单，矩阵照样全绿，
+  #    把「我们不知道」伪装成「我们覆盖了」，比没有闸门更坏。
+  #    所以 /pdlc-quality 每次都会拿 PRD 的 P0/P1 流程与本清单做 diff，
+  #    **漂移即红灯**，不是温柔提示。清单由产物纪律接管，不靠人自觉。
+  core_flows:
+    - id: login
+      desc: 用户登录
+      prd: docs/01_requirements/prd/F20260101-000000-auth-prd.md   # 来源 PRD（可选但强烈建议）
+    - id: checkout
+      desc: 下单结算
+    - id: refund
+      desc: 退款
+
+lint:
+  # zero-warnings：lint 命令退出码必须为 0
+  policy: zero-warnings
