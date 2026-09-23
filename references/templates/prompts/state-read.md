@@ -8,28 +8,16 @@
 
 ### 1. 跑体检
 
-<!-- adapter:claude-only-start -->
-体检脚本随插件分发：`bin/pdlc-state-lint.sh`。按顺序取第一个存在的：
+体检脚本随本 skill 一起分发，就在本 skill 目录下：`scripts/pdlc-state-lint.sh`（运行时会告知本 skill 的
+所在目录）。它与正在运行的 skill 同一版本，体检规则——合法阶段名、偏差代码——与下方 §2 一致。
 
-1. **本 skill 所在目录的上两级**：`<本 skill 目录>/../../bin/pdlc-state-lint.sh`（运行时会告知本 skill 的所在目录；
-   这是与正在运行的 skill **同一版本**的那份）
-2. `${CLAUDE_PLUGIN_ROOT}/bin/pdlc-state-lint.sh`（若该环境变量存在——skill 运行时通常**没有**它，不要指望）
-3. 最新版本缓存：`ls -td ~/.claude/plugins/cache/pdlc-skills/pdlc/*/bin/pdlc-state-lint.sh 2>/dev/null | head -1`
-4. `~/.claude/plugins/marketplaces/pdlc-skills/bin/pdlc-state-lint.sh`
-
-> 第 1 条排最前，是因为体检规则（合法阶段名、偏差代码）必须和正在运行的 skill 同版本——否则新增一个阶段后，
-> 旧脚本会把合法写法报成偏差。真机验证时 `CLAUDE_PLUGIN_ROOT` 不存在，缓存与 marketplace 克隆里又都是旧版本、
-> 没有这个脚本，最后是模型自己按本 skill 的目录找到的同版本脚本——所以把它写成第 1 条，而不是留给临场发挥。
-> 这与 `/pdlc-settings` 找状态栏脚本的顺序不同，是有意的：状态栏要一个**稳定路径**建符号链接，所以 marketplace 克隆优先。
-
-在项目根执行 `bash <脚本路径> .`。stdout 每行一条偏差：`文件<TAB>代码<TAB>说明`。退出码三态：
+在项目根执行 `bash <本 skill 目录>/scripts/pdlc-state-lint.sh .`。stdout 每行一条偏差：`文件<TAB>代码<TAB>说明`。退出码三态：
 
 - `0` 已体检、全部合契约 → 照常出结论，不输出体检块
 - `1` 已体检、有偏差 → 照常计算，但输出最前面必须先放「输入契约体检」块（见 §3）
 - `2` 无法体检（缺 jq / 无状态目录）→ 体检块写「无法体检：<原因>」，**不得当成合契约**
-<!-- adapter:claude-only-end -->
 
-体检脚本不可用时（找不到，或当前平台不分发它），按 §2 的规则逐条人工核对，
+体检脚本不可用时（找不到，或当前平台没有随 skill 分发它），按 §2 的规则逐条人工核对，
 体检块首行注明「体检脚本不可用，以下为人工核对」。
 
 ### 2. 体检规则（偏差代码）

@@ -17,14 +17,18 @@ pdlc-skills/
 ├── .claude-plugin/
 │   ├── plugin.json                 ← plugin manifest (name, version, author, ...)
 │   └── marketplace.json            ← marketplace manifest (so the repo is also a marketplace)
-├── skills/                         ← 38 sub-skills (each = one slash command)
+├── skills/                         ← 38 sub-skills (each = one slash command); every folder is self-contained
 │   ├── pdlc-feature/SKILL.md       → /pdlc-feature
-│   ├── pdlc-prd/SKILL.md           → /pdlc-prd
-│   ├── pdlc-tdd/SKILL.md           → /pdlc-tdd
+│   ├── pdlc-prd/SKILL.md           → /pdlc-prd     (+ assets/: synced template copies)
+│   ├── pdlc-status/SKILL.md        → /pdlc-status  (+ scripts/: synced pdlc-state-lint.sh)
 │   └── ... (38 dirs total)
 ├── bin/
 │   ├── pdlc-statusline.sh          ← optional statusline segment (scanned by /pdlc-settings)
 │   └── pdlc-state-lint.sh          ← read-side contract check run by /pdlc-status · /pdlc-retro · /pdlc-relate
+├── adapters/
+│   ├── sync_skills.py              ← inlines fragments + copies templates/scripts into skills/ (rerun after editing any of them)
+│   ├── build_codex.py              ← Codex projection (install.sh --target codex)
+│   └── codex-loop-run.sh           ← Codex convergence-loop driver
 ├── references/
 │   └── templates/
 │       ├── *-template.md           ← user-facing document templates
@@ -32,7 +36,7 @@ pdlc-skills/
 ├── install.sh                      ← curl-based one-line installer wrapping `claude plugin install`
 ├── docs/
 │   └── usage-guide.md              ← single user manual (architecture + reference + scenarios)
-├── tests/                          ← 8 scripts, all of them part of the local gate
+├── tests/                          ← 9 scripts, all of them part of the local gate
 │   ├── frontmatter-check.sh        ← validates skills/<name>/SKILL.md frontmatter
 │   ├── install-smoke.sh            ← end-to-end install layout test
 │   ├── statusline-check.sh         ← pdlc-statusline.sh scenario regression
@@ -40,7 +44,8 @@ pdlc-skills/
 │   ├── adapter-codex-loop-run-check.sh ← Codex loop-run mapping + guardrails
 │   ├── evals-runner-check.sh       ← evals/run.sh driver (stubbed, no model spend)
 │   ├── evals-scenario-check.sh     ← assert_scenario verdicts (stubbed, no model spend)
-│   └── state-lint-check.sh         ← bin/pdlc-state-lint.sh findings + read-only check
+│   ├── state-lint-check.sh         ← bin/pdlc-state-lint.sh findings + read-only check
+│   └── skills-selfcontained-check.sh ← skills self-contained + in sync with their sources
 └── VERSION                         ← canonical version (mirrored in plugin.json)
 ```
 
@@ -85,6 +90,7 @@ bash tests/adapter-codex-loop-run-check.sh   # Codex loop-run mapping + guardrai
 bash tests/evals-runner-check.sh             # evals/run.sh driver (stubbed, no model spend)
 bash tests/evals-scenario-check.sh           # assert_scenario verdicts (stubbed, no model spend)
 bash tests/state-lint-check.sh               # bin/pdlc-state-lint.sh contract-check findings
+bash tests/skills-selfcontained-check.sh     # skills self-contained + in sync with their sources
 
 # or the lot, stopping at the first red script
 for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done
@@ -93,7 +99,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All eight count** — 421 assertions at the time of writing; run them for the current number rather
+**All nine count** — 445 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
@@ -125,11 +131,12 @@ The tier criterion is **who executes the contract**: deterministic code (bash dr
 
 Each `skills/pdlc-<name>/SKILL.md` has:
 
-- YAML frontmatter (`name`, `description`, `argument-hint`, `allowed-tools`, plus PDLC-internal fields `layer`, `stage`, `produces`, `requires`, `next_step`, `terminal_state`)
+- YAML frontmatter (`name`, `description`, `argument-hint`, `allowed-tools`, plus PDLC-internal fields `layer`, `stage`, `produces`, `requires`, `next_step`, `terminal_state`) — read by Claude Code and our tests, **not shown to the model**
 - Markdown body — the workflow Claude follows when the slash command fires
-- `<!-- @include templates/prompts/<x>.md -->` directives — shared prompt fragments (IRON LAW, handoff, self-audit, etc.) that Claude inlines from `references/templates/prompts/<x>.md` at runtime
+- Shared prompt fragments (IRON LAW, handoff, self-audit, state update, …) — authored once in `references/templates/prompts/<x>.md`, referenced as `<!-- @include templates/prompts/<x>.md -->`, and **inlined at build time** by `adapters/sync_skills.py` between generated begin / end markers
+- `assets/` / `scripts/` next to `SKILL.md` — copies of the templates and `bin/` scripts the body references as `` `assets/<file>` `` / `` `scripts/<file>` ``, synced the same way
 
-The `@include` mechanism is **not** preprocessed by Claude Code — it relies on Claude reading the comment and following it on demand. This works in practice but is not a documented Claude Code feature.
+Why build-time: when a skill fires, the model is handed the skill's base directory and the body — nothing else. It doesn't see the frontmatter (verified), and nothing tells it where `references/` or `bin/` live, so a runtime "go read the fragment" convention was followed only some of the time. Everything the model needs therefore lives inside the skill folder, which is also what the Agent Skills open standard asks for. For the 12 state-writing skills, the sync step also writes the frontmatter's `stage` / `next_step` into the body as a `pdlc:meta` block.
 
 ## Layer structure
 
@@ -177,10 +184,12 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 
 ## When editing this plugin
 
-- Edit sources under `skills/pdlc-<name>/SKILL.md` (sub-skill bodies), `references/templates/prompts/*.md` (shared fragments), or `references/templates/*-template.md` (user document templates). Don't edit installed copies in `~/.claude/plugins/cache/`.
+- Edit sources under `skills/pdlc-<name>/SKILL.md` (sub-skill bodies), `references/templates/prompts/*.md` (shared fragments), `references/templates/*-template.*` (user document templates) or `bin/*.sh`. Don't edit installed copies in `~/.claude/plugins/cache/`.
+- After editing a fragment, a template or a `bin/` script, run `python3 adapters/sync_skills.py`. Never hand-edit an inlined region, a `pdlc:meta` block, or anything under `skills/*/assets/` / `skills/*/scripts/` — they are regenerated, and `tests/skills-selfcontained-check.sh` fails on drift.
+- In a skill body, reference templates and scripts as `` `assets/<file>` `` / `` `scripts/<file>` `` (relative to the skill folder), never as `templates/…` or `../../…` — the model can't resolve those. Use `$ARGUMENTS` exactly once, on its own `label: $ARGUMENTS` line: Claude Code substitutes every occurrence, with an empty string when there are no arguments.
 - New required frontmatter fields → also update `required_fields` in `tests/frontmatter-check.sh`.
-- Run all eight test scripts and shellcheck before committing (see "Common commands").
-- New shared prompt fragments → put under `references/templates/prompts/` and reference via `<!-- @include templates/prompts/<name>.md -->` (path is relative to `references/`).
+- Run all nine test scripts and shellcheck before committing (see "Common commands").
+- New shared prompt fragments → put under `references/templates/prompts/`, reference via `<!-- @include templates/prompts/<name>.md -->` (path is relative to `references/`), then run the sync. Inside a fragment, don't point at another fragment by file name — after inlining, only the fragments a skill itself includes are there.
 - New sub-skill: create `skills/pdlc-<name>/SKILL.md` with the standard frontmatter (`name: pdlc-<name>`, layer/stage, produces/requires, etc.). The `pdlc-` prefix in directory and `name:` is mandatory.
 
 ## Bumping versions
@@ -192,8 +201,8 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 - Public-facing entry: `README.md` (English) and `README.zh-CN.md` (Chinese). They mirror each other.
 - User manual: `docs/usage-guide.md` — single source containing install, command catalog, contract, scenarios, FAQ.
 - This file (`CLAUDE.md`) is contributor-facing only. **It is still shipped to users**, though — see below.
-- **Everything in this repo is installed, including dev-only files.** `claude plugin install` copies the whole source directory (minus `.git`) into `~/.claude/plugins/cache/`, so `evals/`, `tests/`, `docs/`, `adapters/`, `.github/` and this file all land on the user's machine (~950K total, of which ~520K is dev-only).
+- **Everything in this repo is installed, including dev-only files.** `claude plugin install` copies the whole source directory (minus `.git`) into `~/.claude/plugins/cache/`, so `evals/`, `tests/`, `docs/`, `adapters/`, `.github/` and this file all land on the user's machine (~1.7 MB total as of this writing, of which ~0.9 MB is dev-only).
 
   The plugin manifest schema has **no** `exclude` / `files` / `ignore` field, and there is no `.claudeignore` — verified against the [plugins reference](https://code.claude.com/docs/en/plugins-reference). The only way to ship less is to move the user-facing parts (`skills/`, `references/`, `bin/`, `.claude-plugin/plugin.json`) into a subdirectory and point the marketplace entry's `source` at it.
 
-  We deliberately have **not** done that: the token cost is zero either way (`claude plugin details` reports ~1,345 always-on tokens, all of it skill descriptions — dev files never enter the context window), so the only gain is ~520K of disk, against a restructure that touches 26 + 15 + 11 path references and risks silent breakage in the statusline symlink and adapter template paths. Revisit if the plugin grows substantially or if Claude Code adds an exclusion mechanism.
+  We deliberately have **not** done that: the token cost is zero either way (`claude plugin details` reports ~1,345 always-on tokens, all of it skill descriptions — dev files never enter the context window), so the only gain is ~0.9 MB of disk, against a restructure that touches 26 + 15 + 11 path references and risks silent breakage in the statusline symlink and adapter template paths. Revisit if the plugin grows substantially or if Claude Code adds an exclusion mechanism.

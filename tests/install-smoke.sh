@@ -145,10 +145,11 @@ if [[ -x "bin/pdlc-state-lint.sh" ]]; then
 else
     echo "  ✗ pdlc-state-lint.sh is not executable (chmod +x)"; fail=$((fail + 1))
 fi
-# 真机验证坐实的两条：skill 运行时没有 CLAUDE_PLUGIN_ROOT，同版本脚本只能按 skill 自己的目录找；
+# 真机验证坐实的两条：skill 运行时没有 CLAUDE_PLUGIN_ROOT，同版本脚本只能在 skill 自己的目录下找——
+# 所以脚本随 skill 自带在 scripts/ 下（adapters/sync_skills.py 同步）；
 # relate set 遇到数组形态的 relations 若直接初始化六类空块，会静默覆盖原有条目。都用断言钉住，防退回。
-assert_contains "state-read looks up the lint script from the skill's own dir first" \
-  "1. **本 skill 所在目录的上两级**" "$(cat references/templates/prompts/state-read.md)"
+assert_contains "state-read runs the lint script shipped inside the skill" \
+  "\`scripts/pdlc-state-lint.sh\`" "$(cat references/templates/prompts/state-read.md)"
 assert_contains "relate set refuses to overwrite non-object relations" \
   "**停下，不写**" "$(cat skills/pdlc-relate/SKILL.md)"
 # 行为 eval 坐实：--refresh 把失效的 lint 命令自动「替换」成另一条能跑的命令，理由是「变严」——

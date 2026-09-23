@@ -27,8 +27,8 @@ For "how do I..." questions, design discussions, or anything where you're not ye
 
 - `.claude-plugin/plugin.json` — plugin manifest (name, version, description, ...)
 - `.claude-plugin/marketplace.json` — marketplace manifest (so the repo itself is a marketplace)
-- `skills/pdlc-<name>/SKILL.md` — 33 sub-skill specs. Each becomes the slash command `/pdlc-<name>`.
-- `references/templates/prompts/*.md` — shared prompt fragments referenced via `<!-- @include templates/prompts/<x>.md -->` from skill bodies
+- `skills/pdlc-<name>/SKILL.md` — 38 sub-skill specs. Each becomes the slash command `/pdlc-<name>`. Each folder is self-contained: `assets/` / `scripts/` next to `SKILL.md` hold synced copies of the templates and scripts its body references.
+- `references/templates/prompts/*.md` — shared prompt fragments referenced via `<!-- @include templates/prompts/<x>.md -->` from skill bodies and inlined into them by `python3 adapters/sync_skills.py`
 - `references/templates/*-template.md` — user-facing document templates
 - `install.sh` — curl-based installer wrapping `claude plugin marketplace add` + `claude plugin install`
 - `docs/usage-guide.md` — single user manual
@@ -94,6 +94,8 @@ Put new shared prompts under `references/templates/prompts/` and reference them 
 ```
 
 The `templates/prompts/` prefix is a stable contract — don't rename it. The path is relative to `references/`.
+
+Then run `python3 adapters/sync_skills.py`: it inlines the fragment into every skill that references it, between generated begin / end markers. Rerun it whenever you edit a fragment, a template or a `bin/` script, and never edit an inlined region or a synced copy by hand — `tests/skills-selfcontained-check.sh` fails on drift.
 
 ### Naming new sub-skills
 

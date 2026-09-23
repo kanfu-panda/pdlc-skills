@@ -16,6 +16,8 @@ Thumbs.db
 *.html.map
 # 例外：随插件分发的 HTML 模板（不是预览产物，是用户拿来生成报告的源文件）
 !references/templates/*.html
+# 同一批模板随 skill 自带一份（adapters/sync_skills.py 生成），同样要提交
+!skills/*/assets/*.html
 
 # Local scratch
 *.bak

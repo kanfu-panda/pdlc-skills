@@ -31,7 +31,7 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 
 ## 执行流程
 
-1. 从 `$ARGUMENTS` 取功能ID；读取 `docs/.pdlc-state/<功能ID>.json`。
+1. 从本命令的参数取功能ID；读取 `docs/.pdlc-state/<功能ID>.json`。
 2. 文件不存在 / 无法解析 → 输出 `blocked`。
 3. `last_phase_result.blocked_reason` 非空 → 输出 `blocked`。
 4. `current_stage` 属终态（以 `_done` 结尾——实际由编排器写入的终态值为 `feature_done` / `fix_done`）→ 输出 `done`。（注：单阶段命令的 `current_stage` 用短名 `impl`/`review`，review 完成的判定靠下面第 5 步的 `next_step`，不靠此处。）

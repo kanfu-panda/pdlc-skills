@@ -40,12 +40,12 @@ Three layers (38 skills total: 3 / 11 / 24):
 
 ## 3. Shared prompt fragments
 
-Skills inline reusable instruction blocks via `<!-- @include templates/prompts/X.md -->` (paths relative to `references/`). This keeps cross-cutting contracts single-sourced:
+Reusable instruction blocks are authored once under `references/templates/prompts/` and referenced from skill bodies as `<!-- @include templates/prompts/X.md -->`; `adapters/sync_skills.py` inlines them into each skill at build time. This keeps cross-cutting contracts single-sourced:
 
 - `iron-law.md` — the six non-negotiable gates (the sixth, *state-must-advance*, added in v1.2).
 - `pdlc-trace.md` — the document traceability header.
 - `state-update.md` — the per-feature state machine schema + update flow (incl. the v1.2 `last_phase_result`).
-- `state-read.md` — the reader-side contract for `pdlc-status` / `pdlc-retro` / `pdlc-relate`: run the deterministic contract check (`bin/pdlc-state-lint.sh`, read-only, three-state exit code) before computing anything, surface every deviation at the **top** of the output, and judge "terminal" solely by `current_stage` ending in `_done` — never by `terminal_state`, which is a skill-frontmatter *target*, not a state fact.
+- `state-read.md` — the reader-side contract for `pdlc-status` / `pdlc-retro` / `pdlc-relate`: run the deterministic contract check (`bin/pdlc-state-lint.sh`, shipped inside each reading skill as `scripts/pdlc-state-lint.sh`; read-only, three-state exit code) before computing anything, surface every deviation at the **top** of the output, and judge "terminal" solely by `current_stage` ending in `_done` — never by `terminal_state`, which is a skill-frontmatter *target*, not a state fact.
 - `self-audit.md` / `loop-prevention.md` / `handoff.md` — the four-phase skeleton.
 - `feature-id.md` / `defect-id.md` — ID allocation.
 - `output-language.md` — output language rules.
@@ -54,7 +54,7 @@ Skills inline reusable instruction blocks via `<!-- @include templates/prompts/X
 - `test-location.md` — layout-agnostic test discovery: defer to the project's own `test-commands.yml`, then conventions, then filename scan. The red-light guard must distinguish *no tests* from *tests not where I expected* — the latter would wrongly block ordinary layouts.
 - `noninteractive.md` — the v1.2 `--autonomous` contract (auto-advance procedural confirmations, block on judgement calls, destructive actions always human).
 
-(14 fragments total.) The `@include` is a runtime convention interpreted by Claude, not a build-time preprocessor.
+(14 fragments total.) Inlining happens at build time, not at runtime: when a skill fires, the model gets the skill's own folder and body — not the frontmatter, not `references/` — so a runtime "go read the fragment" convention was followed only some of the time. The same sync step copies the templates and scripts a body references into the skill's `assets/` / `scripts/`, and writes each state-writing skill's `stage` / `next_step` into a `pdlc:meta` block. Every skill folder is thereby self-contained, as the Agent Skills open standard expects.
 
 ## 4. Target-project contract
 
@@ -121,6 +121,7 @@ Two tiers, both run locally (no CI by default).
 - `tests/frontmatter-check.sh` — required frontmatter fields, layer values, `@include` resolvability, `name == dir`, `next_step` resolves, manifest version sync.
 - `tests/install-smoke.sh` — skill / template / fragment counts, manifest fields, key invariants.
 - `tests/statusline-check.sh` — `pdlc-statusline.sh` render scenarios (interactive / autonomous / blocked / terminal / multi-feature pick / non-PDLC empty).
+- `tests/skills-selfcontained-check.sh` — every skill folder self-contained: fragments inlined and identical to their source, `assets/` / `scripts/` copies byte-identical with no strays, `stage` / `next_step` present in state writers' bodies, `$ARGUMENTS` at most once on its own line, no reference to a fragment the skill doesn't include.
 - `tests/state-lint-check.sh` — `pdlc-state-lint.sh` findings per deviation class, no false positives on conforming files, index/config files skipped, three-state exit codes, and a byte-level read-only check.
 - `tests/adapter-codex-check.sh` / `tests/adapter-codex-loop-run-check.sh` — Codex projection layout and loop-driver guardrails (the latter already stub-driven).
 

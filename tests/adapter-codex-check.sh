@@ -7,7 +7,7 @@
 #   - 无残留 @include；无 Claude 术语（Layer 1/2 命令）泄漏；adapter:claude-only 哨兵块被剥掉
 #   - Claude 内部 frontmatter 字段（layer/produces/allowed-tools）被剥离
 #   - next_step 已物化进正文（自然语言措辞，非斜杠命令）
-#   - 文档模板引用改写到 ~/.codex/pdlc/templates/，无路径腐蚀
+#   - 文档模板与脚本随 skill 自带（assets/ scripts/），正文引用原样可解析
 #   - 方法论 + 模板一并落地
 set -uo pipefail
 
@@ -126,15 +126,18 @@ assert_contains "下一步措辞用自然语言（非斜杠命令）" "按 pdlc 
 
 # ─── 模板引用改写 ───
 echo ""
-echo "Test: 文档模板引用改写"
-# 这里的 ~ 是产物里的字面文本（转译改写目标），不是待展开路径
-# shellcheck disable=SC2088
-assert_contains "pdlc-prd 模板引用（templates/ 形态）改写正确" "~/.codex/pdlc/templates/prd-template.md" "$(cat "$(sk pdlc-prd)")"
-# shellcheck disable=SC2088
-assert_contains "pdlc-adopt 模板引用（.claude/templates/pdlc/ 形态）改写正确" "~/.codex/pdlc/templates/adopt-report-template.md" "$(cat "$(sk pdlc-adopt)")"
-# 防回归：全局 templates/ 替换曾把 .claude/templates/pdlc/ 腐蚀成 .claude/~/.codex/...（Copilot 评审）
-leak="$(grep -rl '\.claude/~\|templates/pdlc/templates' "$OUT/skills/" 2>/dev/null || true)"
-assert_eq "无 .claude/ 模板路径腐蚀泄漏" "" "$leak"
+echo "Test: 模板与脚本随 skill 自带"
+# 模板与脚本随 skill 自带，正文引用相对 skill 根目录——投影原样拷过去就能解析，不再改写路径
+assert_contains "pdlc-prd 引用自带的 assets/prd-template.md" "assets/prd-template.md" "$(cat "$(sk pdlc-prd)")"
+assert_exists "pdlc-prd 投影带着 assets/prd-template.md" "$OUT/skills/pdlc-prd/assets/prd-template.md"
+assert_exists "pdlc-adopt 投影带着 assets/adopt-report-template.md（原 v1 旧路径）" "$OUT/skills/pdlc-adopt/assets/adopt-report-template.md"
+if [[ -x "$OUT/skills/pdlc-status/scripts/pdlc-state-lint.sh" ]]; then
+    echo "  ✓ pdlc-status 投影带着可执行的 scripts/pdlc-state-lint.sh"; pass=$((pass + 1))
+else
+    echo "  ✗ pdlc-status 投影缺可执行的 scripts/pdlc-state-lint.sh"; fail=$((fail + 1))
+fi
+stale_tpl="$(grep -rlE '\.claude/templates/pdlc/|~/\.codex/pdlc/templates' "$OUT/skills/" 2>/dev/null || true)"
+assert_eq "无旧的模板路径（v1 路径 / 旧 Codex 安装位置）" "" "$stale_tpl"
 
 # ─── 升级路径：输出目录含 v1.5.0 旧 prompts/ 不应阻断重建（Copilot 评审）───
 echo ""
@@ -150,13 +153,23 @@ rm -rf "$UPG"
 
 # ─── 附带产物 ───
 echo ""
-echo "Test: 方法论 + 模板落地"
+echo "Test: 方法论 + 模板随 skill 落地"
 assert_exists "方法论文档随产物落地" "$OUT/pdlc-methodology.md"
-tpl_n=$(find "$OUT/templates" -name '*-template.*' | wc -l | tr -d ' ')
+# 模板不再统一拷到产物根的 templates/，而是随各 skill 自带在 assets/ 下
+assert_absent "产物根不再有统一的 templates/" "$OUT/templates"
+missing_assets=""
+for a in skills/*/assets/*; do
+    [[ -f "$a" ]] || continue
+    sk="$(basename "$(dirname "$(dirname "$a")")")"
+    case "$sk" in pdlc-settings|pdlc-loop-run) continue ;; esac   # denylist，不投影
+    [[ -f "$OUT/skills/$sk/assets/$(basename "$a")" ]] || missing_assets+="$sk/$(basename "$a") "
+done
+assert_eq "各 skill 自带的模板都随投影落地" "" "$missing_assets"
+tpl_n=$(find "$OUT/skills" -path '*/assets/*' -type f | wc -l | tr -d ' ')
 if [[ "$tpl_n" -ge 9 ]]; then
-    echo "  ✓ 文档模板已拷贝（$tpl_n 个）"; pass=$((pass + 1))
+    echo "  ✓ 投影里的自带模板共 $tpl_n 份"; pass=$((pass + 1))
 else
-    echo "  ✗ 文档模板数异常（${tpl_n}）"; fail=$((fail + 1))
+    echo "  ✗ 投影里的自带模板数异常（${tpl_n}）"; fail=$((fail + 1))
 fi
 
 echo ""

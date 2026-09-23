@@ -25,8 +25,39 @@ recommended_effort: medium
 
 跑真实 check → 对照质量目标 → 出可核对的报告 → **人签字放行**。
 
-<!-- @include templates/prompts/iron-law.md -->
-<!-- @include templates/prompts/noninteractive.md -->
+<!-- @include templates/prompts/iron-law.md（已内联于下方，无需另读） -->
+⛔ **IRON LAW · 不可违反的硬门禁**
+
+以下规则为**不可协商**的执行约束：
+
+1. **文件必须落盘**：所有带编号（功能ID / 缺陷ID）的文档，必须作为实际文件写入磁盘，不可仅在对话中输出。
+2. **阶段必须落章**：每个阶段完成后必须在状态机 `docs/.pdlc-state/<feature-id>.json` 追加 history，不可跳过。
+3. **测试必须存在**：进入 `/pdlc-implement` 前，对应测试必须存在且处于红灯状态。违反则中止。
+4. **自检必须执行**：段二自检为强制步骤，不得以"已经很好了"为由跳过。
+5. **防循环**：段三修复为单次，不递归。无法自动修复的问题记录到报告，继续往下走。
+6. **状态必推进**：成功执行某 phase 后 `current_stage` 必须变更。收尾时若发现 `current_stage` 未推进，视为失败并报错，**不得静默返回**（防止外层循环拿滞后的状态空转烧额度）。唯一例外：命中人工点主动 block 时，`current_stage` 保持不变但必须写 `last_phase_result.ok=false` + `blocked_reason`。
+
+**违反任一条 = 立即中止当前命令，输出违规详情，等待人工介入。**
+<!-- @include-end templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/noninteractive.md（已内联于下方，无需另读） -->
+## 非交互模式（`--autonomous`）
+
+若本命令的参数含 `--autonomous`，本命令进入**无人值守**模式，按以下规则处理原本需要人应答的交互点。**参数是唯一真源**：不带 `--autonomous` 即为交互模式，一切照旧正常询问用户；绝不回读状态机 `run_mode` 兜底（「掉出 autonomous」是安全的失败方向）。
+
+1. **流程性确认**（如「测试已绿是否继续」「是否覆盖已有文件」）→ **不询问**，按预设默认前进，并把决策追加到状态机 `history[].auto_decisions[]`：
+   ```json
+   { "point": "<确认点描述>", "chose": "<所选默认>", "at": "<ISO 8601>" }
+   ```
+2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖等无法安全默认的点）→ **不猜**：
+   - `current_stage` 保持不变（不推进）
+   - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`
+   - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
+   - 立即结束命令，交还人类
+3. **破坏性操作**（发布 / 部署 / 打 tag / 触发 CI / DROP / force-push 等不可逆·外发操作）→ `--autonomous` **无效**，仍必须人工显式确认。
+4. **顺手的 sidecar 产物**（如缺失时创建 `CHANGELOG.md`、补全文档 PDLC-TRACE 的创建时间等本阶段职责内、可安全默认的辅助改动）→ 视为流程性默认，**直接做并记入 `auto_decisions[]`**；这类改动不新增外部副作用，不属破坏性操作。
+
+> 进入 autonomous 模式时，在状态机顶层写 `run_mode: "autonomous"` 仅供留痕（复盘区分人工 vs 循环产出）。
+<!-- @include-end templates/prompts/noninteractive.md -->
 
 ## 这个命令的立身之本
 
@@ -47,7 +78,7 @@ recommended_effort: medium
 
 ### `--init`：首次建立目标声明
 
-1. 读 `templates/quality-targets-template.yml` 作骨架。
+1. 读 本 skill 目录下的 `assets/quality-targets-template.yml` 作骨架。
 2. **从 PRD 自动抽 `core_flows` 草稿**：扫 `docs/01_requirements/prd/`，提取标记为 **P0 / P1** 的功能流程，
    生成候选清单（含来源 PRD 路径）**供人确认**——降低首次声明的摩擦，但**最终清单必须人确认**，不自动落盘。
 3. 覆盖率达标线：默认与 `test-commands.yml` 的 coverage 命令参数对齐；两者不一致要提示人对齐
@@ -59,7 +90,54 @@ recommended_effort: medium
 按 `test-commands.yml` 逐条真跑 `coverage` / `e2e` / `lint`，记录**命令原文 + 退出码 + 关键输出**。
 退出码的三态语义、以及「命令跑不了 = yml 过期信号」按下面的规则处理：
 
-<!-- @include templates/prompts/check-commands.md -->
+<!-- @include templates/prompts/check-commands.md（已内联于下方，无需另读） -->
+## 跑 check 命令：退出码的三态语义
+
+命令取自 `docs/00_standards/test-commands.yml`（唯一真源）。逐条真跑，**按退出码分三态**——
+不是两态。这是 IRON LAW「checks 只认客观事实」在执行层的落法：
+
+| 观察到的 | 含义 | 写进 `checks` |
+|---|---|---|
+| 退出码 `0` | 通过 | 对应键 = `true` |
+| 退出码非 0（命令**跑起来了**，只是没过） | 未通过 | 对应键 = `false` |
+| 退出码 `127` / `command not found` / 脚本文件不存在 / 该项为空字符串 | **无法判定** | **省略该键，或写 `null`**——**绝不能是 `false`** |
+
+> ⛔ **唯一的红线是不许写 `false`**：那是**会误导人的虚报**——它说的是"检查失败了"，
+> 于是有人去查代码，但真正的问题是**配置过期**，代码可能完全没毛病。
+>
+> **省略键与 `null` 等价，两种都可以**：对消费方而言无法区分（`jq '.checks.lint_clean'`
+> 在两种情况下都返回 `null`）。`null` 甚至更明确——省略是歧义的（"没看"还是"看了判不出"），
+> `null` 明说"看了，判不出"。**别在这上面纠结，力气花在不写 `false` 上。**
+>
+> 这与「没有检查命令可跑的阶段 → `checks: {}`」同源。
+
+## 「跑不了」＝ `test-commands.yml` 过期信号（顺带检测，零额外成本）
+
+命令跑不起来，几乎总意味着**这份 yml 已经跟不上项目了**——脚本改名、runner 换了、
+工具从依赖里移除、子项目路径调整。真实项目里这类漂移是常态（例如某前端框架升级后
+移除了内置 lint 子命令，而 yml 里那条命令还在）。
+
+由于**各阶段本来就在跑这些命令**，这个信号是白捡的。检测到时：
+
+1. 在本阶段的报告里单列一条：**「`test-commands.yml` 疑似过期」**，写明是哪一项、
+   观察到什么（退出码 / 报错原文）、以及为什么判定为"跑不了"而非"没通过"。
+2. 提示补救：`/pdlc-test-setup --refresh`（重新探测并给出 diff）。
+3. **不要自作主张改 yml**——本阶段的职责是干活，不是改配置；只报告，不动手。
+
+## 变更方向决定自动化程度（`--refresh` 时适用）
+
+更新这份 yml 等于**改变"通过"的定义**，所以按**方向**区别对待：
+
+| 方向 | 例子 | 处理 |
+|---|---|---|
+| **让闸门变严** | 空着的 `e2e` 现在能跑了、覆盖率阈值上调 | **可自动应用**，报告留痕 |
+| **平移替换** | 命令改名但语义相同，且新命令**已验证能跑** | **可自动应用**，报告留痕 |
+| **让闸门变松** | 删掉某条 check、把命令改成空、下调阈值 | **必须人确认**，绝不自动 |
+
+> ⚠️ 这条方向规则是防「自动修复把闸门修没了」：lint 命令坏掉时，**把它留空**是最省事的
+> "修法"，结果闸门悄悄松了、报告还是绿的——比不更新更危险。
+> **变严可以自动，变松必须由人签字。**
+<!-- @include-end templates/prompts/check-commands.md -->
 
 补充两条本命令特有的：
 
@@ -126,14 +204,14 @@ recommended_effort: medium
 
 ## 段三：出报告（真源 `.md` + 视图 `.html`）
 
-**① 先出 `.md`（真源）**：按 `templates/quality-report-template.md` 生成
+**① 先出 `.md`（真源）**：按 本 skill 目录下的 `assets/quality-report-template.md` 生成
 `docs/07_reviews/quality/<YYYY-MM-DD>.md`（**ledger 型**：一次一份，可 git diff、可看趋势；
 同日重跑则覆盖当日文件）。必须包含：
 
 1. 结论红绿表　2. 实测证据（命令 + 退出码 + 关键输出）　3. E2E 覆盖矩阵
 4. **配置健康度**（§2.3）　5. PRD 对账结果　6. 趋势（首次则写「无趋势基线」）　7. **人工确认签字栏**
 
-**② 再出 `.html`（视图）**：按 `templates/quality-report-template.html` 生成同目录同名
+**② 再出 `.html`（视图）**：按 本 skill 目录下的 `assets/quality-report-template.html` 生成同目录同名
 `<YYYY-MM-DD>.html`——给人看的那一份，可直接双击打开、可打印签字、可发给同事。
 
 > **`.md` 是唯一真源**：`/pdlc-ship` 的发布闸门读它、`git diff` 看它、趋势对比取它。
@@ -157,7 +235,23 @@ recommended_effort: medium
 
 ## 段四：自检（强制）
 
-<!-- @include templates/prompts/self-audit.md -->
+<!-- @include templates/prompts/self-audit.md（已内联于下方，无需另读） -->
+## 段二：自检（强制）
+
+重新阅读本次产出物，按质量关卡清单逐项检查。勾选已通过，标注未通过原因。
+
+> **注意**：自检清单的具体内容由各命令自行定义，本片段只规定结构。
+
+## 段三：修复（单次，不递归）
+
+针对自检段标注为未通过的项：
+
+- **可自动修复**：直接修复（如补缺字段、修正格式、补齐缺失段落）
+- **修复后回验**：再次运行自检，确认被修复项现在通过
+- **无法自动修复**：记录到自审报告，不再尝试，流程继续
+
+⚠️ 单次修复原则：若一轮修复后仍有项未通过，**不再递归修复**，防止死循环。
+<!-- @include-end templates/prompts/self-audit.md -->
 
 - [ ] 报告里每一条判定，都能追到本次真跑的退出码 / 工具输出 / 映射核对结果
 - [ ] 没有任何一项是靠"读代码觉得"得出的
@@ -174,7 +268,18 @@ recommended_effort: medium
 
 ## 段五：修复（单次，不递归）
 
-<!-- @include templates/prompts/loop-prevention.md -->
+<!-- @include templates/prompts/loop-prevention.md（已内联于下方，无需另读） -->
+## 防循环规则
+
+本命令所有的自检-修复循环均受以下约束：
+
+1. **单次检查**：同一个自检清单在本次命令执行中只跑一次（起始 + 修复后验证共两次读）
+2. **单次修复**：发现的问题只尝试修复一轮
+3. **不递归**：修复后不再重新触发自检的全量重跑
+4. **失败降级**：无法自动修复的问题 → 记录到自审报告 → 流程继续 → 最终报告标注待人工处理
+
+这是为了防止 agent 在"修完再查、查完再修"的往返中陷入死循环。
+<!-- @include-end templates/prompts/loop-prevention.md -->
 
 可自动修复的（如 lint 可自动修的告警）→ 修完**重跑该 check** 并以重跑结果为准，报告里注明"已自动修复后重测"。
 不可自动修复 → 如实留红，写进报告。
@@ -188,7 +293,24 @@ recommended_effort: medium
 
 ## 段六：交接
 
-<!-- @include templates/prompts/handoff.md -->
+<!-- @include templates/prompts/handoff.md（已内联于下方，无需另读） -->
+## 段四：交接（Handoff）
+
+命令完成后必须输出以下格式的最终消息：
+
+```
+✅ <阶段名> 完成：<主要产出物路径>
+📊 自检：<通过数>/<总数> 通过（若有未通过，附要点）
+📦 状态快照：docs/.pdlc-state/<feature-id>.json
+👉 下一步：/pdlc-<next_step>
+   （如果有分叉）或 /pdlc-<alt>（条件：<选择依据>）
+```
+
+**规则：**
+- 主流程命令（写状态机的命令；下一跳见正文里「本命令的状态机取值」）必须显式输出"下一步"，不可省略
+- 工具型命令（Layer 3）可以没有 `next_step`，此时输出 `👉 下一步：（本次流程结束，无后续）`
+- 分叉场景必须说明**选择条件**，例如"若需补充测试用例 → `/pdlc-tdd`；若测试已齐 → `/pdlc-review`"
+<!-- @include-end templates/prompts/handoff.md -->
 
 **本命令的 handoff 输出：**
 

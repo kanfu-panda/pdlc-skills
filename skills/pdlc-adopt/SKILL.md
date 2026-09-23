@@ -14,7 +14,20 @@ terminal_state: null
 
 # 旧项目接入 PDLC
 
-<!-- @include templates/prompts/iron-law.md -->
+<!-- @include templates/prompts/iron-law.md（已内联于下方，无需另读） -->
+⛔ **IRON LAW · 不可违反的硬门禁**
+
+以下规则为**不可协商**的执行约束：
+
+1. **文件必须落盘**：所有带编号（功能ID / 缺陷ID）的文档，必须作为实际文件写入磁盘，不可仅在对话中输出。
+2. **阶段必须落章**：每个阶段完成后必须在状态机 `docs/.pdlc-state/<feature-id>.json` 追加 history，不可跳过。
+3. **测试必须存在**：进入 `/pdlc-implement` 前，对应测试必须存在且处于红灯状态。违反则中止。
+4. **自检必须执行**：段二自检为强制步骤，不得以"已经很好了"为由跳过。
+5. **防循环**：段三修复为单次，不递归。无法自动修复的问题记录到报告，继续往下走。
+6. **状态必推进**：成功执行某 phase 后 `current_stage` 必须变更。收尾时若发现 `current_stage` 未推进，视为失败并报错，**不得静默返回**（防止外层循环拿滞后的状态空转烧额度）。唯一例外：命中人工点主动 block 时，`current_stage` 保持不变但必须写 `last_phase_result.ok=false` + `blocked_reason`。
+
+**违反任一条 = 立即中止当前命令，输出违规详情，等待人工介入。**
+<!-- @include-end templates/prompts/iron-law.md -->
 
 扫描现有项目结构，逆向生成基线文档，并进行健康检查发现潜在问题。让旧项目平滑接入 PDLC 流程。
 
@@ -26,7 +39,7 @@ terminal_state: null
 
 ## 子命令解析
 
-从 `$ARGUMENTS` 中解析子命令：
+从本命令的参数中解析子命令：
 
 | 子命令 | 说明 |
 |--------|------|
@@ -230,7 +243,7 @@ terminal_state: null
 - 路径：`docs/02_design/api/ADOPTED-<服务名>-api.md`（每个服务一个）
 - 内容来源：路由定义扫描结果
 - 包含：接口列表表格（方法、路径、描述、参数）、按模块分组
-- 使用 `templates/api-design-template.md` 的格式
+- 使用 本 skill 目录下的 `assets/api-design-template.md` 的格式
 - **明确标注**：`> ⚠️ 接口描述基于函数名推断，请核对补充`
 
 #### 基线 DB 设计文档
@@ -238,7 +251,7 @@ terminal_state: null
 - 路径：`docs/02_design/database/ADOPTED-<服务名>-db.md`（每个服务一个）
 - 内容来源：ORM Model / Migration / SQL 文件
 - 包含：ER 关系图（文本格式）、表结构定义、索引设计、公共字段约定
-- 使用 `templates/db-design-template.md` 的格式
+- 使用 本 skill 目录下的 `assets/db-design-template.md` 的格式
 - **明确标注**：`> ⚠️ 表结构从代码提取，请核对与实际数据库是否一致`
 
 #### 基线架构文档
@@ -285,17 +298,62 @@ terminal_state: null
 
 ## 要求
 
-<!-- @include templates/prompts/output-language.md -->
+<!-- @include templates/prompts/output-language.md（已内联于下方，无需另读） -->
+🌐 **Output language for generated artifacts**
+
+All generated artifacts (PRDs, design docs, code comments, review reports,
+test plans, deployment manuals, changelog entries, etc.) follow this policy:
+
+1. **Default — match the conversation language exactly**:
+   - 用户用中文与 Claude 对话 → 产中文文档、中文代码注释、中文报告
+   - User talks to Claude in English → produce English artifacts
+   - User talks in another language → produce artifacts in that language
+   - **Never silently default to a fixed language regardless of the user's input.**
+
+2. **Explicit override always wins**: when the user specifies a language for
+   an artifact (e.g. "write the PRD in English", "用英文写 API 设计文档",
+   "output the deploy doc in Japanese"), use that language for that artifact,
+   regardless of conversation language.
+
+3. **Mixed-language requirements**: if the user wants some artifacts in one
+   language and others in a different language (common: Chinese PRD + English
+   API docs for partners), honour each per-artifact instruction.
+
+4. **Uncertain**: if you cannot reliably detect the conversation language,
+   ask once before producing the first artifact.
+
+This policy applies to **content** (prose, comments, headings). It does
+**not** override technical conventions like English variable names, English
+git commit subjects, or English error codes when the project's conventions
+require them.
+<!-- @include-end templates/prompts/output-language.md -->
 - scan 子命令**严格只读**，不创建/修改任何文件
 - init 子命令不修改任何现有代码文件，只在 `docs/` 目录下创建文档
 - 已存在的文档不覆盖，跳过并提示
 - 基线文档中需人工补充的部分用 `> ⚠️` 引用块明确标注
 - 健康检查问题必须给出具体的文件路径和行号
-- 读取 `.claude/templates/pdlc/adopt-report-template.md` 模板作为格式参考
+- 读取 本 skill 目录下的 `assets/adopt-report-template.md` 模板作为格式参考
 
 接入操作: $ARGUMENTS
 
-<!-- @include templates/prompts/handoff.md -->
+<!-- @include templates/prompts/handoff.md（已内联于下方，无需另读） -->
+## 段四：交接（Handoff）
+
+命令完成后必须输出以下格式的最终消息：
+
+```
+✅ <阶段名> 完成：<主要产出物路径>
+📊 自检：<通过数>/<总数> 通过（若有未通过，附要点）
+📦 状态快照：docs/.pdlc-state/<feature-id>.json
+👉 下一步：/pdlc-<next_step>
+   （如果有分叉）或 /pdlc-<alt>（条件：<选择依据>）
+```
+
+**规则：**
+- 主流程命令（写状态机的命令；下一跳见正文里「本命令的状态机取值」）必须显式输出"下一步"，不可省略
+- 工具型命令（Layer 3）可以没有 `next_step`，此时输出 `👉 下一步：（本次流程结束，无后续）`
+- 分叉场景必须说明**选择条件**，例如"若需补充测试用例 → `/pdlc-tdd`；若测试已齐 → `/pdlc-review`"
+<!-- @include-end templates/prompts/handoff.md -->
 
 **本命令的 handoff 输出：**
 
