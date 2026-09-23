@@ -120,7 +120,14 @@ def transpile(text):
 
 
 def main():
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "dist" / "codex"
+    args = sys.argv[1:]
+    if args and args[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
+    # 输出目录不接受 - 开头的参数：曾把 --dry-run 当成目录名，在当前目录下建出一个 --dry-run/
+    if any(a.startswith("-") for a in args) or len(args) > 1:
+        sys.exit(f"错误：只接受一个输出目录参数（得到 {' '.join(args)}）。用法：python3 adapters/build_codex.py [输出目录]")
+    out = Path(args[0]) if args else REPO / "dist" / "codex"
     skills_out = out / "skills"
 
     # 全新构建：清掉旧产物。但 out 是 CLI 传入的任意路径——只删「看起来纯是本脚本产物」的目录，

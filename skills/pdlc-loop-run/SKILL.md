@@ -43,6 +43,29 @@ terminal_state: null
 - **默认推荐 · 外部 Runbook（真进程隔离）**：长跑 / 过夜 / 多 feature 并行时，用独立进程逐轮跑，每轮全新进程 = 真 fresh context 最可信。本命令可打印该 Runbook 脚本（见 usage-guide「自主循环 Runbook」）。
 - **便捷 · 插件内 Task 版（本命令默认行为）**：适合短收敛。每个 stage 派发给一个 **fresh Task subagent**（context 相对隔离），返回后读状态机决定推进 / 停 / block。
 
+## 多个功能 / 并行：用驱动脚本
+
+一次要推多个功能、要并行、或要长跑过夜时，**不要自己写外层循环**——用随本 skill 分发的驱动脚本
+`scripts/pdlc-loop.sh`（在本 skill 目录下）。它就是上面说的外部 Runbook 形态，护栏与下面的 Task 版一致：
+
+```bash
+# 先看决策，不花钱
+bash <本 skill 目录>/scripts/pdlc-loop.sh F20260924-100000 F20260924-110000 --platform claude --dry-run
+# 真跑：claude 平台必须给每次调用的预算上限
+bash <本 skill 目录>/scripts/pdlc-loop.sh F20260924-100000 F20260924-110000 --platform claude --max-budget-usd 5
+# 所有处于收敛段、未阻塞的功能，两个一起跑（每个功能一个 git worktree）
+bash <本 skill 目录>/scripts/pdlc-loop.sh --ready --platform claude --max-budget-usd 5 --parallel 2
+# 看进度（/pdlc-status 也会显示）
+bash <本 skill 目录>/scripts/pdlc-loop.sh --status
+```
+
+- `--platform claude|codex`：每一步用 `claude -p` 或 `codex exec` 起一个全新进程
+- 并行参数 `--parallel N`（默认 1）：N>1 时每个功能在 `.worktrees/pdlc-loop/<ID>`（分支 `pdlc-loop/<ID>`）里跑，互不干扰；
+  产物留在 worktree 里，由人审阅、合并，驱动不提交、不合并。状态文件要先提交，worktree 里才看得到
+- 按状态机里的 `depends_on` 排先后：依赖没收敛，依赖方就不跑；成环的全部跳过
+- 退出码：`0` 全部收敛；`2` 有功能阻塞或被跳过；`3` 达步数上限；`4` 平台命令出错；`5` 状态没推进
+- 跑之前把命令与预计的并行数、预算告诉用户并等确认——自主循环持续花钱
+
 ## 循环算法（Task 版）
 
 1. 从本命令的参数取功能ID；`--max-steps` 取迭代上限（缺省 **4**）。读 `docs/.pdlc-state/<功能ID>.json`。

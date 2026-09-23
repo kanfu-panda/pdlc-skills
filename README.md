@@ -170,9 +170,10 @@ Because every stage writes **objective checks** — real `unit` / `lint` / `cove
 
 - **`/pdlc-loop-run <feature-id>`** — the convergence engine: auto-advances `tdd → implement → review` to `review_done`, with an iteration cap, **fail-stop** (a stage reports `ok:false` → stop), and **stuck-stop** (state didn't advance → stop). **Release always stays human** — it never auto-ships.
 - **`/pdlc-loop-next <feature-id>`** — read-only helper that prints the next convergence command, for your own shell loops.
-- **On Codex** — `adapters/codex-loop-run.sh` drives the same loop externally (cleared a real-machine state-integrity gate — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md)).
+- **`bin/pdlc-loop.sh`** — the external driver for several features at once: pass IDs or `--ready`, pick `--platform claude|codex`, and `--parallel N` runs each feature in its own git worktree. It orders features by `depends_on`, never ships, never commits or merges, and keeps a run record that `--status` and `/pdlc-status --loop` read back (per-feature step, time on the current step, stall hints; no ETA). A Claude run requires `--max-budget-usd`.
+- **On Codex** — `adapters/codex-loop-run.sh` is the same driver with `--platform codex` (Codex cleared a real-machine state-integrity gate — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md)).
 
-Design: [ADR 0001](./docs/decisions/0001-loop-engineering-integration.md).
+Design: [ADR 0001](./docs/decisions/0001-loop-engineering-integration.md) · multi-feature driver: [ADR 0006](./docs/decisions/0006-multi-feature-loop-driver.md).
 
 ---
 
@@ -274,6 +275,8 @@ docs/.pdlc-state/<feature-id>.json                          # state machine + re
                                                             #   current_stage ends in _done only once released: ship_done / deploy_done
 docs/.pdlc-state/_relations.json                            # auto · reverse index of feature relations (pdlc-relate)
 docs/.pdlc-state/_graph.md                                  # auto · mermaid relation graph
+.worktrees/pdlc-loop/<feature-id>/                          # auto · one worktree per feature when bin/pdlc-loop.sh runs --parallel (git-excluded)
+.git/pdlc-loop/                                             # auto · loop driver run record + logs (docs/.pdlc-state/_loop/ outside git)
 ```
 
 ---
@@ -324,7 +327,7 @@ For private security concerns, see [SECURITY.md](./SECURITY.md).
 Run the tests locally:
 
 ```bash
-for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 9 scripts, stop at the first red one
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 10 scripts, stop at the first red one
 python3 adapters/sync_skills.py --check                         # skills in sync with their shared sources
 shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit

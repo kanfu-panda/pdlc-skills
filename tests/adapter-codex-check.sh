@@ -70,6 +70,24 @@ build_out="$(python3 adapters/build_codex.py "$OUT" 2>&1)"
 assert_eq "构建退出码 0" "0" "$?"
 assert_contains "报告 denylist 跳过 2 个" "denylist 跳过 2" "$build_out"
 
+# 输出目录参数不能以 - 开头：曾有一次 `build_codex.py --dry-run` 把 `--dry-run` 当成输出目录，
+# 在当前目录下建出一个叫 --dry-run 的文件夹
+echo ""
+echo "Test: 拒绝以 - 开头的参数"
+ARGT="$(mktemp -d)"
+(cd "$ARGT" && python3 "$SCRIPT_DIR/adapters/build_codex.py" --dry-run >/dev/null 2>&1); arg_rc=$?
+if [[ "$arg_rc" -ne 0 ]]; then
+    echo "  ✓ 未知选项 --dry-run → 非零退出（${arg_rc}）"; pass=$((pass + 1))
+else
+    echo "  ✗ 未知选项 --dry-run 被接受了"; fail=$((fail + 1))
+fi
+assert_absent "没有建出名为 --dry-run 的目录" "$ARGT/--dry-run"
+help_out="$(cd "$ARGT" && python3 "$SCRIPT_DIR/adapters/build_codex.py" --help 2>&1)"; help_rc=$?
+assert_eq "--help 退出 0" "0" "$help_rc"
+assert_contains "--help 打印用法" "用法" "$help_out"
+assert_absent "--help 也不建目录" "$ARGT/--help"
+rm -rf "$ARGT"
+
 # ─── skill 数量与 denylist ───
 echo ""
 echo "Test: skill 数量与 denylist"

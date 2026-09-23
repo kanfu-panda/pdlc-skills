@@ -44,10 +44,10 @@ bash install.sh --target codex --uninstall   # 移除
 
 ### Codex 自主收敛循环（`codex-loop-run.sh`）
 
-`pdlc-loop-run` 的默认「Task 版」耦合 Claude 子代理派发、未投影；本脚本是它的**外部 Runbook 版**——一个 bash 循环，无人值守把 `tdd → implement → review` 推到 `review_done`。
+`pdlc-loop-run` 的默认「Task 版」耦合 Claude 子代理派发、未投影；本脚本是它的**外部 Runbook 版**，无人值守把 `tdd → implement → review` 推到 `review_done`。它只是 `bin/pdlc-loop.sh --platform codex` 的入口：多个功能、`--parallel`、`depends_on` 排序、运行记录与 `--status` 都由那个平台中立的驱动实现（见 [ADR 0006](../docs/decisions/0006-multi-feature-loop-driver.md)）。
 
 ```bash
-adapters/codex-loop-run.sh <功能ID> [--project DIR] [--max-steps N] [--dry-run]
+adapters/codex-loop-run.sh <功能ID>... [--project DIR] [--max-steps N] [--parallel N] [--dry-run]
 ```
 
 - **状态机是唯一真源**：每轮读状态机、用 loop-next 映射的 jq 复刻判下一跳、调 `codex exec "按 pdlc <阶段> <id> --autonomous"`、读回状态机判护栏。
