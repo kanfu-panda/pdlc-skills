@@ -107,14 +107,14 @@ terminal_state: null
 
 ### 4. 判终态的唯一依据 ⛔
 
-**已抵达终态 ⇔ `current_stage` 以 `_done` 结尾**（编排器写入的是 `feature_done` / `fix_done`）。
+**已抵达终态 ⇔ `current_stage` 以 `_done` 结尾**（终态即「已发布」：`/pdlc-ship` 写 `ship_done`、`/pdlc-deploy` 写 `deploy_done`；旧版本留下的 `feature_done` / `fix_done` / `review_done` 也按终态读）。
 
 - **不看 `terminal_state`**。状态机实例本就没有这个字段。skill frontmatter 里的 `terminal_state:`
   说的是「这个命令走完后**应当**到达的终态名」——是**目标**，不是**事实**。拿它判终态，
   等于把「打算完成」当成「已经完成」。
 - **不用封闭列表**（如只认 `[feature_done, fix_done]`）。封闭列表会把合法的终态漏判成「进行中」，
   逼着读侧去别的字段里找答案——而最顺手的那个字段恰好就是 `terminal_state`。
-- **`next_step` 为 `null` 也不等于终态**：原子 fix 流程的 `next_step` 恒为 `null`，却未必完成。
+- **`next_step` 为 `null` 也不等于终态**：`/pdlc-task` 写的 `next_step` 恒为 `null`，却未必完成；空的或残缺的状态文件也读得出 `null`。
 <!-- @include-end templates/prompts/state-read.md -->
 
 ## 执行流程
@@ -148,7 +148,7 @@ terminal_state: null
 
 ✅ 已完成（<K> 个）
   - F20260415-110000 feature-xyz    完成于 2026-04-16
-  - B20260418-090000 login-crash    完成于 2026-04-18（fix_done）
+  - B20260418-090000 login-crash    完成于 2026-04-18（ship_done）
 
 ⚠️ 待办建议
   - F20260419-090000 停留在 design 超过 2 天，建议推进 /pdlc-tdd

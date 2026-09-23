@@ -129,6 +129,7 @@ claude plugin install pdlc@pdlc-skills
 git clone https://github.com/kanfu-panda/pdlc-skills.git
 cd pdlc-skills
 # edit references/templates/*.md or skills/pdlc-*/SKILL.md
+python3 adapters/sync_skills.py   # copy shared fragments / templates / scripts into each skill folder
 bash install.sh --global   # installs from your local clone
 ```
 
@@ -155,7 +156,7 @@ Claude Code has the **richest integration** — 38 slash commands + statusline +
   git clone https://github.com/kanfu-panda/pdlc-skills.git
   cd pdlc-skills && bash install.sh --target codex
   ```
-  Builds the adapter and installs 34 pdlc skills into `~/.codex/skills/` (the 2 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Codex skills are **description-triggered, not slash commands** — after restarting Codex, drive PDLC in natural language (e.g. `用 pdlc 写个 PRD：<一句话需求>`). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
+  Builds the adapter and installs 36 pdlc skills into `~/.codex/skills/` (the 2 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Codex skills are **description-triggered, not slash commands** — after restarting Codex, drive PDLC in natural language (e.g. `用 pdlc 写个 PRD：<一句话需求>`). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
   - **Autonomous convergence** on Codex: `adapters/codex-loop-run.sh <feature-id> --project <dir>` drives `tdd → implement → review` to `review_done` (external Runbook; release stays human). Cleared the state-integrity admission gate on a real run — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md).
   - ⚠️ **Scope — not verified on vanilla OpenAI Codex.** The adapter was validated only on a Codex distribution that reads `~/.codex/skills/`; we have no vanilla environment to test on. If Codex ignores the skills after a restart, it doesn't read that directory — fall back to the platform-neutral route above (methodology doc in `AGENTS.md`), which needs no adapter. Reports from vanilla users are welcome via issues.
 
@@ -200,7 +201,7 @@ One-sentence prompts drive the whole chain.
 | Slash command | Purpose |
 |---|---|
 | `/pdlc-feature` | End-to-end new feature (PRD → Design → TDD → Implement → Review → Ship) |
-| `/pdlc-fix` | End-to-end bug fix (locate → reproduce → fix → test → document) |
+| `/pdlc-fix` | End-to-end bug fix (locate → reproduce → fix → test → document), then `/pdlc-review` |
 | `/pdlc-status` | Show the project's PDLC state at a glance |
 
 ### Layer 2 · Stages (11)
@@ -213,11 +214,11 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-design` | Technical design |
 | `/pdlc-tdd` | Write failing tests first |
 | `/pdlc-implement` | Implement code against the design |
-| `/pdlc-review` | Code + doc review |
+| `/pdlc-review` | Code + doc review; checklist items that don't fit the project type are marked not-applicable instead of "fixed" |
 | `/pdlc-e2e` | End-to-end tests |
 | `/pdlc-refactor` | Refactor code |
-| `/pdlc-ship` | Release workflow (tests → VERSION → CHANGELOG → tag → CI) |
-| `/pdlc-deploy` | Deployment doc |
+| `/pdlc-ship` | Release the reviewed features (tests → VERSION → CHANGELOG → tag); leaves CI config alone unless asked |
+| `/pdlc-deploy` | Deployment doc — per release (`/pdlc-deploy v1.2.0`, all features in it) or per feature |
 | `/pdlc-retro` | Iteration retrospective with trend comparison |
 | `/pdlc-task` | In-stage task tracking |
 
@@ -270,6 +271,7 @@ docs/05_deployment/                                         # deployment docs
 docs/06_tasks/                                              # in-stage task tracking
 docs/07_reviews/{doc,code,design,retro,quality}/            # review records + quality reports
 docs/.pdlc-state/<feature-id>.json                          # state machine + relations (one per feature, e.g. F20260419-090000.json)
+                                                            #   current_stage ends in _done only once released: ship_done / deploy_done
 docs/.pdlc-state/_relations.json                            # auto · reverse index of feature relations (pdlc-relate)
 docs/.pdlc-state/_graph.md                                  # auto · mermaid relation graph
 ```
@@ -322,9 +324,13 @@ For private security concerns, see [SECURITY.md](./SECURITY.md).
 Run the tests locally:
 
 ```bash
-bash tests/frontmatter-check.sh   # validate every sub-skill's frontmatter
-bash tests/install-smoke.sh       # end-to-end install + layout checks
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 9 scripts, stop at the first red one
+python3 adapters/sync_skills.py --check                         # skills in sync with their shared sources
+shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
+  evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
+
+What each script covers is listed in [CLAUDE.md](./CLAUDE.md) under "Common commands".
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for PR workflow and coding conventions.
 

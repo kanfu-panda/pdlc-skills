@@ -8,7 +8,7 @@ stage: fix
 produces:
   - docs/04_testing/defects/<defect-id>-defect.md
 requires: []
-next_step: pdlc-ship
+next_step: pdlc-review
 terminal_state: fix_done
 ---
 
@@ -273,7 +273,7 @@ require them.
 Bug 描述: $ARGUMENTS
 
 <!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->
-> **本命令的状态机取值**：阶段短名 `fix`（写进 `history[].stage` 与 `last_phase_result.stage`）；下一跳 `pdlc-ship`（写进 `next_step`，交接时提示）。
+> **本命令的状态机取值**：阶段短名 `fix`（写进 `history[].stage` 与 `last_phase_result.stage`）；下一跳 `pdlc-review`（写进 `next_step`，交接时提示）。
 <!-- pdlc:meta-end -->
 <!-- @include templates/prompts/state-update.md（已内联于下方，无需另读） -->
 ## 状态机更新（段四必须执行）
@@ -338,6 +338,16 @@ Bug 描述: $ARGUMENTS
 >    只写日期，同一天内的阶段耗时就全部算成 0——读侧只能记「不可测」。
 > 4. **`next_step` 只写命令名或 `null`**，不附说明文字（如「pdlc-ship（等评审通过）」）。
 >    要说明原因，阻塞时写进 `last_phase_result.blocked_reason`。
+
+> ⛔ **`_done` 的含义是「已发布」，只由 `/pdlc-ship`（写 `ship_done`）与 `/pdlc-deploy`（写 `deploy_done`）写入。**
+> 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
+> 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
+>
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+>   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
+> - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
+>   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
+> - 旧版本写入的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，`/pdlc-ship` 会列出来请人确认。
 
 ### 更新流程
 

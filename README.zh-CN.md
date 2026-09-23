@@ -129,6 +129,7 @@ claude plugin install pdlc@pdlc-skills
 git clone https://github.com/kanfu-panda/pdlc-skills.git
 cd pdlc-skills
 # 改 references/templates/*.md 或 skills/pdlc-*/SKILL.md
+python3 adapters/sync_skills.py   # 把共享片段 / 模板 / 脚本同步进各 skill 文件夹
 bash install.sh --global   # 从你本地的 clone 安装
 ```
 
@@ -155,7 +156,7 @@ Claude Code **集成最全**——38 个斜杠命令 + 状态栏 + 插件内自�
   git clone https://github.com/kanfu-panda/pdlc-skills.git
   cd pdlc-skills && bash install.sh --target codex
   ```
-  构建适配器并把 34 个 pdlc skill 装到 `~/.codex/skills/`（2 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+  构建适配器并把 36 个 pdlc skill 装到 `~/.codex/skills/`（2 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
   - **Codex 上自主收敛**：`adapters/codex-loop-run.sh <功能ID> --project <目录>` 无人值守把 `tdd → implement → review` 推到 `review_done`（外部 Runbook，发布留人）。已在真机过状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)。
   - ⚠️ **适用范围——原版 OpenAI Codex 未验证**：适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上验过，我们没有原版环境可测。若重启后 Codex 对这些 skill 毫无反应，说明它不读该目录——退回上面的平台中立路线（方法论文档进 `AGENTS.md`），无需适配器。欢迎原版用户提 issue 反馈。
 
@@ -200,7 +201,7 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 | 斜杠命令 | 用途 |
 |---|---|
 | `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布） |
-| `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档） |
+| `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档），下一步 `/pdlc-review` |
 | `/pdlc-status` | 项目 PDLC 状态总览 |
 
 ### Layer 2 · 阶段（11 个，单阶段精细控制）
@@ -211,11 +212,11 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 | `/pdlc-design` | 技术设计 |
 | `/pdlc-tdd` | 测试先行（TDD） |
 | `/pdlc-implement` | 按设计实现代码 |
-| `/pdlc-review` | 代码 + 文档评审 |
+| `/pdlc-review` | 代码 + 文档评审；与项目类型不符的检查项标为「不适用」，不会据此改代码 |
 | `/pdlc-e2e` | 端到端测试 |
 | `/pdlc-refactor` | 代码重构 |
-| `/pdlc-ship` | 发布工作流（测试 → VERSION → CHANGELOG → tag → CI） |
-| `/pdlc-deploy` | 部署文档 |
+| `/pdlc-ship` | 发布评审通过的功能（测试 → VERSION → CHANGELOG → tag）；不主动生成或修改 CI 配置 |
+| `/pdlc-deploy` | 部署文档——按版本（`/pdlc-deploy v1.2.0`，覆盖该版本全部功能）或按单个功能 |
 | `/pdlc-retro` | 迭代复盘（趋势对比） |
 | `/pdlc-task` | 阶段内任务跟踪 |
 
@@ -259,17 +260,18 @@ docs/05_deployment/                  ← 部署
 docs/06_tasks/                       ← 任务跟踪
 docs/07_reviews/{doc,code,design,retro,quality}/   ← 评审 + 复盘 + 质量报告
 docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-090000.json）
+                                        current_stage 只有发布后才以 _done 结尾：ship_done / deploy_done
 ```
 
 ---
 
 ## 包含的文档模板
 
-`references/templates/` 下的 9 个标准模板会随 plugin 一起安装：
+`references/templates/` 下的 11 个标准模板会随 plugin 一起安装：
 
-- `prd-template.md` · `api-design-template.md` · `arch-design-template.md`
+- `prd-template.md` · `api-design-template.md` · `arch-design-template.md` · `architecture-overview-template.md`
 - `db-design-template.md` · `db-migrate-template.md` · `test-plan-template.md`
-- `deploy-doc-template.md` · `changelog-template.md` · `adopt-report-template.md`
+- `deploy-doc-template.md` · `changelog-template.md` · `glossary-template.md` · `adopt-report-template.md`
 
 ---
 
@@ -297,6 +299,17 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 ---
 
 ## 开发者文档
+
+本地跑测试：
+
+```bash
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 9 个脚本，遇红即停
+python3 adapters/sync_skills.py --check                         # 各 skill 与共享源头是否一致
+shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
+  evals/fixtures/*/scenario.sh .githooks/pre-commit
+```
+
+各脚本覆盖什么，见 [CLAUDE.md](./CLAUDE.md) 的「Common commands」。
 
 - `docs/usage-guide.md` — 完整使用手册（含目录契约、状态机、典型场景、扩展方式）
 - `CONTRIBUTING.md` — 如何贡献

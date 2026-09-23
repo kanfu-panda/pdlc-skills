@@ -99,7 +99,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All nine count** — 445 assertions at the time of writing; run them for the current number rather
+**All nine count** — 465 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
@@ -173,12 +173,12 @@ When the user invokes a `/pdlc-*` slash command in their project, the skill read
 - `docs/02_design/{api,database,architecture,ui-ux}/`
 - `docs/03_development/` — developer manuals (`pdlc-onboard` writes here)
 - `docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/`
-- `docs/05_deployment/`
+- `docs/05_deployment/` — a release-level deploy doc is `guides/v<version>-deploy.md`
 - `docs/06_tasks/`
 - `docs/00_standards/quality-targets.yml` — declared quality targets (coverage line, `core_flows`, lint policy) read by `pdlc-quality`; template at `references/templates/quality-targets-template.yml`; optional
 - `docs/00_standards/e2e-flow-map.yml` — explicit `core_flow → E2E test` map so "all core flows covered" is a mechanical check rather than a model opinion; required once `core_flows` is declared; template at `references/templates/e2e-flow-map-template.yml`
 - `docs/07_reviews/{doc,code,design,retro,quality}/` — the `quality/` subdir holds dated `pdlc-quality` reports as a `.md` / `.html` pair. The **`.md` is the source of truth** (`git diff`-able, read by `pdlc-ship` as a release gate); the `.html` is a self-contained view of the same data (template: `references/templates/quality-report-template.html`, zero external assets so it opens offline and prints for sign-off). Numbers in the HTML are copied from the `.md`, never recomputed.
-- `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<HHMMSS>` (creation-time, collision-safe under parallel work; legacy `-<NN>` still parses)
+- `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<HHMMSS>` (creation-time, collision-safe under parallel work; legacy `-<NN>` still parses). `current_stage` ends in `_done` only once released: `pdlc-ship` writes `ship_done`, `pdlc-deploy` writes `deploy_done`, every other command writes its stage short name ("reviewed, awaiting release" = `next_step: pdlc-ship`)
 
 Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.md` bodies AND the `Target-project contract` sections in README and `docs/usage-guide.md`.
 

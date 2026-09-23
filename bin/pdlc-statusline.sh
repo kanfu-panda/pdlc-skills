@@ -160,8 +160,8 @@ done < <(jq -r '
     ] | join("")' "${files[@]}" 2>/dev/null)
 [[ ${#rows[@]} -eq 0 ]] && exit 0
 
-# 展示层的「终态」= current_stage 以 _done 结尾（feature_done / fix_done）。
-# 不把 next_step==null 当终态：原子 fix 流程 next 恒为 null 却未完成，误判会显示「✅ done」。
+# 展示层的「终态」= current_stage 以 _done 结尾（已发布：ship_done / deploy_done；旧版的 feature_done 等同样算）。
+# 不把 next_step==null 当终态：pdlc-task 的 next 恒为 null 却未必完成，误判会显示「✅ done」。
 is_terminal() { # <stage>
     case "$1" in *_done) return 0 ;; esac
     return 1

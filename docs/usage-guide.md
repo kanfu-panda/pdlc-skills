@@ -140,7 +140,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 | 斜杠命令 | 用途 |
 |---|---|
 | `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布） |
-| `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档） |
+| `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档），下一步 `/pdlc-review` |
 | `/pdlc-status` | 项目 PDLC 状态总览（不落盘） |
 
 ### Layer 2 · 阶段（11 个，单阶段精细控制）
@@ -151,11 +151,11 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 | `/pdlc-design` | 技术设计（API/DB/架构/UI 按需） | `/pdlc-tdd` |
 | `/pdlc-tdd` | 测试先行（红灯） | `/pdlc-implement` |
 | `/pdlc-implement` | 按设计 + 测试实现代码（绿灯） | `/pdlc-review` |
-| `/pdlc-review` | 代码 + 文档评审 + 自动修复 | `/pdlc-ship` |
+| `/pdlc-review` | 代码 + 文档评审 + 自动修复（与项目类型不符的检查项标「不适用」，不据此改代码） | `/pdlc-ship` |
 | `/pdlc-e2e` | 端到端测试 | `/pdlc-review` |
 | `/pdlc-refactor` | 代码重构（外部行为不变） | `/pdlc-review` |
-| `/pdlc-ship` | 发布流水线（测试 → bump → CHANGELOG → tag → CI） | `/pdlc-deploy` |
-| `/pdlc-deploy` | 部署文档 | — |
+| `/pdlc-ship` | 发布评审通过的功能（测试 → bump → CHANGELOG → tag；默认不动 CI 配置） | `/pdlc-deploy` |
+| `/pdlc-deploy` | 部署文档：按版本（覆盖该版本全部功能）或按单个功能 | — |
 | `/pdlc-retro` | 迭代复盘（趋势对比） | — |
 | `/pdlc-task` | 阶段内任务跟踪 | — |
 
@@ -238,7 +238,7 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
    git clone https://github.com/kanfu-panda/pdlc-skills.git
    cd pdlc-skills && bash install.sh --target codex
    ```
-   构建适配器（`adapters/build_codex.py`）并把 34 个 pdlc skill 装到 `~/.codex/skills/`、模板与方法论到 `~/.codex/pdlc/`。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`），gpt 系模型按描述匹配到对应 skill。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+   构建适配器（`adapters/build_codex.py`）并把 36 个 pdlc skill 装到 `~/.codex/skills/`（文档模板与脚本随各 skill 自带），方法论到 `~/.codex/pdlc/`。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`），gpt 系模型按描述匹配到对应 skill。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
 
    > ⚠️ **适用范围——原版 OpenAI Codex 未验证**：本适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上真机验过；我们没有原版环境可测，**不承诺原版可用**。自查方法：装完重启 Codex，用自然语言让它按 pdlc 做一件事——毫无反应即说明它不读该目录。此时退回路线 1（方法论文档进 `AGENTS.md`），那条路不依赖任何适配器机制。欢迎原版用户提 issue 反馈实际布局。
 
@@ -274,10 +274,16 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
       "self_audit": { "passed": 8, "failed": 0, "manual": 0 }
     }
   ],
-  "next_step": "pdlc-ship",
-  "terminal_state": null
+  "next_step": "pdlc-ship"
 }
 ```
+
+上例是「评审通过、等待发布」的样子：`current_stage` 是阶段短名 `review`，`next_step` 是 `pdlc-ship`。
+
+**`_done` 只表示「已发布」**：只有 `/pdlc-ship` 写 `ship_done`、`/pdlc-deploy` 写 `deploy_done`，其它命令（含 `/pdlc-feature`）一律写阶段短名。
+`/pdlc-ship` 据此收集要发布的功能——`next_step` 为 `pdlc-ship` 且没有阻塞的，纳入本次发布；
+旧版本留下的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，它会列出来请你确认。
+实例里不写 `terminal_state`（那是 skill 定义里的字段，不是状态）。
 
 ### 怎么用
 
@@ -287,7 +293,7 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
 - `/pdlc-retro --range 30d` → 月度复盘趋势报告
 
 > **读状态机之前先体检**：`/pdlc-status`、`/pdlc-retro`、`/pdlc-relate` 会先对 `docs/.pdlc-state/`
-> 跑一次契约体检（`bin/pdlc-state-lint.sh`，只读）。状态文件若不是 `/pdlc-*` 命令写出来的——缺 `created_at`、
+> 跑一次契约体检（随 skill 自带的 `scripts/pdlc-state-lint.sh`，源头是仓库里的 `bin/pdlc-state-lint.sh`，只读）。状态文件若不是 `/pdlc-*` 命令写出来的——缺 `created_at`、
 > 阶段名写成 `prd` / `implementation`、`relations` 不是六键对象、时间戳只有日期、实例里多出 `terminal_state`
 > 等——偏差会汇总成一个「⚠️ 输入契约体检」块，**放在结论最前面**，逐类写明是怎么处理的
 > （忽略 / 归一化 / 记为不可测）。判终态只看 `current_stage` 是否以 `_done` 结尾。
@@ -312,7 +318,7 @@ docs/01_requirements/prd/                                   # PRD
 docs/02_design/{api,database,architecture,ui-ux}/           # 技术设计
 docs/03_development/                                        # 开发者手册（onboard 产出）
 docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   # 测试与缺陷
-docs/05_deployment/                                         # 部署
+docs/05_deployment/                                         # 部署（按版本发布时为 guides/v<版本>-deploy.md）
 docs/06_tasks/                                              # 任务跟踪
 docs/07_reviews/{doc,code,design,retro,quality}/            # 评审 + 复盘 + 质量报告
 docs/.pdlc-state/<feature-id>.json                          # 状态机（每功能一份）
@@ -355,7 +361,7 @@ Claude 会自动：
 3. 生成失败的测试用例（红灯）
 4. 实现代码到测试绿灯
 5. Review 代码 + 文档
-6. 提示用 `/pdlc-ship` 触发发布
+6. 提示用 `/pdlc-ship` 发布
 
 ### 场景 B：手动控制每阶段
 
@@ -367,6 +373,7 @@ Claude 会自动：
 /pdlc-implement F20260502-090000
 /pdlc-review F20260502-090000
 /pdlc-ship
+/pdlc-deploy v<版本>             # 按 ship 交接给的版本号出部署文档
 ```
 
 ### 场景 C：修 bug
@@ -376,6 +383,7 @@ Claude 会自动：
 ```
 
 自动：分配缺陷 ID `B20260502-090000` → 定位根因 → 写回归测试（红） → 修代码（绿） → 跑全量测试 → 更新 CHANGELOG 和缺陷记录。
+完成后下一步是 `/pdlc-review B20260502-090000`，评审通过再进 `/pdlc-ship`。
 
 ### 场景 D：发布版本
 
@@ -383,7 +391,9 @@ Claude 会自动：
 /pdlc-ship --version <目标版本号>   # 如 1.5.0
 ```
 
-自动：检测未完成功能 → 询问是否跑测试 → bump VERSION → 汇总 CHANGELOG → git tag → 触发 CI。
+自动：收集评审通过、待发布的功能（其余进行中的列出来问你） → 询问是否跑测试 → bump VERSION → 汇总 CHANGELOG → git tag → 把纳入的功能写成 `ship_done`。
+CI 配置默认不生成也不修改；需要时明确说，它会先给出用量估算，且默认只用手动触发 + 发布 tag 触发。
+之后 `/pdlc-deploy v<版本>` 出一份覆盖该版本全部功能的部署文档，并把这些功能推进到 `deploy_done`。
 
 ### 场景 E：月度复盘
 
@@ -509,7 +519,7 @@ PDLC 把 38 个阶段按使用频率分 3 层暴露：
 
 ## 10. 扩展：自定义文档模板
 
-plugin 自带 9 份用户文档模板（`references/templates/*-template.md`）。如果你的团队有自己的 PRD 格式 / API 设计模板，可以本地修改后重装：
+plugin 自带 11 份用户文档模板（`references/templates/*-template.md`）。如果你的团队有自己的 PRD 格式 / API 设计模板，可以本地修改后重装：
 
 ```bash
 git clone https://github.com/kanfu-panda/pdlc-skills.git
@@ -517,6 +527,9 @@ cd pdlc-skills
 
 # 修改你需要定制的模板，例如 PRD：
 $EDITOR references/templates/prd-template.md
+
+# 把改动同步进用到该模板的各 skill 文件夹（skill 运行时读的是自带的 assets/ 副本）
+python3 adapters/sync_skills.py
 
 # 重新安装到本地
 bash install.sh --upgrade --global

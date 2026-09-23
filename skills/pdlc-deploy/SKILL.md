@@ -1,7 +1,7 @@
 ---
 name: pdlc-deploy
 description: 创建部署文档
-argument-hint: <服务名 | 应用名>
+argument-hint: <v<版本> | 功能ID | 服务名 | 应用名>
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: deploy
@@ -50,12 +50,22 @@ terminal_state: deploy_done
 
 > ⛔ **部署面向生产、不可逆·外发**：真实执行部署属破坏性范畴。**`--autonomous` 对涉及真实部署动作的环节无效**——仍必须人工显式确认。本命令默认只产出部署**文档**，不代表授权自动上线。
 
-为指定服务或应用创建部署手册。
+为一次发布、指定服务或应用创建部署手册。
 
 ## PDLC 前置检查（必须执行，不可跳过）
 
-1. 从用户输入中提取服务/功能名称关键词
-2. 在 `docs/07_reviews/code/` 目录下搜索包含该关键词的评审记录
+先按输入形态确定本次部署涉及的功能：
+
+- **版本号**（`v1.2.0` / `1.2.0`，`/pdlc-ship` 交接时给的就是它）→ **发布级部署**：读 `CHANGELOG.md` 里 `## [<版本>]` 段，
+  收集其中的功能 / 缺陷 ID（`F…` / `B…`）；这些就是本次部署涉及的功能。
+  段落不存在 → 停止并提示先跑 `/pdlc-ship`。段落里一个 ID 都没有（如只发了文档 / 依赖升级）→ 照常出发布级文档，跳过下面的评审记录查找
+- **功能ID**（`F…` / `B…`）→ 单个功能
+- **服务名 / 应用名 / 关键词** → 按下面第 2 步搜评审记录
+
+对上面确定的每个功能（或关键词）做评审记录检查：
+
+1. 从用户输入中提取服务/功能名称关键词（输入已是版本号或功能ID时，用上面确定的功能ID）
+2. 在 `docs/07_reviews/code/` 目录下搜索包含该功能ID或关键词的评审记录
    - 匹配新格式：`F<日期>-<编号>-*<关键词>*-review.md`
    - 匹配旧格式：`YYYYMMDD-*<关键词>*-review.md`
    - 同时检查文件内容中是否包含该关键词
@@ -65,7 +75,8 @@ terminal_state: deploy_done
    部署文档必须基于已完成评审的代码。请先运行：
    👉 /pdlc-review <评审目标>
    ```
-4. **找到** → 提取功能ID（如 `F20260326-090000`），读取评审记录内容，继续执行
+4. **找到** → 提取功能ID（如 `F20260326-090000`），读取评审记录内容，继续执行。
+   发布级部署时逐个功能检查，缺评审记录的功能列在停止信息里一并指出
 
 ## 工作流程
 
@@ -74,9 +85,12 @@ terminal_state: deploy_done
 3. 阅读评审记录，确认功能状态
 4. **【必须创建文件】** 在 `docs/05_deployment/guides/` 下创建部署手册
    - **使用模板**: 本 skill 目录下的 `assets/deploy-doc-template.md`（结构完整、章节齐全）
-   - **文件名格式**: `<功能ID>-<功能名>-deploy.md`（如 `F20260326-090000-user-auth-deploy.md`）
+   - **文件名格式**：
+     - 发布级部署：`v<版本>-deploy.md`（如 `v1.2.0-deploy.md`）——一份文档覆盖本次发布的全部功能，
+       各功能涉及的配置 / 迁移 / 回滚要点在文档里分节写明
+     - 单个功能：`<功能ID>-<功能名>-deploy.md`（如 `F20260326-090000-user-auth-deploy.md`）
      - 若无功能ID，则使用旧格式 `YYYYMMDD-<服务名>-deploy.md`
-   - **文档顶部必须包含 PDLC 追溯头**：
+   - **文档顶部必须包含 PDLC 追溯头**（发布级部署的 `功能ID` 与 `前置文档` 列出全部，逗号分隔，并加一行 `版本`）：
      ```
      <!-- PDLC-TRACE -->
      <!-- 功能ID: F20260326-090000 -->
@@ -84,6 +98,7 @@ terminal_state: deploy_done
      <!-- 阶段: 部署 -->
      <!-- 前置文档: docs/07_reviews/code/F20260326-090000-user-auth-review.md -->
      ```
+     发布级示例：`<!-- 功能ID: F20260326-090000, B20260328-140000 -->`、`<!-- 版本: v1.2.0 -->`
 
 ## 文档内容
 
@@ -167,6 +182,8 @@ require them.
 
 目标: $ARGUMENTS
 
+## 段四：更新状态机 + 交接
+
 <!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->
 > **本命令的状态机取值**：阶段短名 `deploy`（写进 `history[].stage` 与 `last_phase_result.stage`）；下一跳 `null`（流程到此结束：`next_step` 写 `null`）。
 <!-- pdlc:meta-end -->
@@ -234,6 +251,16 @@ require them.
 > 4. **`next_step` 只写命令名或 `null`**，不附说明文字（如「pdlc-ship（等评审通过）」）。
 >    要说明原因，阻塞时写进 `last_phase_result.blocked_reason`。
 
+> ⛔ **`_done` 的含义是「已发布」，只由 `/pdlc-ship`（写 `ship_done`）与 `/pdlc-deploy`（写 `deploy_done`）写入。**
+> 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
+> 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
+>
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+>   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
+> - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
+>   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
+> - 旧版本写入的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，`/pdlc-ship` 会列出来请人确认。
+
 ### 更新流程
 
 1. **文件不存在** → 创建文件，写入初始结构（`history` 为含当前阶段的数组）
@@ -283,6 +310,11 @@ require them.
 5. **推进一致**：`ok=true` 时本阶段必须真的推进了 `current_stage`（与第 6 条 IRON LAW 呼应）；到达终态或无后续时 `advanced_to=null`。`ok=false`（含 blocked）时 `current_stage` 不变、`advanced_to=null`、`blocked_reason` 写明原因。
 6. **`run_mode`**：镜像本次调用是否带 `--autonomous`（带了写 `autonomous`，没带写 `interactive`）。
 <!-- @include-end templates/prompts/state-update.md -->
+
+**本阶段状态机更新**：只对本次部署涉及、且当前已是 `ship_done` 的功能，追加 `{ "stage": "deploy", ... }` 到其 history，`current_stage` 写 `deploy_done`，`next_step` 写 `null`。
+- 涉及但还不是 `ship_done` 的功能（未发布，或旧版终态写法）→ 不改它的状态机，在交接里逐个列出，提示先走 `/pdlc-ship`
+- 没有状态机文件的功能（按服务名部署的旧流程）→ 不新建状态机
+
 <!-- @include templates/prompts/handoff.md（已内联于下方，无需另读） -->
 ## 段四：交接（Handoff）
 
