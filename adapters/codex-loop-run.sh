@@ -51,7 +51,7 @@ fi
 #
 # ⛔ next_step 缺失 / 为 null → blocked，**不是** done。机械收敛段里没有任何阶段会
 # 合法写出 null：pdlc-implement → pdlc-review、pdlc-review → pdlc-ship、
-# pdlc-fix → pdlc-ship。收敛完成的信号是 next_step=pdlc-ship（下面单独映射到 done），
+# pdlc-fix → pdlc-review。收敛完成的信号是 next_step=pdlc-ship（下面单独映射到 done），
 # 不是 null。所以 null 只可能是状态残缺——判 done 等于把「什么都没发生」报成
 # 「机械阶段已完成」，而 `{}` 这种合法但空的 JSON 走不到解析失败的兜底。
 # 展示层早有同一结论：见 bin/pdlc-statusline.sh 的 is_terminal 注释。

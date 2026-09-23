@@ -555,6 +555,75 @@ for _p in "docs/01_requirements/prd/" \
     assert_contains "pdlc-ship hard-gate lists $_p" "$_p" "$ship_gate"
 done
 
+# ─── 发布链路与 _done 契约 ───
+# `_done` 的含义是「已发布」：只有 /pdlc-ship（ship_done）与 /pdlc-deploy（deploy_done）写它。
+# 此前读侧按 `_done` 判终态，写侧却没有任何命令被要求写 `_done`（review 还被指示「推进到
+# review_done」）——ship 于是把评审通过、正等着发布的功能当成「未完成」，发布说明也会漏掉它们。
+echo ""
+echo "Test: 发布链路与 _done 契约"
+# 下面单引号里的反引号是要匹配的字面文本，不是命令替换
+# shellcheck disable=SC2016
+{
+# 源头形态的正文：折叠内联区块，只看 skill 自己写的话
+src_body() {
+    python3 - "$1" <<'PYB'
+import sys
+sys.path.insert(0, "adapters")
+from sync_skills import collapse
+print(collapse(open(sys.argv[1], encoding="utf-8").read()))
+PYB
+}
+refute_contains() {  # refute_contains <描述> <不该出现的文本> <被查文本>
+    if grep -qF -- "$2" <<< "$3"; then
+        echo "  ✗ $1"; echo "    不该包含: $2"; fail=$((fail + 1))
+    else
+        echo "  ✓ $1"; pass=$((pass + 1))
+    fi
+}
+assert_contains "state-update: _done 只由发布写入" \
+  '只由 `/pdlc-ship`（写 `ship_done`）与 `/pdlc-deploy`（写 `deploy_done`）写入' \
+  "$(cat references/templates/prompts/state-update.md)"
+ship_src="$(src_body skills/pdlc-ship/SKILL.md)"
+assert_contains "ship 按「评审通过」判可发布" '**可发布**：`next_step` 为 `pdlc-ship`' "$ship_src"
+refute_contains "ship 前置检查不再按 _done 判未完成" '不在 `[*_done]`' "$ship_src"
+refute_contains "ship 发布说明不再只收 _done 的功能" '在 `[*_done]` 的功能' "$ship_src"
+assert_contains "ship 发布后把纳入的功能写成 ship_done" '`current_stage` 写 `ship_done`' "$ship_src"
+assert_contains "ship 对旧版 _done 写法请人确认" '旧版终态写法' "$ship_src"
+assert_contains "ship 默认不生成 CI 配置" '默认不生成、不修改任何 CI 配置' "$ship_src"
+assert_contains "ship 生成 CI 时默认只用手动 + tag 触发" 'workflow_dispatch' "$ship_src"
+refute_contains "ship 不再默认 push / PR 触发" 'push 到 main / tag v* / PR' "$ship_src"
+assert_eq "fix 的下一跳是 pdlc-review" "next_step: pdlc-review" "$(grep -m1 '^next_step:' skills/pdlc-fix/SKILL.md)"
+rev_src="$(src_body skills/pdlc-review/SKILL.md)"
+refute_contains "review 不再指示把 review_done 写进状态机" '推进到 `review_done`' "$rev_src"
+refute_contains "review 守卫不限定 backend/ frontend/" '在 `backend/` 和 `frontend/` 下搜索' "$rev_src"
+assert_contains "review 可按项目类型把检查项标为不适用" '[—] 不适用' "$rev_src"
+assert_contains "review 接受缺陷 ID（fix 的下一跳）" 'docs/04_testing/defects/' "$rev_src"
+dep_src="$(src_body skills/pdlc-deploy/SKILL.md)"
+assert_contains "deploy 接受版本号（ship 的交接）并从 CHANGELOG 取功能 ID" '`## [<版本>]`' "$dep_src"
+assert_contains "deploy 支持覆盖多个功能的发布级文档" 'v<版本>-deploy.md' "$dep_src"
+assert_contains "deploy 只把已发布的功能推进到 deploy_done" '已是 `ship_done` 的功能' "$dep_src"
+refute_contains "state-read 不再说终态由编排器写" '编排器写入的是' "$(cat references/templates/prompts/state-read.md)"
+refute_contains "loop-next 不再说终态由编排器写" '由编排器写入' "$(src_body skills/pdlc-loop-next/SKILL.md)"
+# 除 ship / deploy 外，没有 skill 被指示把某个 `*_done` 写进状态机
+done_leak="$(python3 - <<'PYL'
+import glob, re, sys
+sys.path.insert(0, "adapters")
+from sync_skills import collapse
+hits = []
+for f in sorted(glob.glob("skills/*/SKILL.md")):
+    if "/pdlc-ship/" in f or "/pdlc-deploy/" in f:
+        continue
+    body = collapse(open(f, encoding="utf-8").read())
+    body = re.sub(r"^---\n.*?\n---\n", "", body, flags=re.S)
+    if re.search(r"(写|推进到)[^。\n]{0,12}`[a-z]+_done`", body):
+        hits.append(f.split("/")[1])
+print(" ".join(hits))
+PYL
+)"
+assert_eq "只有 ship / deploy 被指示写 _done" "" "$done_leak"
+
+}
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

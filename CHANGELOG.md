@@ -12,6 +12,9 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 > ⚠️ **行为变更（请留意）**：
 > - **安装体积**：每个 skill 自带它用到的片段、模板和脚本，插件从约 1.2 MB 增至约 1.7 MB。常驻上下文的 token 不变（仍只有 38 条 skill 描述）；命令被调用时加载的正文变长，内容就是此前本该去读的那些片段。
 > - **`install.sh --target codex`**：模板不再统一装到 `~/.codex/pdlc/templates/`，改为随各 skill 自带；安装时会删掉这个旧目录。
+> - **`_done` 只表示「已发布」**：只有 `/pdlc-ship`（写 `ship_done`）与 `/pdlc-deploy`（写 `deploy_done`）写它，其它命令一律写阶段短名。`/pdlc-ship` 按「`next_step` 为 `pdlc-ship` 且未阻塞」收集要发布的功能；旧版本留下的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，会列出来请人确认。
+> - **`/pdlc-fix` 的下一步改为 `/pdlc-review`**（此前直接到 `/pdlc-ship`，修复不经评审就进发布）。
+> - **`/pdlc-ship` 默认不再生成 CI 配置**：只在用户明确要求时生成，先给出用量估算，默认只用手动触发 + 发布 tag 触发。
 
 ### Fixed
 
@@ -22,6 +25,13 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 - **`$ARGUMENTS` 嵌在句子里**：Claude Code 会把正文里每一处 `$ARGUMENTS` 都替换成实际参数，没带参数时替换成空串，于是「若选 B：`$ARGUMENTS` 必须含 `--skip-tests`」这类句子读不通——实测不带参数运行 `/pdlc-status`，正文里出现了「`` 为空或 `--all`」。现在每个 skill 只在独立的「参数：」一行里用它一次。内联之后，`--autonomous` 片段里的同类写法也会被替换，已一并改写。
 - **片段之间按文件名互相引用**：内联后，「见 `relations.md`」这类引用在没有内联该片段的 skill 里解析不了。改为就地写全必要的信息；`/pdlc-prd`、`/pdlc-feature` 真正要写关系，改为内联关系链片段。`/pdlc-test-setup` 里还有一处引用了它根本没有引入的片段，一并改掉。
 
+- **发布链路对不上**：读侧只认 `_done` 结尾为终态，可没有任何命令被要求写 `_done`——`/pdlc-review` 还被指示「推进到 `review_done`」。结果 `/pdlc-ship` 把评审通过、等着发布的功能当成「未完成」，发布说明也只收 `_done` 的功能。现在 `_done` 的写入规则写进状态机片段；`/pdlc-ship` 按 `next_step` 收集可发布功能，发布后写 `ship_done`；`/pdlc-review` 评审通过写 `review` + `next_step: pdlc-ship`。
+- **`/pdlc-ship` 交接给 `/pdlc-deploy` 的版本号用不了**：`/pdlc-ship` 交接时给的是 `/pdlc-deploy v<版本>`，`/pdlc-deploy` 却只会拿输入当关键词去搜评审记录。现在它接受版本号，从 `CHANGELOG.md` 的 `## [<版本>]` 段取出本次发布的功能，出一份覆盖全部功能的 `guides/v<版本>-deploy.md`；只把已是 `ship_done` 的功能推进到 `deploy_done`，其余在交接里列出。
+- **`/pdlc-ship` 默认生成的 CI 在每次 push 与 PR 上都跑**：日常检查本该在本地跑，按次计费的 CI 会很快用完额度。现在默认不动 CI 配置（见上方行为变更）。
+- **`/pdlc-review` 按 Web 服务写死**：守卫只在 `backend/`、`frontend/` 下找实现代码，CLI 工具、库等项目直接被拦下；检查清单里的接口、分页、SQL 等项对这些项目没有意义，自动修复却会照着去「补分页」。现在源码目录按项目实际布局找；清单项按项目类型可标「不适用」，不适用项不算未通过，也不进自动修复。它也接受缺陷 ID（`/pdlc-fix` 的下一跳）。
+- **`/pdlc-ship` 与 `/pdlc-review` 重复写 CHANGELOG**：`/pdlc-review` 可能已为功能追加过条目，`/pdlc-ship` 汇总时不再重复写同一功能 ID。
+- **用户文档过时**：Codex 投影的 skill 数写成 34（实为 36）；使用手册仍说模板装到 `~/.codex/pdlc/`；中文 README 的模板清单少 2 份；状态机示例里写了 `terminal_state`（体检会把它报成偏差）；「自定义模板」一节缺少同步步骤，改了模板重装后 skill 仍用旧副本。
+
 ### Added
 
 - **`adapters/sync_skills.py`**：把唯一源头（`references/templates/prompts/`、`references/templates/`、`bin/`）同步进每个 skill 文件夹；`--check` 只检查、有漂移则退出 1。改了片段、模板或脚本后重跑它。
@@ -29,6 +39,8 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 
 ### Changed
 
+- **README 的开发一节**列出全部 9 个测试脚本、同步检查与 shellcheck 命令；中文 README 补上同样的内容。
+- `tests/install-smoke.sh` 新增 20 条发布链路断言：`_done` 写入规则、`/pdlc-ship` 的可发布判定与 CI 默认、`/pdlc-fix` 的下一跳、`/pdlc-review` 的适用性与守卫、`/pdlc-deploy` 的版本输入与 `deploy_done` 条件，以及「除 ship / deploy 外没有 skill 被指示写 `_done`」。
 - **Codex 适配器**：先把 skill 里的内联区块折叠回裸标记，再按本平台规则内联；模板与脚本随 skill 目录一起拷贝，不再改写路径；删掉统一的 `templates/` 产物。
 - 更正 `build_codex.py` 与 `adapters/README.md` 里「Claude Code 看不见 HTML 注释」的说法：实测模型看得见。
 

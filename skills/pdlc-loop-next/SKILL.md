@@ -34,7 +34,7 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 1. 从本命令的参数取功能ID；读取 `docs/.pdlc-state/<功能ID>.json`。
 2. 文件不存在 / 无法解析 → 输出 `blocked`。
 3. `last_phase_result.blocked_reason` 非空 → 输出 `blocked`。
-4. `current_stage` 属终态（以 `_done` 结尾——实际由编排器写入的终态值为 `feature_done` / `fix_done`）→ 输出 `done`。（注：单阶段命令的 `current_stage` 用短名 `impl`/`review`，review 完成的判定靠下面第 5 步的 `next_step`，不靠此处。）
+4. `current_stage` 属终态（以 `_done` 结尾——即已发布：`ship_done` / `deploy_done`，或旧版本留下的 `feature_done` / `fix_done` / `review_done`）→ 输出 `done`。（注：单阶段命令的 `current_stage` 用短名 `impl`/`review`，review 完成的判定靠下面第 5 步的 `next_step`，不靠此处。）
 5. 否则**以 `next_step`（状态机里存的下一跳命令名）为主键**判定并输出。
 
    > ⚠️ **必须用 `next_step` 判定，不要用 `current_stage` 字符串匹配**：现有状态机的 `current_stage` 用短名（`requirements` / `design` / `tdd` / `impl` / `review`，如 `pdlc-implement` 明写 `current_stage: impl`），格式不适合直接判阶段；而 `next_step` 是无歧义的命令名。
@@ -57,7 +57,7 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
    >
    > 注意这类输入**逃得过「无法解析 → blocked」的兜底**：`{}` 是合法 JSON，
    > 解析得了、只是什么都没有。展示层早有同一结论（`bin/pdlc-statusline.sh` 的
-   > `is_terminal`：原子 fix 流程 `next` 恒为 `null` 却未完成，误判会显示「✅ done」）。
+   > `is_terminal`：`/pdlc-task` 的 `next` 恒为 `null` 却未必完成，误判会显示「✅ done」）。
 
 6. 不写文件、不产任何 artifact。
 

@@ -1,6 +1,6 @@
 ---
 name: pdlc-ship
-description: 发布工作流（跑测试 → bump VERSION → 更 CHANGELOG → tag → 触发 CI/CD）
+description: 发布工作流（收评审通过的功能 → 跑测试 → bump VERSION → 更 CHANGELOG → tag）
 argument-hint: [--version <x.y.z>] [--skip-tests (仅 hotfix)]
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 layer: 2
@@ -17,7 +17,7 @@ terminal_state: ship_done
 
 # 发布工作流
 
-串联发布一个版本所需的所有步骤：跑测试 → 升级 VERSION → 更新 CHANGELOG → 创建 tag → 推送触发 CI/CD。
+串联发布一个版本所需的所有步骤：收评审通过的功能 → 跑测试 → 升级 VERSION → 更新 CHANGELOG → 创建 tag。CI 配置默认不动（见 §1.6）。
 
 <!-- @include templates/prompts/iron-law.md（已内联于下方，无需另读） -->
 ⛔ **IRON LAW · 不可违反的硬门禁**
@@ -53,7 +53,7 @@ terminal_state: ship_done
 > 进入 autonomous 模式时，在状态机顶层写 `run_mode: "autonomous"` 仅供留痕（复盘区分人工 vs 循环产出）。
 <!-- @include-end templates/prompts/noninteractive.md -->
 
-> ⛔ **发布是破坏性·不可逆操作**：打 tag / bump 版本 / 触发 CI/CD 属破坏性范畴。**`--autonomous` 对本命令无效**——即使带该参数，§1.1（未完成功能）与 §1.2（测试门）的人工确认仍必须真实由人应答。自主循环（`/pdlc-loop-run`）的终态是 `review_done`，永不进入本命令。
+> ⛔ **发布是破坏性·不可逆操作**：打 tag / bump 版本 / 触发 CI/CD 属破坏性范畴。**`--autonomous` 对本命令无效**——即使带该参数，§1.1（未完成功能）与 §1.2（测试门）的人工确认仍必须真实由人应答。自主循环（`/pdlc-loop-run`）停在「评审通过、`next_step` 为 `pdlc-ship`」（循环文档里称 `review_done`），永不进入本命令。
 
 ## 段一：执行
 
@@ -61,9 +61,13 @@ terminal_state: ship_done
 
 1. 确认当前分支不是 `master` / `main`（参考 CLAUDE.md §5）
 2. 确认工作区干净（`git status` clean）
-3. 检查 `docs/.pdlc-state/` 下是否有未完成的功能（`current_stage` 不在 `[*_done]` 的）
-   - 有 → 列出来并询问是否继续（用户明确同意才继续）
-   - 无 → 直接进入下一步
+3. 盘点 `docs/.pdlc-state/` 下的功能（跳过 `_` 前缀的索引文件与 `statusline.json`），逐个归入四类：
+   - **可发布**：`next_step` 为 `pdlc-ship`，且 `last_phase_result.ok` 不是 `false`——评审（或功能编排）已通过、等着发布。这一类**纳入本次发布**
+   - **已发布**：`current_stage` 为 `ship_done` 或 `deploy_done`——上一次发布已纳入，本次不再收
+   - **旧版终态写法**：`current_stage` 以 `_done` 结尾但不是上面两个（如 `feature_done` / `fix_done` / `review_done`）——旧版本写入，分不清是「已发布」还是「评审通过、待发布」。逐个列出，**请人确认**归入可发布还是已发布；`--autonomous` 也不替人判
+   - **进行中**：其余全部（含 `last_phase_result.ok` 为 `false` 的阻塞功能）
+   - 有进行中的功能 → 列出来并询问是否继续（用户明确同意才继续；进行中的功能不纳入本次发布）
+   - 可发布为空 → 告知「没有评审通过、待发布的功能」，询问是否仍要发布（如只发文档 / 依赖升级）
 4. **质量闸门检查**（若项目有 `docs/00_standards/quality-targets.yml`）：
    读 `docs/07_reviews/quality/` 下**最近一份 `.md` 报告**（同名 `.html` 只是视图，
    闸门一律以 `.md` 为准——两者若不一致，信 `.md`）：
@@ -134,9 +138,9 @@ terminal_state: ship_done
 
 ### 1.4 更新 CHANGELOG.md
 
-1. 读取 `docs/.pdlc-state/` 自上次 tag 以来所有 `current_stage` 在 `[*_done]` 的功能
-2. 按 `stage` 分组（feature → "新增"，fix → "修复"，refactor → "重构"）
-3. 每条用"- <简要描述>（<feature-id>）"格式写入 CHANGELOG 的 `[未发布]` 段
+1. 取 §1.1 盘点出的**可发布**功能（含人工确认归入可发布的旧版终态写法）
+2. 分组：缺陷（`B` 开头的 ID）→ "修复"；history 里有 `refactor` 阶段的功能 → "重构"；其余 → "新增"
+3. 每条用"- <简要描述>（<feature-id>）"格式写入 CHANGELOG 的 `[未发布]` 段（`/pdlc-review` 可能已为该功能追加过条目——`[未发布]` 段里已有同一功能 ID 的，不重复写）
 4. 把 `[未发布]` 改为 `[<new-version>] - <今日日期>`
 
 ### 1.5 创建 Tag 并提交
@@ -149,26 +153,32 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 
 若选项 B（跳过测试）：commit 消息末尾追加 `[skip-tests: <理由>]`。
 
-### 1.6 CI/CD 配置管理
+### 1.6 CI/CD 配置（默认不动）
 
-若项目尚未有 CI 配置，根据技术栈生成对应的 CI 文件：
+本命令**默认不生成、不修改任何 CI 配置**。日常检查（lint / test / build）在本地跑（§1.2 已跑过），CI 按次计费，
+每次 push / PR 都触发会很快烧掉额度。项目已有 CI 配置时只读不改：检查它是否覆盖本次新增的测试路径，没覆盖就在交接里提示，由人决定是否修改。
 
-**GitHub Actions**（`.github/workflows/ci.yml`）：
-- 触发：push 到 main / tag v* / PR
-- 步骤：checkout → setup 运行时 → install → lint → test → build
+仅当用户**明确要求**生成或修改 CI 配置时才动手，且先确认再写：
+
+1. 先给出用量估算并请人确认：`月预计用量 = 触发次数/月 × 单次时长（分钟）× runner 倍率`（Linux 1× / Windows 2× / macOS 10×）
+2. 触发方式默认只用手动触发 + 发布 tag，**不用** push 到分支、PR、定时触发（用户明确要求才改）
+
+**GitHub Actions**（`.github/workflows/release.yml`）：
+- 触发：`workflow_dispatch` + `push: tags: ['v*']`
+- runner：默认 `ubuntu-latest`；只有必须在 macOS / Windows 上构建或签名时才用对应 runner
+- 步骤：checkout → setup 运行时 → install → test → build → 上传产物
 - 按项目技术栈选模板（Node/Python/Java/Go）
 - 敏感信息通过 Secrets 注入，不硬编码（never hardcode secrets — use Secrets / env vars）
-- 支持按服务单独触发（路径过滤）
 
 **GitLab CI**（`.gitlab-ci.yml`）：
 - stages: build / test / deploy
 - cache: 依赖目录
 - jobs: 对应各 stage 的执行命令
+- 触发：`rules` 只放行 tag 与手动（`when: manual`）
 - 生产环境：手动审批后部署
 
-**Jenkins**（`Jenkinsfile`）/ **云效 / 其他**：按项目已有约定生成。
+**Jenkins**（`Jenkinsfile`）/ **云效 / 其他**：按项目已有约定生成，同样只用手动 + tag 触发。
 
-若已有 CI 配置，检查是否覆盖本次新增的功能/测试路径，必要时更新。
 生成后在 `docs/05_deployment/ci-cd/` 下记录流水线使用说明。
 
 ## 段二：自检
@@ -198,6 +208,8 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 - [ ] 若选 A，测试已全绿
 - [ ] 若选 B，commit 消息含 `[skip-tests]` 标记
 - [ ] 分支不是 main/master
+- [ ] 本次纳入的每个功能状态机已写 `ship_done`；未纳入的功能没被改动
+- [ ] 未经用户明确要求，没有新增或修改 CI 配置
 
 <!-- @include templates/prompts/loop-prevention.md（已内联于下方，无需另读） -->
 ## 防循环规则
@@ -289,6 +301,16 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 > 4. **`next_step` 只写命令名或 `null`**，不附说明文字（如「pdlc-ship（等评审通过）」）。
 >    要说明原因，阻塞时写进 `last_phase_result.blocked_reason`。
 
+> ⛔ **`_done` 的含义是「已发布」，只由 `/pdlc-ship`（写 `ship_done`）与 `/pdlc-deploy`（写 `deploy_done`）写入。**
+> 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
+> 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
+>
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+>   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
+> - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
+>   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
+> - 旧版本写入的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，`/pdlc-ship` 会列出来请人确认。
+
 ### 更新流程
 
 1. **文件不存在** → 创建文件，写入初始结构（`history` 为含当前阶段的数组）
@@ -339,7 +361,9 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 6. **`run_mode`**：镜像本次调用是否带 `--autonomous`（带了写 `autonomous`，没带写 `interactive`）。
 <!-- @include-end templates/prompts/state-update.md -->
 
-**本阶段状态机更新**：对所有本次发布涉及的功能，追加 `{ "stage": "ship", ... }` 到其 history。
+**本阶段状态机更新**：对本次纳入发布的每个功能（§1.1 的可发布 + 人工确认归入的），追加 `{ "stage": "ship", ... }` 到其 history，`current_stage` 写 `ship_done`，`next_step` 写 `pdlc-deploy`。`_done` 的含义是「已发布」，只由本命令与 `/pdlc-deploy` 写入。
+- 人工确认为「已发布」的旧版终态写法：不追加 history、不改动，保持原样
+- 进行中的功能：不动
 
 <!-- @include templates/prompts/handoff.md（已内联于下方，无需另读） -->
 ## 段四：交接（Handoff）
@@ -368,8 +392,8 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
   - CHANGELOG：已追加
   - Tag：v<new-version> 已创建
   - 测试：<通过 / [skip-tests: 理由]>
-📦 状态机：已更新 <N> 个功能
-👉 下一步：/pdlc-deploy v<new-version>（或手动 git push origin v<new-version> 触发 CI）
+📦 状态机：<N> 个功能已推进到 ship_done（<ID 列表>）
+👉 下一步：/pdlc-deploy v<new-version>（部署本次发布；项目有 tag 触发的 CI 时，也可手动 git push origin v<new-version>）
 ```
 
 ---
