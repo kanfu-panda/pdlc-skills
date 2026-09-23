@@ -170,9 +170,10 @@ Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路�
 
 - **`/pdlc-loop-run <功能ID>`** —— 收敛引擎：自动推进 `tdd → implement → review` 到 `review_done`，带迭代上限、**fail-stop**（某阶段报 `ok:false` → 停）、**stuck-stop**（状态未推进 → 停）。**发布永远留人**——绝不自动 ship。
 - **`/pdlc-loop-next <功能ID>`** —— 只读 helper，打印下一条收敛命令，供你自写 shell 循环消费。
-- **Codex 上** —— `adapters/codex-loop-run.sh` 在外部驱动同一套循环（已过真机状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)）。
+- **`bin/pdlc-loop.sh`** —— 一次推多个功能的外部驱动：给功能ID 或 `--ready`，选 `--platform claude|codex`，`--parallel N` 让每个功能在自己的 git worktree 里跑。按 `depends_on` 排先后，绝不发布，也不提交、不合并；运行记录由 `--status` 和 `/pdlc-status --loop` 读出（每个功能在哪一步、本步已跑多久、卡住的提示，不给预计完成时间）。claude 平台真跑必须给 `--max-budget-usd`。
+- **Codex 上** —— `adapters/codex-loop-run.sh` 就是固定 `--platform codex` 的同一个驱动（Codex 已过真机状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)）。
 
-设计：[ADR 0001](./docs/decisions/0001-loop-engineering-integration.md)。
+设计：[ADR 0001](./docs/decisions/0001-loop-engineering-integration.md) · 多功能驱动：[ADR 0006](./docs/decisions/0006-multi-feature-loop-driver.md)。
 
 ---
 
@@ -261,6 +262,8 @@ docs/06_tasks/                       ← 任务跟踪
 docs/07_reviews/{doc,code,design,retro,quality}/   ← 评审 + 复盘 + 质量报告
 docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如 F20260419-090000.json）
                                         current_stage 只有发布后才以 _done 结尾：ship_done / deploy_done
+.worktrees/pdlc-loop/<功能ID>/       ← 自动 · bin/pdlc-loop.sh 并行时每个功能一个 worktree（已写进 git 排除）
+.git/pdlc-loop/                     ← 自动 · 循环驱动的运行记录与日志（非 git 项目在 docs/.pdlc-state/_loop/）
 ```
 
 ---
@@ -303,7 +306,7 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 本地跑测试：
 
 ```bash
-for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 9 个脚本，遇红即停
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 10 个脚本，遇红即停
 python3 adapters/sync_skills.py --check                         # 各 skill 与共享源头是否一致
 shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit

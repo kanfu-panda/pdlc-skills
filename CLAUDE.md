@@ -24,11 +24,12 @@ pdlc-skills/
 │   └── ... (38 dirs total)
 ├── bin/
 │   ├── pdlc-statusline.sh          ← optional statusline segment (scanned by /pdlc-settings)
-│   └── pdlc-state-lint.sh          ← read-side contract check run by /pdlc-status · /pdlc-retro · /pdlc-relate
+│   ├── pdlc-state-lint.sh          ← read-side contract check run by /pdlc-status · /pdlc-retro · /pdlc-relate
+│   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex, --parallel via worktrees, --status)
 ├── adapters/
 │   ├── sync_skills.py              ← inlines fragments + copies templates/scripts into skills/ (rerun after editing any of them)
 │   ├── build_codex.py              ← Codex projection (install.sh --target codex)
-│   └── codex-loop-run.sh           ← Codex convergence-loop driver
+│   └── codex-loop-run.sh           ← Codex entry point: bin/pdlc-loop.sh --platform codex
 ├── references/
 │   └── templates/
 │       ├── *-template.md           ← user-facing document templates
@@ -36,7 +37,7 @@ pdlc-skills/
 ├── install.sh                      ← curl-based one-line installer wrapping `claude plugin install`
 ├── docs/
 │   └── usage-guide.md              ← single user manual (architecture + reference + scenarios)
-├── tests/                          ← 9 scripts, all of them part of the local gate
+├── tests/                          ← 10 scripts, all of them part of the local gate
 │   ├── frontmatter-check.sh        ← validates skills/<name>/SKILL.md frontmatter
 │   ├── install-smoke.sh            ← end-to-end install layout test
 │   ├── statusline-check.sh         ← pdlc-statusline.sh scenario regression
@@ -45,7 +46,8 @@ pdlc-skills/
 │   ├── evals-runner-check.sh       ← evals/run.sh driver (stubbed, no model spend)
 │   ├── evals-scenario-check.sh     ← assert_scenario verdicts (stubbed, no model spend)
 │   ├── state-lint-check.sh         ← bin/pdlc-state-lint.sh findings + read-only check
-│   └── skills-selfcontained-check.sh ← skills self-contained + in sync with their sources
+│   ├── skills-selfcontained-check.sh ← skills self-contained + in sync with their sources
+│   └── loop-driver-check.sh        ← bin/pdlc-loop.sh with stubbed claude / codex (no model spend)
 └── VERSION                         ← canonical version (mirrored in plugin.json)
 ```
 
@@ -91,6 +93,7 @@ bash tests/evals-runner-check.sh             # evals/run.sh driver (stubbed, no 
 bash tests/evals-scenario-check.sh           # assert_scenario verdicts (stubbed, no model spend)
 bash tests/state-lint-check.sh               # bin/pdlc-state-lint.sh contract-check findings
 bash tests/skills-selfcontained-check.sh     # skills self-contained + in sync with their sources
+bash tests/loop-driver-check.sh              # bin/pdlc-loop.sh: scheduling, worktrees, guardrails, --status (stubbed)
 
 # or the lot, stopping at the first red script
 for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done
@@ -99,7 +102,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All nine count** — 465 assertions at the time of writing; run them for the current number rather
+**All ten count** — 559 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
@@ -146,7 +149,7 @@ Sub-skills are grouped by `layer:` in frontmatter (the 38 names below all carry 
 - **Layer 2 (11)**: `pdlc-prd`, `pdlc-design`, `pdlc-tdd`, `pdlc-implement`, `pdlc-review`, `pdlc-e2e`, `pdlc-refactor`, `pdlc-ship`, `pdlc-deploy`, `pdlc-retro`, `pdlc-task` — single-stage fine control
 - **Layer 3 (24)**: specialized tools (`pdlc-ui-design`, `pdlc-db-design`, `pdlc-arch`, `pdlc-lint`, `pdlc-perf`, `pdlc-security`, `pdlc-test-setup`, `pdlc-quality`, `pdlc-code-gen`, `pdlc-add-service`, `pdlc-add-app`, `pdlc-api-mock`, `pdlc-db-migrate`, `pdlc-i18n`, `pdlc-changelog`, `pdlc-standard`, `pdlc-relate`, `pdlc-bootstrap`, `pdlc-adopt`, `pdlc-onboard`, `pdlc-ui-design-pro`, `pdlc-loop-next`, `pdlc-loop-run`, `pdlc-settings`)
 
-  `pdlc-loop-next` / `pdlc-loop-run` are loop tooling (Loop 工程 / autonomous drive): `loop-next` prints the next mechanical-convergence command for an outer loop; `loop-run` is the convergence engine that auto-advances `tdd → implement → review` to `review_done` or blocked (release always stays human). See `docs/decisions/0001-loop-engineering-integration.md`.
+  `pdlc-loop-next` / `pdlc-loop-run` are loop tooling (Loop 工程 / autonomous drive): `loop-next` prints the next mechanical-convergence command for an outer loop; `loop-run` is the convergence engine that auto-advances `tdd → implement → review` to `review_done` or blocked (release always stays human). See `docs/decisions/0001-loop-engineering-integration.md`. For several features, parallel runs or long unattended runs, `bin/pdlc-loop.sh` is the external driver (shipped inside `pdlc-loop-run` and `pdlc-status` as `scripts/pdlc-loop.sh`); its run record (read back by `--status`) lives in `<git common dir>/pdlc-loop/`. See `docs/decisions/0006-multi-feature-loop-driver.md`.
 
   `pdlc-settings` is the interactive config command (Layer 3); currently it wires up the optional PDLC statusline (`bin/pdlc-statusline.sh`) — enable/disable/display-items. Editing global `~/.claude/settings.json` is backup+diff+confirm-gated and degrades gracefully when the security layer blocks the write. See `docs/decisions/0002-statusline-pdlc-status.md`.
 
@@ -180,6 +183,9 @@ When the user invokes a `/pdlc-*` slash command in their project, the skill read
 - `docs/07_reviews/{doc,code,design,retro,quality}/` — the `quality/` subdir holds dated `pdlc-quality` reports as a `.md` / `.html` pair. The **`.md` is the source of truth** (`git diff`-able, read by `pdlc-ship` as a release gate); the `.html` is a self-contained view of the same data (template: `references/templates/quality-report-template.html`, zero external assets so it opens offline and prints for sign-off). Numbers in the HTML are copied from the `.md`, never recomputed.
 - `docs/.pdlc-state/<feature-id>.json` — per-feature state machine, ID format `F<YYYYMMDD>-<HHMMSS>` (creation-time, collision-safe under parallel work; legacy `-<NN>` still parses). `current_stage` ends in `_done` only once released: `pdlc-ship` writes `ship_done`, `pdlc-deploy` writes `deploy_done`, every other command writes its stage short name ("reviewed, awaiting release" = `next_step: pdlc-ship`)
 
+- `.worktrees/pdlc-loop/<feature-id>/` (branch `pdlc-loop/<feature-id>`) — one git worktree per feature when `bin/pdlc-loop.sh` runs with `--parallel N>1`; the path is added to `.git/info/exclude`, and the driver never commits or merges there
+- `<git common dir>/pdlc-loop/` — the driver's run record (`latest`, `<run-id>/run.json`, one `<feature-id>.json` + `.log` per feature, a `lock`); outside a git repo it falls back to `docs/.pdlc-state/_loop/`, which readers skip like every `_`-prefixed entry
+
 Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.md` bodies AND the `Target-project contract` sections in README and `docs/usage-guide.md`.
 
 ## When editing this plugin
@@ -188,7 +194,7 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 - After editing a fragment, a template or a `bin/` script, run `python3 adapters/sync_skills.py`. Never hand-edit an inlined region, a `pdlc:meta` block, or anything under `skills/*/assets/` / `skills/*/scripts/` — they are regenerated, and `tests/skills-selfcontained-check.sh` fails on drift.
 - In a skill body, reference templates and scripts as `` `assets/<file>` `` / `` `scripts/<file>` `` (relative to the skill folder), never as `templates/…` or `../../…` — the model can't resolve those. Use `$ARGUMENTS` exactly once, on its own `label: $ARGUMENTS` line: Claude Code substitutes every occurrence, with an empty string when there are no arguments.
 - New required frontmatter fields → also update `required_fields` in `tests/frontmatter-check.sh`.
-- Run all nine test scripts and shellcheck before committing (see "Common commands").
+- Run all ten test scripts and shellcheck before committing (see "Common commands").
 - New shared prompt fragments → put under `references/templates/prompts/`, reference via `<!-- @include templates/prompts/<name>.md -->` (path is relative to `references/`), then run the sync. Inside a fragment, don't point at another fragment by file name — after inlining, only the fragments a skill itself includes are there.
 - New sub-skill: create `skills/pdlc-<name>/SKILL.md` with the standard frontmatter (`name: pdlc-<name>`, layer/stage, produces/requires, etc.). The `pdlc-` prefix in directory and `name:` is mandatory.
 

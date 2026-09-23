@@ -624,6 +624,27 @@ assert_eq "只有 ship / deploy 被指示写 _done" "" "$done_leak"
 
 }
 
+# ─── 多功能循环驱动 ───
+# 驱动本身的行为在 tests/loop-driver-check.sh 里测；这里只看它随插件分发、并被 skill 指到
+echo ""
+echo "Test: 多功能循环驱动随插件分发"
+assert_exists "bin/pdlc-loop.sh exists" "bin/pdlc-loop.sh"
+if [[ -x "bin/pdlc-loop.sh" ]]; then
+    echo "  ✓ pdlc-loop.sh is executable"; pass=$((pass + 1))
+else
+    echo "  ✗ pdlc-loop.sh missing +x bit"; fail=$((fail + 1))
+fi
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+assert_contains "loop-run 把多功能 / 并行指到驱动" '`scripts/pdlc-loop.sh`' "$(cat skills/pdlc-loop-run/SKILL.md)"
+assert_contains "loop-run 写明并行参数" '并行参数 `--parallel N`' "$(cat skills/pdlc-loop-run/SKILL.md)"
+assert_contains "status 读循环运行记录" '`scripts/pdlc-loop.sh`' "$(cat skills/pdlc-status/SKILL.md)"
+assert_contains "status 用 --status 取循环进度" 'pdlc-loop.sh --status' "$(cat skills/pdlc-status/SKILL.md)"
+}
+assert_exists "pdlc-status 自带驱动副本" "skills/pdlc-status/scripts/pdlc-loop.sh"
+assert_exists "pdlc-loop-run 自带驱动副本" "skills/pdlc-loop-run/scripts/pdlc-loop.sh"
+assert_contains "Codex 驱动委托给同一个驱动" 'bin/pdlc-loop.sh' "$(cat adapters/codex-loop-run.sh)"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

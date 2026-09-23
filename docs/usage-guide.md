@@ -244,9 +244,9 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
 
 3. **Codex · 自主收敛循环**（无人值守把 `tdd → implement → review` 推到 `review_done`）
    ```bash
-   adapters/codex-loop-run.sh <功能ID> --project <项目目录> [--max-steps 4] [--dry-run]
+   adapters/codex-loop-run.sh <功能ID>... --project <项目目录> [--max-steps 4] [--parallel N] [--dry-run]
    ```
-   外部 bash 循环（loop-run 的 Runbook 版）：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到 `review_done` 即停，绝不自动 ship/deploy。放行前 Codex 已过状态完整性准入闸（真机验证真跑 test-commands、诚实写 checks），设计与真机结果见 `docs/decisions/0004-codex-loop-run.md`。`--dry-run` 可离线看每步决策不真跑 codex。
+   外部 bash 循环（loop-run 的 Runbook 版）：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到 `review_done` 即停，绝不自动 ship/deploy。放行前 Codex 已过状态完整性准入闸（真机验证真跑 test-commands、诚实写 checks），设计与真机结果见 `docs/decisions/0004-codex-loop-run.md`。`--dry-run` 可离线看每步决策不真跑 codex。它就是 `bin/pdlc-loop.sh --platform codex`，多个功能、并行、依赖排序见 §7 场景 G。
 
 > **哪些能力仅 Claude Code**：状态栏（§4.5，本就是 shell 脚本非 skill）、自主收敛引擎的 `pdlc-loop-run` **skill**（Task 版耦合 Claude 子代理，改用上面的 `codex-loop-run.sh` Runbook 驱动替代）、配置命令 `pdlc-settings`——这 2 个 skill 不投影到其它平台（`pdlc-loop-next` 逻辑平台中立，已投影）。
 >
@@ -290,6 +290,7 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
 - `/pdlc-status` → 列所有功能的当前阶段、待办建议
 - `/pdlc-status F20260502-090000` → 单功能完整 history
 - `/pdlc-status --stale 3` → 列出停 3 天以上的功能
+- `/pdlc-status --loop` → 只看最近一次循环驱动运行的进度（用 `bin/pdlc-loop.sh` 跑过才有）
 - `/pdlc-retro --range 30d` → 月度复盘趋势报告
 
 > **读状态机之前先体检**：`/pdlc-status`、`/pdlc-retro`、`/pdlc-relate` 会先对 `docs/.pdlc-state/`
@@ -322,6 +323,8 @@ docs/05_deployment/                                         # 部署（按版本
 docs/06_tasks/                                              # 任务跟踪
 docs/07_reviews/{doc,code,design,retro,quality}/            # 评审 + 复盘 + 质量报告
 docs/.pdlc-state/<feature-id>.json                          # 状态机（每功能一份）
+.worktrees/pdlc-loop/<feature-id>/                          # 自动 · bin/pdlc-loop.sh 并行时每个功能一个 worktree（已写进 git 排除）
+.git/pdlc-loop/                                             # 自动 · 循环驱动的运行记录与日志（非 git 项目在 docs/.pdlc-state/_loop/）
 ```
 
 ### PDLC-TRACE 追溯头
@@ -425,27 +428,38 @@ CI 配置默认不生成也不修改；需要时明确说，它会先给出用�
 
 每个 stage 派发一个 fresh Task subagent，遇 `blocked` 或状态未推进即停，默认迭代上限 4。
 
-**外部 bash Runbook（真进程隔离，推荐长跑 / 过夜）**：每轮独立进程 = 真 fresh context，必须配预算护栏防烧 token：
+**多个功能 / 并行 / 长跑：驱动脚本 `bin/pdlc-loop.sh`**。每一步是一个独立进程（真 fresh context），不用自己写外层循环：
 
 ```bash
-ID="F20260714-090000"; MAX_STEPS=4
-for _ in $(seq 1 "$MAX_STEPS"); do
-  # 净化：切成 token（去反引号、按空白分行）再用 grep -x 整 token 匹配白名单
-  # ——容忍空白/代码块包裹，又避免 done_at / blocked_reason 等子串被误抽成 done/blocked
-  RAW=$(claude -p "/pdlc-loop-next $ID")
-  CMD=$(printf '%s' "$RAW" | tr '`' ' ' | tr -s ' \t' '\n' | grep -xE '(pdlc-tdd|pdlc-implement|pdlc-review|done|blocked)' | head -1)
-  case "$CMD" in
-    pdlc-tdd|pdlc-implement|pdlc-review)
-      # 模型按 skill frontmatter recommended_model 选；--max-budget-usd 是预算硬护栏
-      claude -p --max-budget-usd 5 "/$CMD $ID --autonomous" || break ;;
-    done)    echo "✅ 已到 review_done，交人工决定是否 /pdlc-ship"; break ;;
-    blocked) echo "⛔ 需人工介入"; break ;;
-    *)       echo "❌ 非法命令（原始输出：$RAW）"; exit 1 ;;
-  esac
-done
+# 先看每个功能的下一步决策，不调用模型
+bin/pdlc-loop.sh F20260714-090000 F20260714-100000 --platform claude --dry-run
+# 真跑。claude 平台必须给每次调用的预算上限
+bin/pdlc-loop.sh F20260714-090000 F20260714-100000 --platform claude --max-budget-usd 5
+# 所有处于收敛段、未阻塞的功能，两个一起跑
+bin/pdlc-loop.sh --ready --platform claude --max-budget-usd 5 --parallel 2
+# 看进度（/pdlc-status 也会显示这一节）
+bin/pdlc-loop.sh --status
 ```
 
-**护栏（不可省）**：迭代上限 + `--max-budget-usd` 预算 + 每轮读 `last_phase_result.ok` 判停。破坏性发布/部署永远留人。
+驱动随 `/pdlc-loop-run`、`/pdlc-status` 分发在各自的 `scripts/` 下，在 Claude Code 里让它「用 loop 驱动并行跑这几个功能」即可；
+插件缓存里的路径是 `~/.claude/plugins/cache/pdlc-skills/pdlc/<版本>/bin/pdlc-loop.sh`。
+
+| 参数 | 含义 |
+|---|---|
+| `<功能ID>...` / `--ready` | 要跑的功能；`--ready` 挑出所有 `next_step` 在收敛段（tdd / implement / review）且未阻塞的 |
+| `--platform claude\|codex` | 每一步用 `claude -p "/pdlc-<阶段> <ID> --autonomous"` 或 `codex exec "按 pdlc <阶段> <ID> --autonomous"` |
+| `--parallel N` | 同时跑几个功能，默认 1。N>1 时每个功能在 `.worktrees/pdlc-loop/<ID>`（分支 `pdlc-loop/<ID>`）里跑 |
+| `--max-steps N` | 每个功能至多几步，默认 4（3 段 + 1 步余量） |
+| `--max-budget-usd X` | claude 平台每次调用的预算上限，真跑必填 |
+| `--dry-run` | 只打印决策，不调用模型、不写任何东西 |
+
+- **护栏**：步数上限；某步 `last_phase_result.ok` 不是 `true` 即停（fail-stop）；`current_stage` 没变即停（stuck-stop）；收敛 = `next_step` 为 `pdlc-ship`，**绝不调用 ship / deploy**
+- **依赖**：按状态机 `relations.depends_on` 排先后，依赖没收敛就不跑依赖方，成环的全部跳过。并行时依赖方在被依赖方的 worktree 里接着跑（看得到它的改动）
+- **并行的前提**：项目是 git 仓库，且状态文件已提交（worktree 从 `HEAD` 建）。驱动**不提交、不合并**，产物留在 worktree 里由你审阅合并；worktree 目录自动写进 `.git/info/exclude`，不出现在 `git status` 里
+- **运行记录**：git 项目在 `.git/pdlc-loop/`（不入库），非 git 项目在 `docs/.pdlc-state/_loop/`。每个功能一份进度记录和一份日志（模型的完整输出）
+- **进度**：`--status` / `/pdlc-status --loop` 显示功能数、各状态计数、每个功能在哪一步、本步已跑多久；驱动进程已不在或单步超过 45 分钟会给出提示。**不给预计完成时间**——各步耗时差异太大
+- **退出码**：`0` 全部收敛；`2` 有功能阻塞或被跳过；`3` 达步数上限；`4` 平台命令出错；`5` 状态没推进（多个功能取最大值）
+- Ctrl-C 会终止正在跑的步骤并记下「被中断」；重跑同样的命令从各功能当前阶段继续
 
 ---
 

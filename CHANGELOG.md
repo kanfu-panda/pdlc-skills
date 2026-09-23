@@ -30,15 +30,21 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 - **`/pdlc-ship` 默认生成的 CI 在每次 push 与 PR 上都跑**：日常检查本该在本地跑，按次计费的 CI 会很快用完额度。现在默认不动 CI 配置（见上方行为变更）。
 - **`/pdlc-review` 按 Web 服务写死**：守卫只在 `backend/`、`frontend/` 下找实现代码，CLI 工具、库等项目直接被拦下；检查清单里的接口、分页、SQL 等项对这些项目没有意义，自动修复却会照着去「补分页」。现在源码目录按项目实际布局找；清单项按项目类型可标「不适用」，不适用项不算未通过，也不进自动修复。它也接受缺陷 ID（`/pdlc-fix` 的下一跳）。
 - **`/pdlc-ship` 与 `/pdlc-review` 重复写 CHANGELOG**：`/pdlc-review` 可能已为功能追加过条目，`/pdlc-ship` 汇总时不再重复写同一功能 ID。
+- **`build_codex.py` 把选项当成输出目录**：`python3 adapters/build_codex.py --dry-run` 会在当前目录建出一个叫 `--dry-run` 的文件夹。现在只接受一个不以 `-` 开头的输出目录参数，`-h` / `--help` 打印用法。
 - **用户文档过时**：Codex 投影的 skill 数写成 34（实为 36）；使用手册仍说模板装到 `~/.codex/pdlc/`；中文 README 的模板清单少 2 份；状态机示例里写了 `terminal_state`（体检会把它报成偏差）；「自定义模板」一节缺少同步步骤，改了模板重装后 skill 仍用旧副本。
 
 ### Added
 
+- **多功能收敛循环驱动 `bin/pdlc-loop.sh`**（ADR 0006）：一次推多个功能过 `tdd → implement → review`。给功能ID 或 `--ready`（挑出所有处于收敛段、未阻塞的功能），`--platform claude|codex` 每一步起一个全新进程，`--parallel N` 让每个功能在自己的 git worktree 里同时跑，按 `depends_on` 排先后。护栏与 `/pdlc-loop-run` 一致，绝不发布，也不提交、不合并；claude 平台真跑必须给 `--max-budget-usd`；同一项目同时只允许一个驱动；Ctrl-C 可中断，重跑即续。驱动随 `/pdlc-loop-run`、`/pdlc-status` 分发，模型遇到「多个功能 / 并行」时直接用它，不必自己写外层脚本。
+- **循环进度**：驱动把运行记录写在 `.git/pdlc-loop/`（非 git 项目在 `docs/.pdlc-state/_loop/`），`--status` 与 `/pdlc-status --loop` 读出功能数、各状态计数、每个功能在哪一步、本步已跑多久，并在驱动进程已不在、单步过久时给出提示。不给预计完成时间。
+- **`tests/loop-driver-check.sh`**：用假的 claude / codex 测驱动的调度、worktree、依赖、护栏、锁、中断与 `--status`，不花模型额度。
 - **`adapters/sync_skills.py`**：把唯一源头（`references/templates/prompts/`、`references/templates/`、`bin/`）同步进每个 skill 文件夹；`--check` 只检查、有漂移则退出 1。改了片段、模板或脚本后重跑它。
 - **`tests/skills-selfcontained-check.sh`**（19 条断言）：片段已内联且与源头逐字一致；模板与脚本副本与源头逐字节一致、脚本可执行、没有多余副本；写状态机的命令正文里有阶段短名与下一跳；参数占位符至多一处且独占一行；正文提到的片段都内联在本 skill 里；不再按修改时间挑版本。针对它做的 16 组变异全部变红。
 
 ### Changed
 
+- **`adapters/codex-loop-run.sh`** 改为 `bin/pdlc-loop.sh --platform codex` 的入口：原有用法与退出码不变，同时可以接多个功能ID 与 `--parallel`。
+- 使用手册「自主循环」一节用驱动替换了手写的 bash Runbook 示例；目标项目契约补上 `.worktrees/pdlc-loop/` 与循环运行记录的位置。
 - **README 的开发一节**列出全部 9 个测试脚本、同步检查与 shellcheck 命令；中文 README 补上同样的内容。
 - `tests/install-smoke.sh` 新增 20 条发布链路断言：`_done` 写入规则、`/pdlc-ship` 的可发布判定与 CI 默认、`/pdlc-fix` 的下一跳、`/pdlc-review` 的适用性与守卫、`/pdlc-deploy` 的版本输入与 `deploy_done` 条件，以及「除 ship / deploy 外没有 skill 被指示写 `_done`」。
 - **Codex 适配器**：先把 skill 里的内联区块折叠回裸标记，再按本平台规则内联；模板与脚本随 skill 目录一起拷贝，不再改写路径；删掉统一的 `templates/` 产物。
