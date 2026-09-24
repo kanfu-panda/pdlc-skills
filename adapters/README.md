@@ -49,7 +49,7 @@ bash install.sh --target codex                   # ~/.codex/skills/
 
 ### Codex 自主收敛循环（`codex-loop-run.sh`）
 
-`pdlc-loop-run` 的默认「Task 版」耦合 Claude 子代理派发、未投影；本脚本是它的**外部 Runbook 版**，无人值守把 `tdd → implement → review` 推到 `review_done`。它只是 `bin/pdlc-loop.sh --platform codex` 的入口：多个功能、`--parallel`、`depends_on` 排序、运行记录与 `--status` 都由那个平台中立的驱动实现（见 [ADR 0006](../docs/decisions/0006-multi-feature-loop-driver.md)）。
+`pdlc-loop-run` 的默认「Task 版」耦合 Claude 子代理派发、未投影；本脚本是它的**外部 Runbook 版**，无人值守把 `tdd → implement → review` 推到「评审通过、等发布」（`next_step: pdlc-ship`）。它只是 `bin/pdlc-loop.sh --platform codex` 的入口：多个功能、`--parallel`、`depends_on` 排序、运行记录与 `--status` 都由那个平台中立的驱动实现（见 [ADR 0006](../docs/decisions/0006-multi-feature-loop-driver.md)）。
 
 ```bash
 adapters/codex-loop-run.sh <功能ID>... [--project DIR] [--max-steps N] [--parallel N] [--dry-run]
@@ -57,7 +57,7 @@ adapters/codex-loop-run.sh <功能ID>... [--project DIR] [--max-steps N] [--para
 
 - **状态机是唯一真源**：每轮读状态机、用 loop-next 映射的 jq 复刻判下一跳、调 `codex exec "按 pdlc <阶段> <id> --autonomous"`、读回状态机判护栏。
 - **护栏**（对齐 Claude 版 loop-run）：`--max-steps`（默认 4）上限停机、`ok!=true` fail-stop、`current_stage` 未推进 stuck-stop。
-- **发布永远人工**：到 `review_done`/`ship`/`deploy` 即 `done` 停机，绝不自动 ship/deploy。
+- **发布永远人工**：到「评审通过、等发布」（`next_step: pdlc-ship`）或更后即 `done` 停机，绝不自动 ship/deploy。
 - `--dry-run` 停在首个决策、不真跑 codex（离线看决策 + 回归测试用）。
 - **放行前提**：Codex 已过[状态完整性准入闸](../docs/decisions/0004-codex-loop-run.md)（真机验证 gpt-5.6-sol 真跑 test-commands、诚实写 checks、fail-stop、发 block 哨兵）。设计与真机结果见 ADR 0004。
 

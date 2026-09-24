@@ -176,7 +176,7 @@ assert_contains "the Agent Skills projection denylists Claude-only skills" "pdlc
 assert_exists "codex-loop-run.sh driver exists" "adapters/codex-loop-run.sh"
 assert_exists "loop-run driver test exists" "tests/adapter-codex-loop-run-check.sh"
 assert_exists "ADR 0004 codex-loop-run exists" "docs/decisions/0004-codex-loop-run.md"
-assert_contains "driver never auto-ships (review_done terminal)" "review_done" "$(cat adapters/codex-loop-run.sh)"
+assert_contains "driver never auto-ships (stops once awaiting release)" "绝不自动 ship/deploy" "$(cat adapters/codex-loop-run.sh)"
 assert_contains "driver has stuck-stop guard" "stuck-stop" "$(cat adapters/codex-loop-run.sh)"
 
 # ─── B2 quality gate (ADR 0005 §5) invariants ───

@@ -97,10 +97,11 @@ PDLC ships the three things loop engineering needs most — a precise spec (PRD/
 
 - **Objective checks, not self-report.** Each stage writes a top-level `last_phase_result` whose `checks` (`tests_pass` / `coverage_pass` / `lint_clean`) come from **real command exit codes** (commands sourced from `00_standards/test-commands.yml`), never from model self-audit. This is the single field an outer loop reads to decide continue / stop / hand back.
 - **`--autonomous` contract** (`noninteractive.md`): procedural confirmations auto-advance and are logged to `history[].auto_decisions[]`; genuine judgement calls write `blocked_reason` and stop; **destructive actions always stay human** (`--autonomous` has no effect on them). `run_mode` mirrors the flag into the state machine.
-- **Convergence engine** `pdlc-loop-run`: auto-advances `tdd → implement → review` to `review_done` (or `blocked`), with a built-in iteration cap, fail-stop, and stuck-stop. Terminal state is `review_done` — **it never auto-ships** (`ship`/`deploy` are always human-gated).
+- **Convergence engine** `pdlc-loop-run`: auto-advances `tdd → implement → review` until the feature is reviewed and awaiting release (`next_step: pdlc-ship`) or blocked, with a built-in iteration cap, fail-stop, and stuck-stop. Loop docs call that stopping point "`review_done`"; it is **not** a `current_stage` value — `_done` means released and only `pdlc-ship` / `pdlc-deploy` write it. **It never auto-ships** (`ship`/`deploy` are always human-gated).
+- **Multi-feature driver** `bin/pdlc-loop.sh` (v1.7): runs the same convergence for several features from outside the model, one fresh process per step (`claude -p` or `codex exec`). `--parallel N` gives each feature its own git worktree, `relations.depends_on` orders them, and a run record under `<git common dir>/pdlc-loop/` feeds `--status` / `/pdlc-status --loop`. It never commits, merges, or ships.
 - **Loop helper** `pdlc-loop-next`: read-only, prints the next mechanical-convergence command from a strict whitelist for user-written bash loops.
 
-Design: `docs/decisions/0001-loop-engineering-integration.md`.
+Design: `docs/decisions/0001-loop-engineering-integration.md`, `docs/decisions/0006-multi-feature-loop-driver.md`.
 
 ## 8. Statusline segment (v1.4)
 
@@ -123,7 +124,10 @@ Two tiers, both run locally (no CI by default).
 - `tests/statusline-check.sh` — `pdlc-statusline.sh` render scenarios (interactive / autonomous / blocked / terminal / multi-feature pick / non-PDLC empty).
 - `tests/skills-selfcontained-check.sh` — every skill folder self-contained: fragments inlined and identical to their source, `assets/` / `scripts/` copies byte-identical with no strays, `stage` / `next_step` present in state writers' bodies, `$ARGUMENTS` at most once on its own line, no reference to a fragment the skill doesn't include.
 - `tests/state-lint-check.sh` — `pdlc-state-lint.sh` findings per deviation class, no false positives on conforming files, index/config files skipped, three-state exit codes, and a byte-level read-only check.
-- `tests/adapter-codex-check.sh` / `tests/adapter-codex-loop-run-check.sh` — Codex projection layout and loop-driver guardrails (the latter already stub-driven).
+- `tests/adapter-agent-skills-check.sh` — the Agent Skills projection conforms to the standard (names, description length, allowed top-level fields, string-only `metadata`, no leftover `@include` / `$ARGUMENTS` / Claude-only blocks) and `install.sh --target agents` installs to the right places; also runs the official `agentskills` validator when it is installed.
+- `tests/adapter-codex-check.sh` / `tests/adapter-codex-loop-run-check.sh` — the Codex entry point and its loop mapping / guardrails.
+- `tests/loop-driver-check.sh` — `bin/pdlc-loop.sh` with stubbed `claude` / `codex`: scheduling, `depends_on`, worktrees, guardrails, run record, `--status`.
+- `tests/evals-runner-check.sh` / `tests/evals-scenario-check.sh` — the eval driver and scenario verdicts, with the model stubbed (no spend).
 
 **Behavioural (v1.5.3, `evals/`) — does a contract actually hold when a skill really runs:**
 
@@ -138,10 +142,13 @@ The tier criterion is **who executes the contract**. Contracts executed by deter
 
 The PDLC methodology, state-machine contract, doc layout, and objective-check discipline are **tool-agnostic** — nothing in them requires Claude Code. `docs/pdlc-methodology.md` distills this **Tier 1 core** as a self-contained, platform-neutral spec so any AI coding agent (Codex, Cursor, Windsurf, Copilot, Cline, …) can drive PDLC via natural language, with the same `docs/.pdlc-state/` shared across tools.
 
-Claude Code has the **richest integration** (Tier 2 — this whole document). **Tier 3** transpiles the SKILL bodies into a platform's native command files from a single source (`adapters/build_<platform>.py`, projecting to `dist/<platform>/`):
+Claude Code has the **richest integration** (Tier 2 — this whole document): it loads `skills/` directly as a plugin. Every other tool gets **one build-time projection that follows the Agent Skills open standard** (agentskills.io), instead of a transpiler per platform:
 
-- **Codex — implemented** (`adapters/build_codex.py` + `install.sh --target codex`): projects 34 pdlc skills into `~/.codex/skills/<name>/SKILL.md` for Claude-Code-compatible Codex distributions (description-triggered, verified on gpt-5.6-sol). The `adapter:claude-only` sentinel strips Claude-specific example blocks; the denylist skips 2 Claude-only skills (statusline config, autonomous loop engine).
-- **Cursor / Windsurf / Copilot — planned** per real demand.
+- `adapters/build_agent_skills.py` projects `skills/` into `dist/agent-skills/skills/` — 36 skills, all passing the official `skills-ref` validator. Frontmatter keeps only standard fields (`name`, `description`, `license`, string-valued `metadata`); fragments are inlined, `adapter:claude-only` blocks stripped, the `$ARGUMENTS` line rewritten in natural language, and a note explains that `/pdlc-<name>` means the skill of that name. The denylist skips 2 Claude-only skills (statusline config, the Task-based loop engine).
+- `install.sh --target agents` installs it to `~/.agents/skills/` (read by Copilot, Gemini CLI, OpenCode, Amp, Goose), `--project DIR` to `DIR/.agents/skills/`, `--dest DIR` anywhere (Cursor, Windsurf, Kiro, Roo each use their own directory). `--target codex` installs the same projection to `~/.codex/skills/`.
+- `skills/` itself stays non-conformant on purpose: the standard rejects `argument-hint`, and dropping it would degrade Claude Code.
 
-Design: `docs/decisions/0003-multi-platform-adapters.md`.
+Loading is not the same as trustworthy state. A tool must pass the **state-integrity gate** (`evals/` `honest-checks`) before we recommend it for autonomous loops: Codex has passed; Copilot CLI loads and triggers every skill but failed 3/3 rounds on its default model; the rest have not been run.
+
+Design: `docs/decisions/0007-agent-skills-standard.md` (revises the per-platform transpilers of `docs/decisions/0003-multi-platform-adapters.md`).
 
