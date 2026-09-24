@@ -181,6 +181,15 @@ inst --target agents --dest "$D" --uninstall
 assert_eq "--dest 卸载后没有 pdlc-* 残留" "0" "$(find "$D" -mindepth 1 -maxdepth 1 -name 'pdlc-*' | wc -l | tr -d ' ')"
 inst --target cursor; rc=$?
 [[ "$rc" -ne 0 ]] && ok "未知 --target 报错" || bad "未知 --target 没报错"
+# 带值的选项缺值时：set -e 下 shift 2 会静默退出，必须给出点名选项的报错
+for opt in --dest --project --target; do
+  inst --target agents "$opt"; rc=$?
+  [[ "$rc" -ne 0 ]] && grep -q -- "${opt} requires a value" "$ROOT/inst.out" \
+    && ok "${opt} 缺值 → 点名报错" || bad "${opt} 缺值没有点名报错" "rc=${rc} 输出：$(head -c 200 "$ROOT/inst.out")"
+done
+inst --target agents --dest --uninstall; rc=$?
+[[ "$rc" -ne 0 ]] && grep -q -- "--dest requires a value" "$ROOT/inst.out" \
+  && ok "--dest 后面紧跟另一个选项 → 当作缺值" || bad "--dest 把下一个选项当成了目录" "rc=${rc}"
 
 echo ""
 echo "Final: $pass passed, $fail failed"

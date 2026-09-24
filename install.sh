@@ -263,12 +263,22 @@ PROJECT=""
 TARGET="claude"   # claude (default) | codex | agents
 DEST=""
 
+# 带值的选项：缺值时 set -e 下的 shift 2 会让脚本不声不响地退出，所以先点名报错。
+# 下一个参数以 - 开头也算缺值，免得 --dest --uninstall 把选项当成目录
+need_value() {
+  if [[ -z "${2:-}" || "${2}" == -* ]]; then
+    echo "Error: $1 requires a value" >&2
+    usage >&2
+    exit 1
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --global)      SCOPE="user"; shift ;;
-    --project)     SCOPE="project"; PROJECT="${2:-}"; shift 2 ;;
-    --target)      TARGET="${2:-}"; shift 2 ;;
-    --dest)        DEST="${2:-}"; shift 2 ;;
+    --project)     need_value "$1" "${2:-}"; SCOPE="project"; PROJECT="$2"; shift 2 ;;
+    --target)      need_value "$1" "${2:-}"; TARGET="$2"; shift 2 ;;
+    --dest)        need_value "$1" "${2:-}"; DEST="$2"; shift 2 ;;
     --uninstall)   ACTION="uninstall"; shift ;;
     --upgrade)     ACTION="upgrade"; shift ;;
     --version)     ACTION="version"; shift ;;

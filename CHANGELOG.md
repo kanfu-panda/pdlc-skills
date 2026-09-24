@@ -32,6 +32,7 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 - **`/pdlc-ship` 与 `/pdlc-review` 重复写 CHANGELOG**：`/pdlc-review` 可能已为功能追加过条目，`/pdlc-ship` 汇总时不再重复写同一功能 ID。
 - **`build_codex.py` 把选项当成输出目录**：`python3 adapters/build_codex.py --dry-run` 会在当前目录建出一个叫 `--dry-run` 的文件夹。现在只接受一个不以 `-` 开头的输出目录参数，`-h` / `--help` 打印用法。
 - **用户文档过时**：Codex 投影的 skill 数写成 34（实为 36）；使用手册仍说模板装到 `~/.codex/pdlc/`；中文 README 的模板清单少 2 份；状态机示例里写了 `terminal_state`（体检会把它报成偏差）；「自定义模板」一节缺少同步步骤，改了模板重装后 skill 仍用旧副本。
+- **`install.sh` 的选项缺值时不声不响地退出**：`--project`、`--target` 后面不带值（或紧跟另一个选项）时，脚本退出码 1、没有任何提示。现在报「`<选项>` requires a value」并打印用法。
 
 ### Added
 

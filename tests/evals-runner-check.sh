@@ -102,7 +102,7 @@ echo "Test: copilot 臂装工作树投影到 fixture 项目、按 skill 名触�
 cat > "$BIN/copilot" <<STUB
 #!/usr/bin/env bash
 printf '%s\n' "\$@" > "$BIN/copilot-argv"
-find .agents/skills -mindepth 1 -maxdepth 1 -name 'pdlc-*' 2>/dev/null | wc -l | tr -d ' ' > "$BIN/copilot-skills"
+find .agents/skills -mindepth 1 -maxdepth 1 -type d -name 'pdlc-*' 2>/dev/null | wc -l | tr -d ' ' > "$BIN/copilot-skills"
 cat >/dev/null 2>&1
 exit 0
 STUB
