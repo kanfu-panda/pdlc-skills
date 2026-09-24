@@ -220,37 +220,59 @@ pdlc-skills 可在 Claude Code 底部状态栏**独占一行**显示当前 PDLC 
 
 ## 4.6 在其它工具里用 PDLC（多平台）
 
-Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方法论、状态机、模板是**平台中立**的——同一份 `docs/.pdlc-state/` 谁都能推，换工具不丢状态。设计与路线见 `docs/decisions/0003-multi-platform-adapters.md`。
+Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方法论、状态机、模板是**平台中立**的——同一份 `docs/.pdlc-state/` 谁都能推，换工具不丢状态。设计见 `docs/decisions/0007-agent-skills-standard.md`。
 
-**两种用法：**
+**1. 支持 Agent Skills 标准的工具 · 原生 skill**
 
-1. **任意工具（Codex / Cursor / Windsurf / Copilot / Cline …）· 自然语言驱动**
-   把平台中立方法论文档 `docs/pdlc-methodology.md` 作为你项目的规则文件（`AGENTS.md` / `.cursor/rules/` / `.github/copilot-instructions.md` / `.clinerules/` 等），然后用自然语言驱动：
-   ```
-   按 pdlc 给这个功能跑一遍需求分析     → 走 PRD 阶段
-   按 pdlc 跑 TDD / 做实现 / 评审        → 对应阶段
-   按 pdlc 看状态                        → 只读状态视图
-   ```
-   agent 读到指令后按方法论文档执行：读/建状态机 → 四段式 → 客观检查 → 更新状态机并交接。
+多数 AI 编程工具已按 [Agent Skills 开放标准](https://agentskills.io/specification) 加载 skill（文件夹 + `SKILL.md`，按描述触发）。pdlc 把 skill 构建成符合标准的投影，装到工具读取的目录：
 
-2. **Codex · 原生 skills**（面向兼容 Claude Code 生态的 Codex 发行版）
-   ```bash
-   git clone https://github.com/kanfu-panda/pdlc-skills.git
-   cd pdlc-skills && bash install.sh --target codex
-   ```
-   构建适配器（`adapters/build_codex.py`）并把 36 个 pdlc skill 装到 `~/.codex/skills/`（文档模板与脚本随各 skill 自带），方法论到 `~/.codex/pdlc/`。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`），gpt 系模型按描述匹配到对应 skill。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
+```bash
+git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
+bash install.sh --target agents                  # ~/.agents/skills/：GitHub Copilot、Gemini CLI、OpenCode、Amp、Goose
+bash install.sh --target agents --project DIR    # DIR/.agents/skills/（只对这个项目生效）
+bash install.sh --target agents --dest DIR       # 用自己目录的工具：Cursor（.cursor/skills）、Windsurf（.windsurf/skills）、
+                                                 # Kiro（.kiro/skills）、Roo Code（.roo/skills）
+bash install.sh --target codex                   # ~/.codex/skills/
+# 加 --uninstall 移除。只写入、只删除 pdlc-* 目录，不碰同目录下的其它 skill
+```
 
-   > ⚠️ **适用范围——原版 OpenAI Codex 未验证**：本适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上真机验过；我们没有原版环境可测，**不承诺原版可用**。自查方法：装完重启 Codex，用自然语言让它按 pdlc 做一件事——毫无反应即说明它不读该目录。此时退回路线 1（方法论文档进 `AGENTS.md`），那条路不依赖任何适配器机制。欢迎原版用户提 issue 反馈实际布局。
+装好后重启工具，用自然语言驱动：
 
-3. **Codex · 自主收敛循环**（无人值守把 `tdd → implement → review` 推到 `review_done`）
-   ```bash
-   adapters/codex-loop-run.sh <功能ID>... --project <项目目录> [--max-steps 4] [--parallel N] [--dry-run]
-   ```
-   外部 bash 循环（loop-run 的 Runbook 版）：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到 `review_done` 即停，绝不自动 ship/deploy。放行前 Codex 已过状态完整性准入闸（真机验证真跑 test-commands、诚实写 checks），设计与真机结果见 `docs/decisions/0004-codex-loop-run.md`。`--dry-run` 可离线看每步决策不真跑 codex。它就是 `bin/pdlc-loop.sh --platform codex`，多个功能、并行、依赖排序见 §7 场景 G。
+```
+用 pdlc 写个 PRD：给登录加验证码        → pdlc-prd
+按 pdlc review 执行 F20260502-090000    → pdlc-review
+按 pdlc 看状态                          → pdlc-status
+```
 
-> **哪些能力仅 Claude Code**：状态栏（§4.5，本就是 shell 脚本非 skill）、自主收敛引擎的 `pdlc-loop-run` **skill**（Task 版耦合 Claude 子代理，改用上面的 `codex-loop-run.sh` Runbook 驱动替代）、配置命令 `pdlc-settings`——这 2 个 skill 不投影到其它平台（`pdlc-loop-next` 逻辑平台中立，已投影）。
->
-> **跨工具状态延续的前提**：每个平台都老实遵守 IRON LAW 与「客观检查不虚报」（`checks` 来自真实退出码，不用模型自评）。任一平台写脏状态就污染所有平台共用的那份——这也是新平台接入前要过「状态完整性准入闸」的原因（ADR 0003 §6.1）。
+投影与源码的区别：正文里的 `/pdlc-<名字>` 指同名技能（开头有一句说明）；参数行改写成「用户请求里跟在技能名后面的内容」；
+`pdlc-settings`（状态栏配置）和 `pdlc-loop-run`（Task 版收敛引擎）不投影，多功能循环驱动随 `pdlc-status` 一起带过去。
+
+**各工具的验证状态**
+
+| 工具 | 状态 |
+|---|---|
+| Claude Code | 一等公民（插件，不经投影） |
+| Codex | 已过状态完整性准入闸（ADR 0004）。验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
+| GitHub Copilot | CLI 1.0.88 能加载、能触发，但**未过**状态完整性准入闸（默认模型 3 轮全部契约破坏：失败仍推进阶段、漏记 lint、改测试后报全绿，见 ADR 0007 §6）。可跑单个阶段，不建议交给自主循环。VS Code 里的 Copilot agent 未跑 |
+| Gemini CLI、OpenCode、Amp、Goose、Cursor、Windsurf、Kiro、Roo Code | 按各自文档可加载，我们没跑过 |
+
+> ⚠️ **能加载不等于状态可信**。新工具要先过状态完整性准入闸：`./evals/run.sh --platform <工具> --only honest-checks`
+> 故意造一个红灯测试，看写进状态机的 `checks` 是否来自真实退出码、`ok=false` 有没有如实写出。任一工具写脏状态，
+> 就污染所有工具共用的那份（ADR 0003 §6.1）。没过准入闸的工具可以用来写文档、跑单个阶段，不建议交给自主循环。
+
+**2. 任意工具 · 方法论文档**
+
+工具不读 skill 目录时，把平台中立方法论文档 `docs/pdlc-methodology.md` 作为项目规则（`AGENTS.md` / `.cursor/rules/` / `.github/copilot-instructions.md` / `.clinerules/` 等），然后用自然语言驱动：agent 读到指令后按文档执行——读/建状态机 → 四段式 → 客观检查 → 更新状态机并交接。
+
+**3. Codex · 自主收敛循环**
+
+```bash
+adapters/codex-loop-run.sh <功能ID>... --project <项目目录> [--max-steps 4] [--parallel N] [--dry-run]
+```
+
+它就是 `bin/pdlc-loop.sh --platform codex`：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到 `review_done` 即停。多个功能、并行、依赖排序见 §7 场景 G。
+
+> **哪些能力仅 Claude Code**：状态栏（§4.5）、`pdlc-loop-run` 的 Task 版、配置命令 `pdlc-settings`。
 
 ---
 

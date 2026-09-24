@@ -1,180 +1,24 @@
 #!/usr/bin/env python3
-"""Codex 适配器：把 skills/*/SKILL.md 投影为 Codex 原生 skills。
+"""Codex 入口：构建 Agent Skills 标准投影，供 install.sh --target codex 装到 ~/.codex/skills/。
 
-目标 Codex 是「兼容 Claude Code 生态的定制版」——用 `~/.codex/skills/<name>/SKILL.md`
-（frontmatter name + description，靠 description 触发，非斜杠命令），而**不是** vanilla Codex 的
-`~/.codex/prompts/*.md` 斜杠命令。这套机制已在真机验证（gpt-5.6-sol 自然语言触发 pdlc-prd 成功）。
-
-单一源 = skills/*/SKILL.md；本脚本按 ADR 0003 §5 做「构建期投影」：
-  1. 内联 @include 片段 → 每个 skill 自包含（源里的内联区块先折叠回裸标记，再按本平台规则内联）
-  2. 重写 frontmatter → Codex skill 格式 name + description（description 追加 pdlc 触发提示）
-  3. 物化命名空间 → 把 next_step 写成正文里的「下一步」指令（自然语言，非斜杠命令）
-  4. 丢弃 Claude-Code-only 能力（statusline 配置、自主收敛引擎）
+我们验证过的 Codex 发行版读 ~/.codex/skills/<name>/SKILL.md（按 description 触发，不是斜杠命令），
+加载的就是 Agent Skills 标准格式。所以 Codex 不再有自己的转译逻辑，产物与
+adapters/build_agent_skills.py 完全相同，只是默认输出到 dist/codex。
+见 docs/decisions/0007-agent-skills-standard.md（取代 ADR 0003 的逐平台转译器）。
 
 用法：
   python3 adapters/build_codex.py [输出目录]   # 默认 dist/codex
+  python3 adapters/build_codex.py --help
 产物：
-  <out>/skills/pdlc-*/          转译后的 Codex skills：SKILL.md + 自带的 assets/ scripts/（拷到 ~/.codex/skills/）
-  <out>/pdlc-methodology.md     平台中立方法论（供自然语言路径按需引用）
-
-详见 adapters/README.md 与 docs/decisions/0003-multi-platform-adapters.md。
+  <out>/skills/pdlc-*/          标准 skill（拷到 ~/.codex/skills/）
+  <out>/pdlc-methodology.md     平台中立方法论
 """
-import re
-import shutil
 import sys
-from pathlib import Path
 
-from sync_skills import collapse_regions
-
-REPO = Path(__file__).resolve().parent.parent
-SKILLS = REPO / "skills"
-PROMPTS_SRC = REPO / "references" / "templates" / "prompts"
-METHODOLOGY = REPO / "docs" / "pdlc-methodology.md"
-
-# 本 PoC 暂不投影：
-#   pdlc-settings   —— 真·Claude-only：配状态栏 / 改全局 settings.json，Codex 无等价机制。
-#   pdlc-loop-run   —— 部分耦合：默认「Task 版」用 Claude Code 的 Task 子代理派发（Codex 无直接等价）；
-#                      「外部 Runbook 版」原理可移植（bash 循环换 claude→codex），但需 Codex 驱动脚本 +
-#                      过 ADR 0003 §6.1 状态完整性准入闸后才敢放行（防 --autonomous 下写脏共用状态）。
-# 注：pdlc-loop-next 逻辑平台中立（只读状态机、打印下一跳 token），已投影为独立只读查询命令；
-#     其正文里「用 claude -p 驱动外层循环」的参考 helper 是 Claude 专属管线，用 adapter:claude-only 哨兵剥掉。
-DENYLIST = {"pdlc-settings", "pdlc-loop-run"}
-
-INCLUDE_RE = re.compile(r"<!--\s*@include\s+templates/prompts/([a-z0-9-]+)\.md\s*-->")
-FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
-# 通用机制：源里被 <!-- adapter:claude-only-start/end --> 包裹的块是 Claude 专属内容
-# （如用 `claude -p` 驱动的示例管线、到 ~/.claude/plugins 下找脚本），投影到其它平台时整段剥掉。
-# skill 正文与共享片段里都可能有——所以内联前后各剥一次（见 transpile）。Claude 侧保留这些块：
-# 模型看得见 HTML 注释标记（已实测），但标记只起分隔作用，块里的内容本来就是给 Claude 的。
-CLAUDE_ONLY_RE = re.compile(
-    r"[ \t]*<!--\s*adapter:claude-only-start\s*-->.*?<!--\s*adapter:claude-only-end\s*-->\n?",
-    re.DOTALL,
-)
-
-
-def parse_frontmatter(text):
-    """拆出 YAML frontmatter 与正文。只解析顶层 `key: value`（值不跨行），足够本用途。"""
-    m = FM_RE.match(text)
-    if not m:
-        return {}, text
-    fm = {}
-    for line in m.group(1).splitlines():
-        # 跳过缩进行（列表项/续行）与无冒号行
-        if line[:1].isspace() or ":" not in line:
-            continue
-        key, _, val = line.partition(":")
-        fm[key.strip()] = val.strip()
-    return fm, text[m.end():]
-
-
-#   每个片段首行是来源标记注释（如 `<!-- IRON LAW · 被所有 Layer 1/2 命令 @include -->`），
-#   内联时剥掉——避免把 Claude 术语（Layer 1/2、@include）带进 Codex prompt。
-SOURCE_MARKER_RE = re.compile(r"^<!--.*?-->\n\n?", re.DOTALL)
-
-
-def inline_includes(body):
-    """把 <!-- @include templates/prompts/X.md --> 替换为片段原文（剥去首行来源标记），产出自包含 prompt。"""
-    def repl(m):
-        frag = PROMPTS_SRC / f"{m.group(1)}.md"
-        if not frag.exists():
-            sys.exit(f"错误：缺失片段 {frag}")
-        text = frag.read_text(encoding="utf-8").rstrip("\n")
-        return SOURCE_MARKER_RE.sub("", text, count=1)
-
-    return INCLUDE_RE.sub(repl, body)
-
-
-def next_step_note(fm):
-    """把 frontmatter 的 next_step 物化成正文指令（Codex 不把 frontmatter 当逻辑）。"""
-    nxt = fm.get("next_step", "").strip().strip("'\"")
-    if not nxt or nxt in ("null", "~"):
-        return ""
-    short = nxt.replace("pdlc-", "")
-    return (
-        f"\n\n---\n\n"
-        f"## 下一步（PDLC 链式推进）\n\n"
-        f"本阶段收尾后，下一跳是 **{nxt}** 技能。用自然语言「按 pdlc {short}」继续即可"
-        f"（本 Codex 的 skill 靠描述触发，不是斜杠命令）。链式推进以状态机 "
-        f"`docs/.pdlc-state/<feature-id>.json` 的 `next_step` 为准。\n"
-    )
-
-
-# 追加到 description 的 pdlc 触发提示——Codex skill 靠 description 匹配，这句帮模型把
-# 「用 pdlc …」「按 pdlc …」的自然语言关联到本技能。
-TRIGGER_SUFFIX = " 当用户用自然语言要求执行该 PDLC 阶段（如「用 pdlc …」「按 pdlc …」）时使用。"
-
-
-def transpile(text):
-    fm, body = parse_frontmatter(text)
-    body = collapse_regions(body)         # 源里的内联区块 → 裸标记，下面按本平台规则重新内联
-    body = CLAUDE_ONLY_RE.sub("", body)   # 先剥 skill 正文里的 Claude 专属块（免得去内联块里引用的片段）
-    body = inline_includes(body)
-    body = CLAUDE_ONLY_RE.sub("", body)   # 再剥一次：片段里的 Claude 专属块，内联之后才看得见
-
-    # Codex skill frontmatter：name + description（description 追加 pdlc 触发提示）
-    name = fm.get("name", "").strip()
-    desc = fm.get("description", "").strip() + TRIGGER_SUFFIX
-    head = ["---", f"name: {name}", f"description: {desc}", "---"]
-
-    return "\n".join(head) + "\n" + body.lstrip("\n") + next_step_note(fm)
-
-
-def main():
-    args = sys.argv[1:]
-    if args and args[0] in ("-h", "--help"):
-        print(__doc__)
-        return 0
-    # 输出目录不接受 - 开头的参数：曾把 --dry-run 当成目录名，在当前目录下建出一个 --dry-run/
-    if any(a.startswith("-") for a in args) or len(args) > 1:
-        sys.exit(f"错误：只接受一个输出目录参数（得到 {' '.join(args)}）。用法：python3 adapters/build_codex.py [输出目录]")
-    out = Path(args[0]) if args else REPO / "dist" / "codex"
-    skills_out = out / "skills"
-
-    # 全新构建：清掉旧产物。但 out 是 CLI 传入的任意路径——只删「看起来纯是本脚本产物」的目录，
-    # 含任何非产物条目即拒绝，防用户手滑指向 ~/.codex 等真实目录被递归删除（Copilot 评审）。
-    # "prompts" 是 v1.5.0 的旧产物名（当时投影到 prompts/）——保留在白名单里，否则从 v1.5.0
-    # 升级时旧的 dist/codex/prompts/ 会让本守卫误判、install.sh --target codex 硬失败（Copilot 评审）。
-    # "templates" 是 v1.6.4 及以前的产物（模板当时统一拷到这里），同理保留
-    known_outputs = {"skills", "templates", "pdlc-methodology.md", "prompts"}
-    if out.exists() and any(out.iterdir()):
-        foreign = sorted(p.name for p in out.iterdir() if p.name not in known_outputs)
-        if foreign:
-            sys.exit(
-                f"错误：输出目录 {out} 含非构建产物（{', '.join(foreign)}）——拒绝删除，防误删真实数据。\n"
-                f"      请指向空目录或专用构建目录（默认 dist/codex）。"
-            )
-        shutil.rmtree(out)
-    skills_out.mkdir(parents=True)
-
-    ported, skipped = [], []
-    for skill_dir in sorted(SKILLS.iterdir()):
-        name = skill_dir.name
-        src = skill_dir / "SKILL.md"
-        if not src.exists():
-            continue
-        if name in DENYLIST:
-            skipped.append(name)
-            continue
-        result = transpile(src.read_text(encoding="utf-8"))
-        if INCLUDE_RE.search(result):
-            sys.exit(f"错误：{name} 转译后仍残留 @include（片段缺失？）")
-        (skills_out / name).mkdir(parents=True)
-        (skills_out / name / "SKILL.md").write_text(result, encoding="utf-8")
-        # 模板与脚本随 skill 自带（adapters/sync_skills.py 同步），正文里的 assets/ scripts/ 引用原样可解析
-        for sub in ("assets", "scripts"):
-            if (skill_dir / sub).is_dir():
-                shutil.copytree(skill_dir / sub, skills_out / name / sub)
-        ported.append(name)
-
-    # 拷平台中立方法论（自然语言路径按需引用）
-    if METHODOLOGY.exists():
-        shutil.copy2(METHODOLOGY, out / "pdlc-methodology.md")
-
-    print(f"✅ Codex 适配器构建完成 → {out}")
-    print(f"   skills: {len(ported)} 个（denylist 跳过 {len(skipped)}：{', '.join(skipped)}）")
-    print(f"   自带 assets/ scripts/ 的 skill：{sum(1 for p in skills_out.iterdir() if (p / 'assets').is_dir() or (p / 'scripts').is_dir())} 个")
-    return 0
-
+from build_agent_skills import REPO, main
 
 if __name__ == "__main__":
-    sys.exit(main())
+    if sys.argv[1:2] in (["-h"], ["--help"]):
+        print(__doc__)
+        sys.exit(0)
+    sys.exit(main(default=REPO / "dist" / "codex", label="Codex 适配器（Agent Skills 标准投影）"))

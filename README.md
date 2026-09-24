@@ -148,19 +148,34 @@ In Claude Code (after restarting the session), type `/` and start typing `pdlc-`
 
 ## Multi-platform (other AI coding tools)
 
-Claude Code has the **richest integration** — 38 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine, and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
+Claude Code has the **richest integration** — 38 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
 
-- **Any tool** (Codex, Cursor, Windsurf, Copilot, Cline, …): use the platform-neutral methodology doc [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) as your project rules (`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …), then drive PDLC in natural language ("run the PDLC review stage" → the agent follows the doc).
-- **Codex** (native skills — for Claude-Code-compatible Codex distributions):
-  ```bash
-  git clone https://github.com/kanfu-panda/pdlc-skills.git
-  cd pdlc-skills && bash install.sh --target codex
-  ```
-  Builds the adapter and installs 36 pdlc skills into `~/.codex/skills/` (the 2 Claude Code-only skills — statusline config + the autonomous loop engine — are skipped). Codex skills are **description-triggered, not slash commands** — after restarting Codex, drive PDLC in natural language (e.g. `用 pdlc 写个 PRD：<一句话需求>`). Requires a local clone + python3. Remove with `bash install.sh --target codex --uninstall`.
-  - **Autonomous convergence** on Codex: `adapters/codex-loop-run.sh <feature-id> --project <dir>` drives `tdd → implement → review` to `review_done` (external Runbook; release stays human). Cleared the state-integrity admission gate on a real run — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md).
-  - ⚠️ **Scope — not verified on vanilla OpenAI Codex.** The adapter was validated only on a Codex distribution that reads `~/.codex/skills/`; we have no vanilla environment to test on. If Codex ignores the skills after a restart, it doesn't read that directory — fall back to the platform-neutral route above (methodology doc in `AGENTS.md`), which needs no adapter. Reports from vanilla users are welcome via issues.
+Most AI coding tools now load the [Agent Skills open standard](https://agentskills.io/specification). pdlc builds one standard-conformant projection of its skills (36 of them — all but the 2 Claude Code-only ones; every one passes the official `skills-ref` validator) and installs it wherever your tool looks:
 
-Cursor / Windsurf / Copilot native adapters are planned per real demand. Design & roadmap: [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md).
+```bash
+git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
+bash install.sh --target agents                  # ~/.agents/skills/  (Copilot, Gemini CLI, OpenCode, Amp, Goose)
+bash install.sh --target agents --project DIR    # DIR/.agents/skills/
+bash install.sh --target agents --dest DIR       # any tool's own directory, e.g. .cursor/skills
+bash install.sh --target codex                   # ~/.codex/skills/
+# add --uninstall to remove; only pdlc-* directories are ever written or removed
+```
+
+Skills trigger by description: drive PDLC in natural language (`用 pdlc 写个 PRD：<一句话需求>`, "run the pdlc review stage for F…"). Requires a local clone + python3.
+
+| Tool | Where | Status |
+|---|---|---|
+| Claude Code | plugin (this repo) | ✅ first-class |
+| Codex | `--target codex` | ✅ passed the state-integrity gate — [ADR 0004](./docs/decisions/0004-codex-loop-run.md); verified on a Codex distribution that reads `~/.codex/skills/`, vanilla OpenAI Codex unverified |
+| GitHub Copilot | `--target agents` (or `--project DIR`) | CLI 1.0.88: loads and triggers · ❌ **failed** the state-integrity gate (3/3 rounds, default model) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-copilot-准入闸真机); fine for single stages, not for autonomous loops · VS Code not run |
+| Gemini CLI · OpenCode · Amp · Goose | `--target agents` | loads per their docs · not run by us |
+| Cursor · Windsurf · Kiro · Roo Code | `--target agents --dest <their skills dir>` | loads per their docs · not run by us |
+
+"Loads" is not the same as "trustworthy state": a tool must pass the **state-integrity gate** (`evals/` `honest-checks` — a deliberately red test, checking that `checks` come from real exit codes) before we recommend it for autonomous loops. **Any other tool**: put [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) in your project rules (`AGENTS.md`, …) and drive PDLC in natural language.
+
+- **Autonomous convergence off Claude Code**: `adapters/codex-loop-run.sh <feature-id>... --project <dir>` (= `bin/pdlc-loop.sh --platform codex`) drives `tdd → implement → review` to `review_done`; release stays human.
+
+Design: [ADR 0007](./docs/decisions/0007-agent-skills-standard.md) (revises the per-platform transpilers of [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md)).
 
 ---
 
@@ -327,7 +342,7 @@ For private security concerns, see [SECURITY.md](./SECURITY.md).
 Run the tests locally:
 
 ```bash
-for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 10 scripts, stop at the first red one
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 11 scripts, stop at the first red one
 python3 adapters/sync_skills.py --check                         # skills in sync with their shared sources
 shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit

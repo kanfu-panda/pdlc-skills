@@ -110,6 +110,7 @@ agent 根本没跑起来时，状态机同样"没变"，看着像通过。
 ./evals/run.sh --list                       # 列出场景
 ./evals/run.sh --only honest-checks         # 跑单个场景
 ./evals/run.sh --platform codex --repeat 3  # 发版前：两平台各跑 3 轮
+./evals/run.sh --platform copilot --only honest-checks   # GitHub Copilot CLI 的准入闸
 ./evals/run.sh --only red-light-gate --keep # 保留临时现场，便于排查
 
 # 改断言时的免费开发回路：先 --keep 留下现场，之后反复离线复跑断言，不再烧额度
@@ -118,7 +119,7 @@ agent 根本没跑起来时，状态机同样"没变"，看着像通过。
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| `--platform claude\|codex` | `claude` | Codex 那条臂需要 provider 凭证，见下「凭证门控」 |
+| `--platform claude\|codex\|copilot` | `claude` | Codex 那条臂需要 provider 凭证，见下「凭证门控」；copilot 臂需要已登录的 Copilot CLI |
 | `--repeat N` | `1` | 发版前建议 `3`，以多数通过为结论 |
 | `--timeout 秒` | `900` | 便携实现（macOS 无 coreutils `timeout`） |
 | `--keep` | 关 | 保留临时目录（配合 `--replay` 用） |
@@ -180,6 +181,8 @@ agent CLI **会读 stdin**——实测 `codex exec` 把管道里的内容当额�
    直接加载工作树里的插件，所以发版前跑，验的就是待发布的那份；汇总会写明「被测插件：工作树」。
    codex 臂靠 `~/.codex/skills/` 加载，拿不到未安装的改动——**发版前先
    `install.sh --target codex` 装上待发布版本再跑**，否则验的是上一个版本；汇总会写明「被测技能：已安装的 Codex 投影」。
+   copilot 臂没有 `--plugin-dir` 这类开关，runner 把工作树构建成 Agent Skills 投影、装进每个 fixture 副本自己的
+   `.agents/skills/` 再跑——验的是工作树，也不碰用户的全局目录；汇总写明「被测技能：工作树的 Agent Skills 投影」。
 
    > 此前两条臂都是验已安装版本，而汇总只盖一个「仓库版本：<HEAD>」。一次发版前核验就栽在这里：
    > 汇总写着当前 commit，实际加载的却是上一个已发布版本，新规则的场景于是「失败」了——

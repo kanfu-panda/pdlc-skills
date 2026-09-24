@@ -32,9 +32,13 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 - **`/pdlc-ship` 与 `/pdlc-review` 重复写 CHANGELOG**：`/pdlc-review` 可能已为功能追加过条目，`/pdlc-ship` 汇总时不再重复写同一功能 ID。
 - **`build_codex.py` 把选项当成输出目录**：`python3 adapters/build_codex.py --dry-run` 会在当前目录建出一个叫 `--dry-run` 的文件夹。现在只接受一个不以 `-` 开头的输出目录参数，`-h` / `--help` 打印用法。
 - **用户文档过时**：Codex 投影的 skill 数写成 34（实为 36）；使用手册仍说模板装到 `~/.codex/pdlc/`；中文 README 的模板清单少 2 份；状态机示例里写了 `terminal_state`（体检会把它报成偏差）；「自定义模板」一节缺少同步步骤，改了模板重装后 skill 仍用旧副本。
+- **`install.sh` 的选项缺值时不声不响地退出**：`--project`、`--target` 后面不带值（或紧跟另一个选项）时，脚本退出码 1、没有任何提示。现在报「`<选项>` requires a value」并打印用法。
 
 ### Added
 
+- **按 Agent Skills 开放标准支持多平台**（ADR 0007，修订 ADR 0003）：新增 `adapters/build_agent_skills.py`，把 skill 投影成符合 [Agent Skills 标准](https://agentskills.io/specification) 的 skill 集（36 个，官方校验器 `skills-ref` 全部通过）。`install.sh --target agents` 装到 `~/.agents/skills/`，加 `--project DIR` 装到项目的 `.agents/skills/`，`--dest DIR` 装到任意目录；只写入、只删除 `pdlc-*` 目录。源码 `skills/` 保持 Claude Code 形态不变。
+- **`evals/run.sh --platform copilot`**：在 GitHub Copilot CLI 上跑行为 eval，测的是工作树的标准投影（装进各 fixture 副本的 `.agents/skills/`，不碰全局目录）。首轮真机结果：Copilot CLI 1.0.88 能加载、能触发全部 skill，但默认模型下状态完整性准入闸 3 轮全部契约破坏（见 ADR 0007 §6），暂列「可加载、未验证」，不进循环驱动。
+- **`tests/adapter-agent-skills-check.sh`**：投影的标准符合性（内置确定性检查；本机有官方校验器时另跑一遍）、正文改写、参数守卫、Codex 入口一致性，以及 `--target agents` 的三种安装位置。
 - **多功能收敛循环驱动 `bin/pdlc-loop.sh`**（ADR 0006）：一次推多个功能过 `tdd → implement → review`。给功能ID 或 `--ready`（挑出所有处于收敛段、未阻塞的功能），`--platform claude|codex` 每一步起一个全新进程，`--parallel N` 让每个功能在自己的 git worktree 里同时跑，按 `depends_on` 排先后。护栏与 `/pdlc-loop-run` 一致，绝不发布，也不提交、不合并；claude 平台真跑必须给 `--max-budget-usd`；同一项目同时只允许一个驱动；Ctrl-C 可中断，重跑即续。驱动随 `/pdlc-loop-run`、`/pdlc-status` 分发，模型遇到「多个功能 / 并行」时直接用它，不必自己写外层脚本。
 - **循环进度**：驱动把运行记录写在 `.git/pdlc-loop/`（非 git 项目在 `docs/.pdlc-state/_loop/`），`--status` 与 `/pdlc-status --loop` 读出功能数、各状态计数、每个功能在哪一步、本步已跑多久，并在驱动进程已不在、单步过久时给出提示。不给预计完成时间。
 - **`tests/loop-driver-check.sh`**：用假的 claude / codex 测驱动的调度、worktree、依赖、护栏、锁、中断与 `--status`，不花模型额度。
@@ -43,6 +47,7 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 
 ### Changed
 
+- **Codex 适配器改为标准投影的入口**：`build_codex.py` 不再有自己的转译逻辑，产物与 `build_agent_skills.py` 逐字节相同。变化：frontmatter 多了 `license` 与 `metadata`，字符串改为双引号；正文开头加了斜杠命令说明，参数行改写为自然语言；description 与触发提示之间补了句号。`install.sh --target codex` 用法不变。
 - **`adapters/codex-loop-run.sh`** 改为 `bin/pdlc-loop.sh --platform codex` 的入口：原有用法与退出码不变，同时可以接多个功能ID 与 `--parallel`。
 - 使用手册「自主循环」一节用驱动替换了手写的 bash Runbook 示例；目标项目契约补上 `.worktrees/pdlc-loop/` 与循环运行记录的位置。
 - **README 的开发一节**列出全部 9 个测试脚本、同步检查与 shellcheck 命令；中文 README 补上同样的内容。
