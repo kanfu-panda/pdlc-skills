@@ -165,8 +165,12 @@ assert_exists "Codex adapter build_codex.py exists" "adapters/build_codex.py"
 assert_exists "adapter-codex scenario test exists" "tests/adapter-codex-check.sh"
 assert_exists "ADR 0003 multi-platform exists" "docs/decisions/0003-multi-platform-adapters.md"
 assert_contains "install.sh supports --target codex" "target codex" "$(cat install.sh)"
+assert_exists "Agent Skills projection build_agent_skills.py exists" "adapters/build_agent_skills.py"
+assert_exists "Agent Skills projection test exists" "tests/adapter-agent-skills-check.sh"
+assert_contains "install.sh supports --target agents" "target agents" "$(cat install.sh)"
+assert_exists "ADR 0007 agent-skills-standard exists" "docs/decisions/0007-agent-skills-standard.md"
 assert_contains "methodology declares platform-neutral core" "平台中立" "$(cat docs/pdlc-methodology.md)"
-assert_contains "build_codex denylists Claude-only skills" "pdlc-loop-run" "$(cat adapters/build_codex.py)"
+assert_contains "the Agent Skills projection denylists Claude-only skills" "pdlc-loop-run" "$(cat adapters/build_agent_skills.py)"
 
 # ─── Codex loop-run driver (v1.5.2) invariants ───
 assert_exists "codex-loop-run.sh driver exists" "adapters/codex-loop-run.sh"
@@ -266,7 +270,7 @@ assert_contains "quality reports config health" \
 # （总数−Layer1、总数−denylist）扫不到，会静默过期。这里用实际数量反算来校验。
 _total=$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
 _l1=$(grep -l '^layer: 1' skills/*/SKILL.md | wc -l | tr -d ' ')
-_deny=$(grep -c '^    "pdlc-' adapters/build_codex.py 2>/dev/null || echo 0)
+_deny=$(grep -c '^    "pdlc-' adapters/build_agent_skills.py 2>/dev/null || echo 0)
 # usage-guide 的「其他 N 个阶段」= 总数 − Layer1
 _want_rest=$((_total - _l1))
 assert_contains "usage-guide's derived 'other N stages' matches total-layer1" \

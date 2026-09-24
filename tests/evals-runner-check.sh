@@ -31,6 +31,7 @@ fi
 
 BIN="$(mktemp -d)"
 trap 'rm -rf "$BIN"' EXIT
+one="$(basename "$(find evals/fixtures -mindepth 1 -maxdepth 1 -type d | sort | head -1)")"
 
 # 桩 codex：只做一件关键事——**读 stdin**。真 codex 就是这么干的；
 # runner 若没把 agent 的 stdin 隔离掉，这一口就会把剩下的场景名喝走。
@@ -83,14 +84,46 @@ else
     fail=$((fail + 1))
 fi
 
-# agent 分支有两条（claude / codex），两条都必须隔离 stdin
+# agent 分支有三条（claude / codex / copilot），每条都必须隔离 stdin
 agent_calls="$(grep -c '2>&1 </dev/null' "$RUNNER")"
-if [[ "$agent_calls" -eq 2 ]]; then
-    echo "  ✓ 第二道：claude / codex 两条 agent 调用都带 </dev/null"
+if [[ "$agent_calls" -eq 3 ]]; then
+    echo "  ✓ 第二道：claude / codex / copilot 三条 agent 调用都带 </dev/null"
     pass=$((pass + 1))
 else
-    echo "  ✗ 第二道失守：只有 ${agent_calls}/2 条 agent 调用隔离了 stdin"
+    echo "  ✗ 第二道失守：只有 ${agent_calls}/3 条 agent 调用隔离了 stdin"
     fail=$((fail + 1))
+fi
+
+# ─── copilot 臂：测工作树的标准投影，装在 fixture 项目里 ───
+# copilot 没有 --plugin-dir 这类开关，读的是 .agents/skills/。runner 必须把工作树构建出的
+# Agent Skills 投影装进 fixture 副本自己的 .agents/skills/——测的是待合并的代码，也不碰用户的全局目录
+echo ""
+echo "Test: copilot 臂装工作树投影到 fixture 项目、按 skill 名触发"
+cat > "$BIN/copilot" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$@" > "$BIN/copilot-argv"
+find .agents/skills -mindepth 1 -maxdepth 1 -name 'pdlc-*' 2>/dev/null | wc -l | tr -d ' ' > "$BIN/copilot-skills"
+cat >/dev/null 2>&1
+exit 0
+STUB
+chmod +x "$BIN/copilot"
+rm -f "$BIN/copilot-argv" "$BIN/copilot-skills"
+out="$(PATH="$BIN:$PATH" bash "$RUNNER" --platform copilot --only "$one" </dev/null 2>&1)"
+if [[ "$(cat "$BIN/copilot-skills" 2>/dev/null)" == "36" ]]; then
+    echo "  ✓ 调用时 fixture 项目的 .agents/skills 里有 36 个 pdlc skill"; pass=$((pass + 1))
+else
+    echo "  ✗ 调用时 fixture 项目里没有装好投影（看到 $(cat "$BIN/copilot-skills" 2>/dev/null || echo 0) 个）"; fail=$((fail + 1))
+fi
+if grep -qx -- '-p' "$BIN/copilot-argv" 2>/dev/null && grep -q '^按 pdlc ' "$BIN/copilot-argv" 2>/dev/null \
+    && grep -qx -- '--allow-all-tools' "$BIN/copilot-argv" 2>/dev/null; then
+    echo "  ✓ 以 copilot -p \"按 pdlc <阶段> …\" --allow-all-tools 调用"; pass=$((pass + 1))
+else
+    echo "  ✗ copilot 调用形态不对：$(tr '\n' ' ' < "$BIN/copilot-argv" 2>/dev/null)"; fail=$((fail + 1))
+fi
+if grep -qF '被测技能：工作树的 Agent Skills 投影' <<< "$out"; then
+    echo "  ✓ 汇总写明被测的是工作树投影"; pass=$((pass + 1))
+else
+    echo "  ✗ copilot 臂汇总没写被测的是哪份技能"; fail=$((fail + 1))
 fi
 
 
@@ -107,7 +140,6 @@ cat >/dev/null 2>&1
 exit 0
 STUB
 chmod +x "$BIN/claude"
-one="$(basename "$(find evals/fixtures -mindepth 1 -maxdepth 1 -type d | sort | head -1)")"
 
 rm -f "$BIN/claude-argv"
 out="$(PATH="$BIN:$PATH" bash "$RUNNER" --platform claude --only "$one" </dev/null 2>&1)"

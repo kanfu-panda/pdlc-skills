@@ -8,7 +8,7 @@ pdlc-skills is a **Claude Code plugin**. It exposes 38 standardized "Product Dev
 
 The repo is **both a plugin and a single-plugin marketplace** (so `claude plugin marketplace add github:kanfu-panda/pdlc-skills` registers it directly).
 
-This plugin is **Claude Code only** — it relies on Claude Code's plugin / skill mechanism. There's no port to Cursor, Copilot, Cline, etc.
+Claude Code is the first-class target: it loads `skills/` directly as a plugin. Other tools get a build-time projection that follows the Agent Skills open standard (`adapters/build_agent_skills.py`, installed with `install.sh --target agents | codex`); `skills/` itself is **not** standard-conformant on purpose (it keeps Claude Code's `argument-hint` and our own top-level fields). See `docs/decisions/0007-agent-skills-standard.md`.
 
 ## Repository layout
 
@@ -28,7 +28,8 @@ pdlc-skills/
 │   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex, --parallel via worktrees, --status)
 ├── adapters/
 │   ├── sync_skills.py              ← inlines fragments + copies templates/scripts into skills/ (rerun after editing any of them)
-│   ├── build_codex.py              ← Codex projection (install.sh --target codex)
+│   ├── build_agent_skills.py       ← Agent Skills standard projection for non-Claude tools (install.sh --target agents)
+│   ├── build_codex.py              ← same projection, default output dist/codex (install.sh --target codex)
 │   └── codex-loop-run.sh           ← Codex entry point: bin/pdlc-loop.sh --platform codex
 ├── references/
 │   └── templates/
@@ -37,10 +38,11 @@ pdlc-skills/
 ├── install.sh                      ← curl-based one-line installer wrapping `claude plugin install`
 ├── docs/
 │   └── usage-guide.md              ← single user manual (architecture + reference + scenarios)
-├── tests/                          ← 10 scripts, all of them part of the local gate
+├── tests/                          ← 11 scripts, all of them part of the local gate
 │   ├── frontmatter-check.sh        ← validates skills/<name>/SKILL.md frontmatter
 │   ├── install-smoke.sh            ← end-to-end install layout test
 │   ├── statusline-check.sh         ← pdlc-statusline.sh scenario regression
+│   ├── adapter-agent-skills-check.sh ← standard projection + install.sh --target agents
 │   ├── adapter-codex-check.sh      ← adapters/build_codex.py projection output
 │   ├── adapter-codex-loop-run-check.sh ← Codex loop-run mapping + guardrails
 │   ├── evals-runner-check.sh       ← evals/run.sh driver (stubbed, no model spend)
@@ -87,6 +89,7 @@ Tests — **run these locally**; CI only fires on release tags and manual dispat
 bash tests/frontmatter-check.sh              # skills/*/SKILL.md frontmatter + VERSION consistency
 bash tests/install-smoke.sh                  # end-to-end install layout assertions
 bash tests/statusline-check.sh               # bin/pdlc-statusline.sh render scenarios
+bash tests/adapter-agent-skills-check.sh     # Agent Skills projection conforms to the standard; install.sh --target agents
 bash tests/adapter-codex-check.sh            # adapters/build_codex.py projection output
 bash tests/adapter-codex-loop-run-check.sh   # Codex loop-run mapping + guardrails
 bash tests/evals-runner-check.sh             # evals/run.sh driver (stubbed, no model spend)
@@ -102,7 +105,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All ten count** — 559 assertions at the time of writing; run them for the current number rather
+**All eleven count** — 600 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
@@ -194,7 +197,7 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 - After editing a fragment, a template or a `bin/` script, run `python3 adapters/sync_skills.py`. Never hand-edit an inlined region, a `pdlc:meta` block, or anything under `skills/*/assets/` / `skills/*/scripts/` — they are regenerated, and `tests/skills-selfcontained-check.sh` fails on drift.
 - In a skill body, reference templates and scripts as `` `assets/<file>` `` / `` `scripts/<file>` `` (relative to the skill folder), never as `templates/…` or `../../…` — the model can't resolve those. Use `$ARGUMENTS` exactly once, on its own `label: $ARGUMENTS` line: Claude Code substitutes every occurrence, with an empty string when there are no arguments.
 - New required frontmatter fields → also update `required_fields` in `tests/frontmatter-check.sh`.
-- Run all ten test scripts and shellcheck before committing (see "Common commands").
+- Run all eleven test scripts and shellcheck before committing (see "Common commands").
 - New shared prompt fragments → put under `references/templates/prompts/`, reference via `<!-- @include templates/prompts/<name>.md -->` (path is relative to `references/`), then run the sync. Inside a fragment, don't point at another fragment by file name — after inlining, only the fragments a skill itself includes are there.
 - New sub-skill: create `skills/pdlc-<name>/SKILL.md` with the standard frontmatter (`name: pdlc-<name>`, layer/stage, produces/requires, etc.). The `pdlc-` prefix in directory and `name:` is mandatory.
 

@@ -1,46 +1,51 @@
-# 平台适配器（多平台投影）
+# 平台适配器（Agent Skills 标准投影）
 
-把 pdlc-skills 的**单一源**（`skills/*/SKILL.md` + `references/templates/`）**构建期投影**成各 AI 编程工具的原生命令文件。设计与取舍见 [ADR 0003](../docs/decisions/0003-multi-platform-adapters.md)。
+把 pdlc-skills 的**单一源**（`skills/*/SKILL.md`）**构建期投影**成符合 [Agent Skills 开放标准](https://agentskills.io/specification) 的 skill 集，
+供 Claude Code 以外、支持这个标准的工具加载。设计与取舍见 [ADR 0007](../docs/decisions/0007-agent-skills-standard.md)
+（它取代了 [ADR 0003](../docs/decisions/0003-multi-platform-adapters.md) 里「每个平台写一个转译器」的做法）。
 
 ## 心智模型
 
-- **唯一源**：`skills/*/SKILL.md`（Claude Code 的技能正文）。**永远只改这里**，不手维护各平台副本。
-- **投影**：每个适配器是一个小转译器，把源投影到目标平台的命令目录。新增平台 = 新增一个适配器，**不动源**。
-- **Claude Code 集成最全**，不经适配器——它直接用 `skills/`（本仓库即插件）。适配器只服务**其它**平台。
+- **唯一源**：`skills/*/SKILL.md`。**永远只改这里**，不手维护投影产物。
+- **Claude Code 直接用源码**（本仓库即插件），不经投影：顶层的 `argument-hint` 等字段 Claude Code 用得上，标准却不允许。
+- **其它工具用同一份标准投影**：Codex、GitHub Copilot、Gemini CLI、OpenCode、Amp、Goose、Cursor……文件格式相同，
+  区别只在装到哪个目录。所以新增一个工具通常不写代码，只是多一个安装位置 + 过准入闸。
 
-## 转译四步（每个适配器都做）
-
-1. **内联 `@include`**：把 `references/templates/prompts/*.md` 片段（IRON LAW、状态机、handoff…）直接内联进正文，
-   产出**自包含**命令文件，不依赖「模型读注释按约定加载」这个 Claude-Code-only 运行时约定；顺带剥掉片段首行的来源标记注释（避免把 `Layer 1/2 命令` 等 Claude 术语带出去）。
-2. **重写 frontmatter**：只留目标平台认识的字段，剥掉 Claude 内部字段（`layer` / `produces` / `requires` / `allowed-tools` / …）。
-3. **物化命名空间**：把 `next_step` 等靠 frontmatter 驱动的链式推进，写成正文里的显式指令（目标平台不把 frontmatter 当逻辑）。
-4. **丢弃不支持能力**：Claude-Code-only 的 skill（状态栏配置、自主收敛引擎）不投影。
-
-## 已有适配器
-
-| 适配器 | 目标 | 脚本 | 产物 |
-|---|---|---|---|
-| Codex | Codex 原生 skills（`~/.codex/skills/<name>/SKILL.md`，description 触发） | `build_codex.py` | `dist/codex/`（skills + templates + 方法论） |
-
-### Codex（`build_codex.py`）
+## 投影做什么（`build_agent_skills.py`）
 
 ```bash
-python3 adapters/build_codex.py [输出目录]   # 默认 dist/codex
-# 或经 installer 一步装：
-bash install.sh --target codex               # 构建 + 拷到 ~/.codex/
-bash install.sh --target codex --uninstall   # 移除
+python3 adapters/build_agent_skills.py [输出目录]   # 默认 dist/agent-skills
+python3 adapters/build_codex.py [输出目录]          # 同一份产物，默认 dist/codex（install.sh --target codex 用）
 ```
 
-- **语言**：python3 **标准库**（零 pip 依赖）。选 python 而非 bash：markdown 文本变换（frontmatter 解析、内联、改写）用 bash 的 sed/awk 脆弱易错，python 稳健得多；且这是**构建期专用**、不进运行时。
-- **目标机制（已在真机验证）**：目标 Codex 是**兼容 Claude Code 生态的发行版**，读 `~/.codex/skills/<name>/SKILL.md`（frontmatter `name` + `description`，靠 description 触发、**非斜杠命令**）。gpt-5.6-sol 实测能按 description 匹配到 `pdlc-prd` 并执行。**不是** vanilla Codex 的 `~/.codex/prompts/*.md` 斜杠命令（那个假设早期错了，已纠正）。
-- **内联**：源 skill 里的内联区块（`adapters/sync_skills.py` 生成）先折叠回裸标记，再按本平台规则内联——剥片段首行来源注释、剥 `adapter:claude-only` 块。
-- **frontmatter**：输出 Codex skill 格式 `name` + `description`，description 追加「用 pdlc …」触发提示，便于模型按描述匹配。Claude 内部字段（`layer`/`produces`/`allowed-tools`/`next_step`…）剥离；`next_step` 物化进正文（自然语言措辞）。
-- **denylist**（本 PoC 暂不投影，2 个）：`pdlc-settings`（真·Claude-only，状态栏配置）；`pdlc-loop-run`（默认 Task 版耦合 Claude 子代理派发，Runbook 版可移植但需驱动 harness + 过准入闸）。`pdlc-loop-next` **已投影**（逻辑平台中立，作独立只读查询），其正文里 `claude -p` 驱动 helper 由 `adapter:claude-only` 哨兵剥掉。共 36 个 skill 投影为 `~/.codex/skills/pdlc-*/SKILL.md`。详见 `build_codex.py` 里 `DENYLIST` 的注释。
-- **`adapter:claude-only` 哨兵**：源里被 `<!-- adapter:claude-only-start -->` / `<!-- adapter:claude-only-end -->` 包裹的块是 Claude 专属内容（如用 `claude -p` 驱动的示例管线），投影到其它平台时整段剥掉；Claude 侧保留这些块（模型看得见 HTML 注释标记——已实测——但标记只起分隔作用，块里的内容本来就是给 Claude 的）。这是「单一源、按目标裁剪」的通用手段。
-- **模板与脚本**：随 skill 自带在 `assets/`、`scripts/` 下（由 `adapters/sync_skills.py` 从 `references/templates/`、`bin/` 同步），正文引用相对 skill 根目录，投影时连目录一起拷过去，不改写路径。
+1. **内联片段**：源里的内联区块（`adapters/sync_skills.py` 生成）先折叠回裸标记，再内联；剥掉片段首行的来源注释
+   和 `adapter:claude-only` 块（只对 Claude Code 成立的内容，如 `claude -p` 管线、到 `~/.claude/plugins` 下找脚本）。
+2. **frontmatter 只留标准字段**：`name`、`description`（追加「用 pdlc …」触发提示）、`license: MIT`、
+   `metadata`（`pdlc-layer` `pdlc-stage` `pdlc-next-step`，值一律为字符串，规范只允许字符串）。
+   字符串都写成双引号，避免冒号、方括号被当成 YAML 语法。
+3. **参数行改写**：「<标签>: `$ARGUMENTS`」改成「<标签>：用户请求里跟在技能名后面的内容」——只有 Claude Code 保证替换占位符。
+4. **斜杠命令说明**：正文开头加一句「`/pdlc-<名字>` 指同名技能 `pdlc-<名字>`」，不逐处改写 400 多处引用（容易误伤示例与路径）。
+5. **下一步**：`next_step` 写成正文末尾的「下一步（PDLC 链式推进）」。
+6. **不投影**（2 个）：`pdlc-settings`（Claude Code 状态栏配置）、`pdlc-loop-run`（Task 版依赖 Claude 子代理）。
+   共 36 个 skill 投影。多功能循环驱动 `scripts/pdlc-loop.sh` 随 `pdlc-status` 一起投影。
+7. **模板与脚本**：随 skill 自带在 `assets/`、`scripts/` 下，连目录一起拷，不改写路径。
 
-> ⚠️ Codex skill 靠 description **按需触发**、非常驻，所以自包含内联无常驻 token 成本。
-> Cursor / Copilot / Cline 会把项目规则**每轮常驻**——那类适配器（Phase 3/4）需按 [ADR 0003 §9#6](../docs/decisions/0003-multi-platform-adapters.md) 常驻只放精简核、完整文档按需引用。
+- **语言**：python3 **标准库**（零 pip 依赖），构建期专用、不进运行时。
+- **校验**：`tests/adapter-agent-skills-check.sh` 内置一份与标准一致的确定性检查；本机有官方校验器 `agentskills`
+  （`pip install skills-ref`）时再对全部产物跑一遍，没有则明确打印「跳过」。
+
+## 安装位置
+
+```bash
+bash install.sh --target agents                  # ~/.agents/skills/（Copilot、Gemini CLI、OpenCode、Amp、Goose 读这里）
+bash install.sh --target agents --project DIR    # DIR/.agents/skills/
+bash install.sh --target agents --dest DIR       # 任意目录，如 .cursor/skills、.windsurf/skills
+bash install.sh --target codex                   # ~/.codex/skills/
+# 以上都可加 --uninstall；只写入、只删除 pdlc-* 目录，不碰同目录下的其它 skill
+```
+
+> ⚠️ 标准统一的是**加载与触发**，不是模型行为。某个工具能加载这些 skill，不代表它会老实写状态机——
+> 见下方「新增一个工具」第 3 步的准入闸。
 
 ### Codex 自主收敛循环（`codex-loop-run.sh`）
 
@@ -56,13 +61,14 @@ adapters/codex-loop-run.sh <功能ID>... [--project DIR] [--max-steps N] [--para
 - `--dry-run` 停在首个决策、不真跑 codex（离线看决策 + 回归测试用）。
 - **放行前提**：Codex 已过[状态完整性准入闸](../docs/decisions/0004-codex-loop-run.md)（真机验证 gpt-5.6-sol 真跑 test-commands、诚实写 checks、fail-stop、发 block 哨兵）。设计与真机结果见 ADR 0004。
 
-## 新增一个平台适配器
+## 新增一个工具
 
-1. 读目标平台的命令机制（命令目录、frontmatter schema、调用命名空间、是否常驻加载）。
-2. 仿 `build_codex.py` 写 `build_<platform>.py`：复用「转译四步」，按平台差异调 frontmatter 与路径改写。
-3. 在 `install.sh` 加 `--target <platform>` 分支。
-4. 加 `tests/adapter-<platform>-check.sh`：断言产物结构（无残留 `@include`、denylist 缺席、frontmatter 剥离、命名空间物化）。
-5. **过准入闸**（ADR 0003 §6.1）：在该平台造一个红灯测试，验证它写进 `docs/.pdlc-state/` 的 `checks` 来自真实退出码、`ok=false` 不虚报——过了才允许它参与跨工具状态延续。
+1. 查它读哪个目录、是否遵守 Agent Skills 标准（读 `name` + `description`、按描述触发、带着 `scripts/` `assets/`）。
+   遵守的，**不写适配代码**：用 `--target agents`（它读 `.agents/skills/` 时）或 `--dest <它的目录>` 即可。
+2. 偏离标准的地方（例如不支持 skill 目录里的脚本），才在投影或安装脚本里加针对它的处理，并加断言。
+3. **过准入闸**（ADR 0003 §6.1）：在该工具上跑 `evals/` 的 `honest-checks`（造一个红灯测试，验证写进
+   `docs/.pdlc-state/` 的 `checks` 来自真实退出码、`ok=false` 不虚报）。`evals/run.sh` 已有 claude / codex / copilot 三条臂，
+   新工具照 copilot 臂加一条。过了才在 README 的平台表里标「已过准入闸」，并考虑加进循环驱动的 `--platform`。
 
 ## 产物不入库
 

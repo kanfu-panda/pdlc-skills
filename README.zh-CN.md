@@ -150,17 +150,32 @@ claude plugin list | grep pdlc
 
 Claude Code **集成最全**——38 个斜杠命令 + 状态栏 + 插件内自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
 
-- **任意工具**（Codex / Cursor / Windsurf / Copilot / Cline …）：把平台中立方法论文档 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 作为项目规则（`AGENTS.md` / `.cursor/rules` / `.github/copilot-instructions.md` / …），然后用**自然语言**驱动（「按 pdlc 跑评审」→ agent 照文档执行）。
-- **Codex**（原生 skills——面向兼容 Claude Code 生态的 Codex 发行版）：
-  ```bash
-  git clone https://github.com/kanfu-panda/pdlc-skills.git
-  cd pdlc-skills && bash install.sh --target codex
-  ```
-  构建适配器并把 36 个 pdlc skill 装到 `~/.codex/skills/`（2 个 Claude-Code-only skill——状态栏配置 + 自主收敛引擎——跳过）。Codex skill 靠 **description 触发，不是斜杠命令**——重启 Codex 后用自然语言驱动（如 `用 pdlc 写个 PRD：<一句话需求>`）。需本地克隆 + python3。移除：`bash install.sh --target codex --uninstall`。
-  - **Codex 上自主收敛**：`adapters/codex-loop-run.sh <功能ID> --project <目录>` 无人值守把 `tdd → implement → review` 推到 `review_done`（外部 Runbook，发布留人）。已在真机过状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)。
-  - ⚠️ **适用范围——原版 OpenAI Codex 未验证**：适配器只在「读 `~/.codex/skills/` 的 Codex 发行版」上验过，我们没有原版环境可测。若重启后 Codex 对这些 skill 毫无反应，说明它不读该目录——退回上面的平台中立路线（方法论文档进 `AGENTS.md`），无需适配器。欢迎原版用户提 issue 反馈。
+多数 AI 编程工具已支持 [Agent Skills 开放标准](https://agentskills.io/specification)。pdlc 把 skill 构建成一份符合标准的投影（36 个——除去 2 个 Claude Code 专属；全部通过官方校验器 `skills-ref`），装到你的工具读取的目录：
 
-Cursor / Windsurf / Copilot 原生适配器按真实需求规划。设计与路线：[ADR 0003](./docs/decisions/0003-multi-platform-adapters.md)。
+```bash
+git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
+bash install.sh --target agents                  # ~/.agents/skills/（Copilot、Gemini CLI、OpenCode、Amp、Goose）
+bash install.sh --target agents --project DIR    # DIR/.agents/skills/
+bash install.sh --target agents --dest DIR       # 工具自己的目录，如 .cursor/skills
+bash install.sh --target codex                   # ~/.codex/skills/
+# 加 --uninstall 移除；只写入、只删除 pdlc-* 目录
+```
+
+skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句话需求>`、「按 pdlc review 执行 F…」）。需本地克隆 + python3。
+
+| 工具 | 安装 | 状态 |
+|---|---|---|
+| Claude Code | 插件（本仓库） | ✅ 一等公民 |
+| Codex | `--target codex` | ✅ 已过状态完整性准入闸——[ADR 0004](./docs/decisions/0004-codex-loop-run.md)；验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
+| GitHub Copilot | `--target agents`（或 `--project DIR`） | CLI 1.0.88：能加载、能触发 · ❌ **未过**状态完整性准入闸（3/3 轮，默认模型）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-copilot-准入闸真机)；可跑单个阶段，不建议交给自主循环 · VS Code 未跑 |
+| Gemini CLI · OpenCode · Amp · Goose | `--target agents` | 按其文档可加载 · 我们没跑过 |
+| Cursor · Windsurf · Kiro · Roo Code | `--target agents --dest <它的 skills 目录>` | 按其文档可加载 · 我们没跑过 |
+
+「能加载」不等于「状态可信」：一个工具要先过**状态完整性准入闸**（`evals/` 的 `honest-checks`——故意造一个红灯测试，看 `checks` 是否来自真实退出码），我们才推荐把它交给自主循环。**其它工具**：把 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 放进项目规则（`AGENTS.md` 等），用自然语言驱动。
+
+- **Claude Code 以外的自主收敛**：`adapters/codex-loop-run.sh <功能ID>... --project <目录>`（即 `bin/pdlc-loop.sh --platform codex`）把 `tdd → implement → review` 推到 `review_done`，发布留人。
+
+设计：[ADR 0007](./docs/decisions/0007-agent-skills-standard.md)（修订了 [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md) 的逐平台转译器）。
 
 ---
 
@@ -306,7 +321,7 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 本地跑测试：
 
 ```bash
-for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 10 个脚本，遇红即停
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 11 个脚本，遇红即停
 python3 adapters/sync_skills.py --check                         # 各 skill 与共享源头是否一致
 shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit

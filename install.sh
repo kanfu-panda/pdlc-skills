@@ -59,6 +59,10 @@ Usage:
 
   bash install.sh --target codex                 Install pdlc as Codex skills
   bash install.sh --target codex --uninstall     Remove the Codex skills
+  bash install.sh --target agents                Install as Agent Skills into ~/.agents/skills/
+  bash install.sh --target agents --project DIR  ... into DIR/.agents/skills/
+  bash install.sh --target agents --dest DIR     ... into any skills directory (e.g. .cursor/skills)
+  bash install.sh --target agents [...] --uninstall   Remove them again
 
 After install, restart Claude Code and type \`/pdlc-\`. You should see 38
 sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
@@ -68,6 +72,12 @@ docs/decisions/0003-multi-platform-adapters.md) and installs the pdlc skills
 into ~/.codex/skills/ (all but the 2 Claude Code-only ones). Codex skills
 are description-triggered — after restarting Codex, drive PDLC in natural
 language ("用 pdlc 写个 PRD"), not slash commands. Requires a local clone + python3.
+
+--target agents builds the same Agent Skills standard projection (see
+docs/decisions/0007-agent-skills-standard.md). ~/.agents/skills/ and
+<project>/.agents/skills/ are read by GitHub Copilot, Gemini CLI, OpenCode,
+Amp and Goose; use --dest for tools with their own directory (Cursor,
+Windsurf, Kiro, Roo Code). Only pdlc-* directories are ever written or removed.
 
 Remote (no clone) install one-liner:
   curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/install.sh | bash -s -- --global
@@ -196,17 +206,69 @@ do_codex_uninstall() {
   echo "✅ Removed pdlc from Codex. Restart Codex to drop the skills."
 }
 
+# ─── Target: agents (Agent Skills open standard, see docs/decisions/0007) ───
+# One standard projection for every tool that loads Agent Skills. Destination:
+#   --dest DIR      → DIR
+#   --project DIR   → DIR/.agents/skills
+#   (default)       → ~/.agents/skills
+agents_dest() {
+  if [[ -n "$DEST" ]]; then
+    echo "$DEST"
+  elif [[ "$SCOPE" == "project" ]]; then
+    echo "$PROJECT/.agents/skills"
+  else
+    echo "${HOME}/.agents/skills"
+  fi
+}
+
+do_agents_install() {
+  if [[ "$IS_LOCAL_CLONE" -ne 1 ]]; then
+    cat >&2 <<EOF
+Error: --target agents must run from a local clone of pdlc-skills.
+  git clone https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git
+  cd ${GITHUB_REPO} && bash install.sh --target agents
+EOF
+    exit 1
+  fi
+  require_python3
+  local dest build_dir="$SCRIPT_DIR/dist/agent-skills" n
+  dest="$(agents_dest)"
+  echo "Building the Agent Skills projection from skills/ ..."
+  python3 "$SCRIPT_DIR/adapters/build_agent_skills.py" "$build_dir"
+  echo ""
+  echo "Installing Agent Skills → ${dest}"
+  mkdir -p "$dest"
+  # Refresh our own dirs only; other skills in the same directory are left alone.
+  rm -rf "${dest:?}"/pdlc-*/
+  cp -R "$build_dir"/skills/pdlc-* "$dest"/
+  n=$(find "$build_dir/skills" -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
+  echo ""
+  echo "✅ Done. ${n} pdlc skills installed in ${dest}"
+  echo "   Restart your tool; skills trigger by description, e.g.:  用 pdlc 写个 PRD：<一句话需求>"
+  echo "   Verified tools and the ones still unverified are listed in the README (\"Supported platforms\")."
+}
+
+do_agents_uninstall() {
+  local dest
+  dest="$(agents_dest)"
+  echo "Removing pdlc skills from ${dest} ..."
+  rm -rf "${dest:?}"/pdlc-*/
+  echo "✅ Removed. Other skills in ${dest} were not touched."
+}
+
 # ─── Argument parsing ───
 ACTION="install"
 SCOPE=""
 PROJECT=""
-TARGET="claude"   # claude (default) | codex
+TARGET="claude"   # claude (default) | codex | agents
+DEST=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --global)      SCOPE="user"; shift ;;
     --project)     SCOPE="project"; PROJECT="${2:-}"; shift 2 ;;
     --target)      TARGET="${2:-}"; shift 2 ;;
+    --dest)        DEST="${2:-}"; shift 2 ;;
     --uninstall)   ACTION="uninstall"; shift ;;
     --upgrade)     ACTION="upgrade"; shift ;;
     --version)     ACTION="version"; shift ;;
@@ -226,10 +288,21 @@ if [[ "$TARGET" == "codex" ]]; then
     uninstall) do_codex_uninstall; exit 0 ;;
     *) echo "Error: --target codex supports install / --uninstall only." >&2; exit 1 ;;
   esac
+elif [[ "$TARGET" == "agents" ]]; then
+  if [[ "$SCOPE" == "project" && -z "$DEST" ]]; then
+    [[ -n "$PROJECT" ]] || { echo "Error: --project requires a path." >&2; exit 1; }
+    [[ -d "$PROJECT" ]] || { echo "Error: project directory not found: $PROJECT" >&2; exit 1; }
+  fi
+  case "$ACTION" in
+    install)   do_agents_install; exit 0 ;;
+    uninstall) do_agents_uninstall; exit 0 ;;
+    *) echo "Error: --target agents supports install / --uninstall only." >&2; exit 1 ;;
+  esac
 elif [[ "$TARGET" != "claude" ]]; then
-  echo "Error: unknown --target '$TARGET' (supported: claude, codex)." >&2
+  echo "Error: unknown --target '$TARGET' (supported: claude, codex, agents)." >&2
   exit 1
 fi
+[[ -z "$DEST" ]] || { echo "Error: --dest is only valid with --target agents." >&2; exit 1; }
 
 require_claude_cli
 

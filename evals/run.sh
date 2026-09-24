@@ -9,6 +9,7 @@
 #   ./evals/run.sh --list                      # 列出场景
 #   ./evals/run.sh --only honest-checks        # 跑单个场景
 #   ./evals/run.sh --platform codex --repeat 3 # 发版前建议：两平台各跑 3 轮
+#   ./evals/run.sh --platform copilot          # GitHub Copilot CLI，测工作树的 Agent Skills 投影
 #
 # 退出码：0=全部通过 1=有契约破坏 2=有场景无结论（全是环境抖动）3=用法/依赖错误
 set -euo pipefail
@@ -61,8 +62,8 @@ while [ $# -gt 0 ]; do
 done
 
 case "${PLATFORM}" in
-  claude|codex) ;;
-  *) die "--platform 只支持 claude / codex，收到「${PLATFORM}」" ;;
+  claude|codex|copilot) ;;
+  *) die "--platform 只支持 claude / codex / copilot，收到「${PLATFORM}」" ;;
 esac
 # 数字参数必须校验——不校验会让非法值静默走到分支判断里（codex-loop-run.sh 踩过）
 printf '%s' "${REPEAT}" | grep -qE '^[1-9][0-9]*$' \
@@ -188,6 +189,16 @@ fi
 # ---------- 真跑（A-live，要模型额度）----------
 command -v "${PLATFORM}" >/dev/null 2>&1 || die "找不到 ${PLATFORM} 命令"
 
+# copilot 没有 --plugin-dir 这类开关，按 .agents/skills/ 加载 skill。先把工作树构建成
+# Agent Skills 标准投影，每个场景跑之前装进 fixture 副本自己的 .agents/skills/——
+# 测的是待合并的代码，也不碰用户的全局目录
+AGENT_SKILLS_BUILD=""
+if [ "${PLATFORM}" = "copilot" ]; then
+  AGENT_SKILLS_BUILD="$(mktemp -d "${TMPDIR:-/tmp}/pdlc-eval-agent-skills-XXXXXX")/out"
+  python3 "${REPO_ROOT}/adapters/build_agent_skills.py" "${AGENT_SKILLS_BUILD}" >/dev/null \
+    || die "构建 Agent Skills 投影失败"
+fi
+
 # 便携超时：macOS 没有 coreutils 的 timeout
 run_with_timeout() { # <秒> <命令...>
   local secs="$1"; shift
@@ -215,6 +226,11 @@ invoke_agent() { # <项目目录> <阶段> <参数> <输出文件>
     # shellcheck disable=SC2086  # CLAUDE_FLAGS 需要词分割，这是刻意的
     ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
         claude -p "/pdlc-${stage} ${args}" ${CLAUDE_FLAGS} ${plugin_args[@]+"${plugin_args[@]}"} ) >"${out}" 2>&1 </dev/null
+  elif [ "${PLATFORM}" = "copilot" ]; then
+    mkdir -p "${proj}/.agents/skills"
+    cp -R "${AGENT_SKILLS_BUILD}"/skills/pdlc-* "${proj}/.agents/skills/"
+    ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
+        copilot -p "按 pdlc ${stage} ${args}" --allow-all-tools ) >"${out}" 2>&1 </dev/null
   else
     run_with_timeout "${TIMEOUT_SECS}" \
       codex exec -C "${proj}" -s workspace-write --skip-git-repo-check \
@@ -311,6 +327,9 @@ if [ "${PLATFORM}" = "claude" ]; then
   else
     printf '被测插件：已安装版本（未加 --plugin-dir；上面的仓库版本不代表被测代码）\n'
   fi
+elif [ "${PLATFORM}" = "copilot" ]; then
+  printf '被测技能：工作树的 Agent Skills 投影（装在各 fixture 副本的 .agents/skills/）\n'
+  rm -rf "$(dirname "${AGENT_SKILLS_BUILD}")"
 else
   printf '被测技能：已安装的 Codex 投影（~/.codex，不是工作树；发版前先 install.sh --target codex）\n'
 fi
