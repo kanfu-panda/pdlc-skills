@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter 看不见，插件根目录下的 `references/`、`bin/` 也没有任何路径指过去。此前共享片段、模板、体检脚本都放在 skill 文件夹外，读不读得到全凭模型临场发挥。本版让每个 skill 文件夹自包含。
+## [1.7.0] - 2026-09-24
+
+本版有四件事：
+
+1. **每个 skill 文件夹自包含**：skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter 看不见，插件根目录下的 `references/`、`bin/` 也没有任何路径指过去。此前共享片段、模板、体检脚本都放在 skill 文件夹外，读不读得到全凭模型临场发挥。现在它们在构建期同步进每个 skill。
+2. **发布链路理顺**：`_done` 只表示「已发布」，只由 `/pdlc-ship`、`/pdlc-deploy` 写入；`/pdlc-fix` 先评审再发布；`/pdlc-ship` 默认不动 CI。
+3. **多功能收敛循环驱动 `bin/pdlc-loop.sh`**：一次推多个功能过 `tdd → implement → review`，可并行、按依赖排序，`/pdlc-status --loop` 看进度。
+4. **按 Agent Skills 开放标准支持其它工具**：`install.sh --target agents` 装一份符合标准的投影，Copilot、Gemini CLI、OpenCode 等都读得到。Claude Code 仍直接用源码，体验不变。
+
+没有新增 skill（仍 38 个）。升级不需要迁移：旧版本写下的 `feature_done` / `fix_done` / `review_done` 仍按终态读，`/pdlc-ship` 会列出来请人确认是否已发布。
+
+发版前的行为 eval：claude（工作树插件）与 codex（已安装的待发布投影）两个平台，6 个场景各跑 3 轮，36/36 通过。
 
 > ⚠️ **行为变更（请留意）**：
 > - **安装体积**：每个 skill 自带它用到的片段、模板和脚本，插件从约 1.2 MB 增至约 1.7 MB。常驻上下文的 token 不变（仍只有 38 条 skill 描述）；命令被调用时加载的正文变长，内容就是此前本该去读的那些片段。
@@ -32,6 +43,7 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 - **`/pdlc-ship` 与 `/pdlc-review` 重复写 CHANGELOG**：`/pdlc-review` 可能已为功能追加过条目，`/pdlc-ship` 汇总时不再重复写同一功能 ID。
 - **`build_codex.py` 把选项当成输出目录**：`python3 adapters/build_codex.py --dry-run` 会在当前目录建出一个叫 `--dry-run` 的文件夹。现在只接受一个不以 `-` 开头的输出目录参数，`-h` / `--help` 打印用法。
 - **用户文档过时**：Codex 投影的 skill 数写成 34（实为 36）；使用手册仍说模板装到 `~/.codex/pdlc/`；中文 README 的模板清单少 2 份；状态机示例里写了 `terminal_state`（体检会把它报成偏差）；「自定义模板」一节缺少同步步骤，改了模板重装后 skill 仍用旧副本。
+- **贡献指南误称 CI 会在每个 PR 上跑测试**：`CONTRIBUTING.md` 写着「每个 PR 都由 GitHub Actions 自动运行」，实际 CI 只在发布 tag 与手动触发时跑，而且它只列了 2 个测试脚本。现在列出完整的本地门禁并写明 CI 不代跑；子命令数 33 改为 38，IRON LAW 补上第 6 条。
 - **`install.sh` 的选项缺值时不声不响地退出**：`--project`、`--target` 后面不带值（或紧跟另一个选项）时，脚本退出码 1、没有任何提示。现在报「`<选项>` requires a value」并打印用法。
 
 ### Added
@@ -50,7 +62,8 @@ skill 在运行时只拿得到**自己的文件夹和正文**——frontmatter �
 - **Codex 适配器改为标准投影的入口**：`build_codex.py` 不再有自己的转译逻辑，产物与 `build_agent_skills.py` 逐字节相同。变化：frontmatter 多了 `license` 与 `metadata`，字符串改为双引号；正文开头加了斜杠命令说明，参数行改写为自然语言；description 与触发提示之间补了句号。`install.sh --target codex` 用法不变。
 - **`adapters/codex-loop-run.sh`** 改为 `bin/pdlc-loop.sh --platform codex` 的入口：原有用法与退出码不变，同时可以接多个功能ID 与 `--parallel`。
 - 使用手册「自主循环」一节用驱动替换了手写的 bash Runbook 示例；目标项目契约补上 `.worktrees/pdlc-loop/` 与循环运行记录的位置。
-- **README 的开发一节**列出全部 9 个测试脚本、同步检查与 shellcheck 命令；中文 README 补上同样的内容。
+- **README 的开发一节**列出全部测试脚本（现为 11 个）、同步检查与 shellcheck 命令；中文 README 补上同样的内容。
+- **架构、方法论与术语文档**按标准投影和循环驱动更新：`docs/ARCHITECTURE.md` 的多平台、测试清单与自主循环三节，`docs/pdlc-methodology.md` 的定位与「仅某平台」清单，`docs/GLOSSARY.md` 新增三个词条。「推到 `review_done`」统一写成「评审通过、等发布（`next_step: pdlc-ship`）」——`review_done` 只是循环文档里的叫法，不是 `current_stage` 的值。
 - `tests/install-smoke.sh` 新增 20 条发布链路断言：`_done` 写入规则、`/pdlc-ship` 的可发布判定与 CI 默认、`/pdlc-fix` 的下一跳、`/pdlc-review` 的适用性与守卫、`/pdlc-deploy` 的版本输入与 `deploy_done` 条件，以及「除 ship / deploy 外没有 skill 被指示写 `_done`」。
 - **Codex 适配器**：先把 skill 里的内联区块折叠回裸标记，再按本平台规则内联；模板与脚本随 skill 目录一起拷贝，不再改写路径；删掉统一的 `templates/` 产物。
 - 更正 `build_codex.py` 与 `adapters/README.md` 里「Claude Code 看不见 HTML 注释」的说法：实测模型看得见。
@@ -450,5 +463,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.6.4...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.0...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0
