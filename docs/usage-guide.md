@@ -166,7 +166,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
-**🔁 循环工具（2）**：`/pdlc-loop-next`（打印下一条机械收敛命令）· `/pdlc-loop-run`（收敛引擎：自动推进 `tdd → implement → review` 到 `review_done`，发布留人）。见 `docs/decisions/0001-loop-engineering-integration.md`
+**🔁 循环工具（2）**：`/pdlc-loop-next`（打印下一条机械收敛命令）· `/pdlc-loop-run`（收敛引擎：自动推进 `tdd → implement → review` 到「评审通过、等发布」（`next_step: pdlc-ship`），发布留人）。见 `docs/decisions/0001-loop-engineering-integration.md`
 **⚙️ 设置（1）**：`/pdlc-settings`（交互式配置，当前含状态栏 statusline 的启用/停用/展示项）。见下方「在状态栏显示 PDLC 状态」及 `docs/decisions/0002-statusline-pdlc-status.md`
 
 ---
@@ -270,7 +270,7 @@ bash install.sh --target codex                   # ~/.codex/skills/
 adapters/codex-loop-run.sh <功能ID>... --project <项目目录> [--max-steps 4] [--parallel N] [--dry-run]
 ```
 
-它就是 `bin/pdlc-loop.sh --platform codex`：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到 `review_done` 即停。多个功能、并行、依赖排序见 §7 场景 G。
+它就是 `bin/pdlc-loop.sh --platform codex`：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到「评审通过、等发布」（`next_step: pdlc-ship`）即停。多个功能、并行、依赖排序见 §7 场景 G。
 
 > **哪些能力仅 Claude Code**：状态栏（§4.5）、`pdlc-loop-run` 的 Task 版、配置命令 `pdlc-settings`。
 
@@ -438,7 +438,7 @@ CI 配置默认不生成也不修改；需要时明确说，它会先给出用�
 
 ### 场景 G：自主循环收敛（Loop 工程）
 
-`/pdlc-loop-run <功能ID>` 从 `current_stage` 自动推进 `tdd → implement → review` 到 `review_done` 或 blocked，无人值守。**终态即 `review_done`——发布永远留人**，循环绝不自动 `/pdlc-ship`（详见 [ADR 0001](./decisions/0001-loop-engineering-integration.md)）。
+`/pdlc-loop-run <功能ID>` 从 `current_stage` 自动推进 `tdd → implement → review` 到「评审通过、等发布」（`next_step: pdlc-ship`）或 blocked，无人值守。**到这里就停——发布永远留人**，循环绝不自动 `/pdlc-ship`（详见 [ADR 0001](./decisions/0001-loop-engineering-integration.md)）。
 
 前提：项目有 `docs/00_standards/test-commands.yml`（check 命令唯一真源），循环靠真跑退出码判停，不靠模型自评。
 

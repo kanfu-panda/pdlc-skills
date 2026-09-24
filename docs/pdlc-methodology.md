@@ -4,10 +4,11 @@
 > 状态机契约与产出契约。任何能读写文件、能跑命令的 AI 编程 agent（Claude Code、Codex、
 > Cursor、Windsurf、VS Code + Copilot、Cline …）都能照此驱动完整的产品开发生命周期。
 >
-> **定位（见 [ADR 0003](decisions/0003-multi-platform-adapters.md)）**：本文档是多平台策略里的
-> **Tier 1「地板」**——覆盖所有工具、优雅降级。**Claude Code 集成最全（Tier 2）**，另有 38 个
-> `/pdlc-*` 斜杠命令 + 状态栏 + 自主收敛引擎，体验最全（见 [ARCHITECTURE.md](ARCHITECTURE.md)）。
-> 本文档描述的是**两者共享的方法论内核**。
+> **定位**：本文档是多平台策略里的 **Tier 1「地板」**——覆盖所有工具、优雅降级。
+> 往上两档：**Claude Code 集成最全（Tier 2）**，38 个 `/pdlc-*` 斜杠命令 + 状态栏 + 自主收敛引擎
+> （见 [ARCHITECTURE.md](ARCHITECTURE.md)）；**支持 Agent Skills 开放标准的工具**装同一套 skill 的标准投影
+> （见 [ADR 0007](decisions/0007-agent-skills-standard.md)，修订 [ADR 0003](decisions/0003-multi-platform-adapters.md)）。
+> 本文档描述的是**三者共享的方法论内核**。
 
 ---
 
@@ -17,7 +18,10 @@
 不属于任何工具。所以同一个仓库今天用 Claude Code、明天用 Codex 接着推，状态**无缝延续**。
 
 - **在 Claude Code 里**：直接用 `/pdlc-feature`、`/pdlc-prd`、`/pdlc-review` 等斜杠命令，本文档是它们的底层规格。
-- **在其它工具里**：把本文档作为项目规则（`AGENTS.md` / `.cursor/rules/` / `.windsurf/rules/` /
+- **在支持 Agent Skills 的工具里**（Copilot、Gemini CLI、OpenCode、Amp、Goose、Cursor、Codex 等）：
+  用 `install.sh --target agents`（或 `--target codex`）装上标准投影，各阶段就是按描述触发的 skill，
+  用下面这样的自然语言即可触发。本文档是这些 skill 的底层规格。
+- **在不支持 skill 的工具里**：把本文档作为项目规则（`AGENTS.md` / `.windsurf/rules/` /
   `.github/copilot-instructions.md` / `.clinerules/` 等），然后用**自然语言**驱动，例如：
   - 「按 pdlc 给这个功能跑一遍需求分析」→ 走 §6 的 **需求（PRD）** 阶段
   - 「按 pdlc 跑 TDD」→ 走 **测试先行** 阶段
@@ -240,14 +244,14 @@ e2e:      "<跑 e2e 的命令>"         # 可选
 
 本 Tier 1 内核在所有工具可用；下列是 **Claude Code 专属**，其它平台**没有等价物**，不夸大：
 
-- **`/pdlc-*` 斜杠命令 + 自动补全**：其它平台用自然语言（§8）或该平台的原生命令文件（Tier 3 适配器，逐个平台加）替代。
+- **`/pdlc-*` 斜杠命令 + 自动补全**：其它平台装 Agent Skills 标准投影后按描述触发，用自然语言（§8）调用；
+  支持斜杠调用 skill 的工具（如 VS Code 里的 Copilot）也能直接用 `/pdlc-<名字>`。
 - **状态栏片段**（`bin/pdlc-statusline.sh` + `/pdlc-settings`）：Claude Code 状态栏机制专属，见 [ADR 0002](decisions/0002-statusline-pdlc-status.md)。
-- **自主收敛引擎**（`pdlc-loop-run` + `--autonomous` 契约）：可无人值守把 `tdd→implement→review` 推到 `review_done`。
-  **并非绑死 Claude**——`--autonomous` 契约平台中立，`loop-run` 的「外部 Runbook 版」原理也可移植；真正 Claude-only
-  的只有 `loop-run` 默认「Task 版」用的子代理派发机制。`pdlc-loop-next`（只读状态机、按 `next_step` 打印下一跳阶段）
-  逻辑平台中立，**已作为独立只读查询投影到 Codex**（问「下一步该跑哪个阶段」）；缺的是 `loop-run` 引擎的各平台
-  **循环驱动 harness** + 过状态完整性准入闸，属后续工作。当前其它平台可**手动逐阶段驱动**达到同样产物，只是没有
-  内置的循环引擎与判停哨兵。
+- **自主收敛引擎的 Task 版**（`/pdlc-loop-run` 默认形态）：可无人值守把 `tdd→implement→review` 推到「评审通过、等发布」
+  （`next_step: pdlc-ship`），用的是 Claude Code 的子代理派发。**自主收敛本身并不绑死 Claude**——`--autonomous` 契约平台中立，
+  外部循环驱动 `bin/pdlc-loop.sh` 每一步起一个新进程，已支持 `--platform codex`（Codex 已过状态完整性准入闸）。
+  其它工具要先过这道闸才加进驱动：「能加载 skill」不等于「状态写得可信」。没过闸的平台可以**手动逐阶段驱动**，
+  产物一样，只是不建议交给无人值守的循环。
 - **关系子系统自动化**（`/pdlc-relate rebuild` 生成 `_relations.json` / `_graph.md`）：状态机里的 `relations`
   块本身平台中立、可手维护，但反向索引与图的自动重建是 Claude Code 命令。
 

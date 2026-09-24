@@ -173,7 +173,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 
 「能加载」不等于「状态可信」：一个工具要先过**状态完整性准入闸**（`evals/` 的 `honest-checks`——故意造一个红灯测试，看 `checks` 是否来自真实退出码），我们才推荐把它交给自主循环。**其它工具**：把 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 放进项目规则（`AGENTS.md` 等），用自然语言驱动。
 
-- **Claude Code 以外的自主收敛**：`adapters/codex-loop-run.sh <功能ID>... --project <目录>`（即 `bin/pdlc-loop.sh --platform codex`）把 `tdd → implement → review` 推到 `review_done`，发布留人。
+- **Claude Code 以外的自主收敛**：`adapters/codex-loop-run.sh <功能ID>... --project <目录>`（即 `bin/pdlc-loop.sh --platform codex`）把 `tdd → implement → review` 推到「评审通过、等发布」（`next_step: pdlc-ship`），发布留人。
 
 设计：[ADR 0007](./docs/decisions/0007-agent-skills-standard.md)（修订了 [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md) 的逐平台转译器）。
 
@@ -183,7 +183,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 
 因为每个阶段都把**客观检查**——来自 `docs/00_standards/test-commands.yml` 的真实 `unit` / `lint` / `coverage` 退出码，绝非模型自评——写进机器可读的状态机，外层循环就能把机械阶段无人值守地推到收敛：
 
-- **`/pdlc-loop-run <功能ID>`** —— 收敛引擎：自动推进 `tdd → implement → review` 到 `review_done`，带迭代上限、**fail-stop**（某阶段报 `ok:false` → 停）、**stuck-stop**（状态未推进 → 停）。**发布永远留人**——绝不自动 ship。
+- **`/pdlc-loop-run <功能ID>`** —— 收敛引擎：自动推进 `tdd → implement → review` 到「评审通过、等发布」（`next_step: pdlc-ship`），带迭代上限、**fail-stop**（某阶段报 `ok:false` → 停）、**stuck-stop**（状态未推进 → 停）。**发布永远留人**——绝不自动 ship。
 - **`/pdlc-loop-next <功能ID>`** —— 只读 helper，打印下一条收敛命令，供你自写 shell 循环消费。
 - **`bin/pdlc-loop.sh`** —— 一次推多个功能的外部驱动：给功能ID 或 `--ready`，选 `--platform claude|codex`，`--parallel N` 让每个功能在自己的 git worktree 里跑。按 `depends_on` 排先后，绝不发布，也不提交、不合并；运行记录由 `--status` 和 `/pdlc-status --loop` 读出（每个功能在哪一步、本步已跑多久、卡住的提示，不给预计完成时间）。claude 平台真跑必须给 `--max-budget-usd`。
 - **Codex 上** —— `adapters/codex-loop-run.sh` 就是固定 `--platform codex` 的同一个驱动（Codex 已过真机状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)）。
@@ -243,7 +243,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 - **🔧 工程（7）**：`/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 治理（2）**：`/pdlc-standard` · `/pdlc-relate`
 - **🏗️ 项目生命周期（3）**：`/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
-- **🔁 循环工具（2）**：`/pdlc-loop-next`（打印下一条机械收敛命令）· `/pdlc-loop-run`（收敛引擎：自动推进 `tdd → implement → review` 到 `review_done`，发布留人）——[设计文档](./docs/decisions/0001-loop-engineering-integration.md)
+- **🔁 循环工具（2）**：`/pdlc-loop-next`（打印下一条机械收敛命令）· `/pdlc-loop-run`（收敛引擎：自动推进 `tdd → implement → review` 到「评审通过、等发布」（`next_step: pdlc-ship`），发布留人）——[设计文档](./docs/decisions/0001-loop-engineering-integration.md)
 - **⚙️ 设置（1）**：`/pdlc-settings`（交互式配置，当前含可选的 PDLC 状态栏 statusline——启用/停用/展示项）——[设计文档](./docs/decisions/0002-statusline-pdlc-status.md)
 
 ---

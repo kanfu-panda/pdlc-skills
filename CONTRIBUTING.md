@@ -30,23 +30,34 @@ For "how do I..." questions, design discussions, or anything where you're not ye
 - `skills/pdlc-<name>/SKILL.md` — 38 sub-skill specs. Each becomes the slash command `/pdlc-<name>`. Each folder is self-contained: `assets/` / `scripts/` next to `SKILL.md` hold synced copies of the templates and scripts its body references.
 - `references/templates/prompts/*.md` — shared prompt fragments referenced via `<!-- @include templates/prompts/<x>.md -->` from skill bodies and inlined into them by `python3 adapters/sync_skills.py`
 - `references/templates/*-template.md` — user-facing document templates
-- `install.sh` — curl-based installer wrapping `claude plugin marketplace add` + `claude plugin install`
-- `docs/usage-guide.md` — single user manual
+- `bin/` — scripts shipped with the plugin: `pdlc-statusline.sh`, `pdlc-state-lint.sh`, `pdlc-loop.sh` (synced into the skills that use them)
+- `adapters/` — `sync_skills.py` (inlines fragments, syncs `assets/` / `scripts/`) and `build_agent_skills.py` (the Agent Skills standard projection for other tools; `build_codex.py` is the same projection with a Codex default output)
+- `install.sh` — curl-based installer wrapping `claude plugin marketplace add` + `claude plugin install`; `--target agents | codex` installs the standard projection instead
+- `tests/` — the local gate (11 scripts, see below); `evals/` — behavioural evals that run a real model
+- `docs/usage-guide.md` — single user manual; `docs/decisions/` — ADRs
 
 ### Run the tests
 
 ```bash
-# Required frontmatter fields on every sub-skill
-bash tests/frontmatter-check.sh
-
-# End-to-end install + plugin layout verification
-bash tests/install-smoke.sh
+# All 11 scripts under tests/, stopping at the first red one
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done
 
 # Bash linting
-shellcheck install.sh tests/*.sh
+shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
+  evals/fixtures/*/scenario.sh .githooks/pre-commit
+
+# Skills in sync with their fragments / templates / scripts
+python3 adapters/sync_skills.py --check
+
+# Eval fixtures are well-formed (no model call, free)
+./evals/run.sh --check
 ```
 
-All three run automatically via GitHub Actions on every PR.
+**Run these on your machine before opening a PR — CI does not run them for you.** Workflows only fire on release tags and manual dispatch, never on pushes or pull requests.
+
+`bin/pdlc-statusline.sh`, `bin/pdlc-state-lint.sh` and `bin/pdlc-loop.sh` must stay compatible with macOS's stock `/bin/bash` 3.2, so also run `/bin/bash tests/statusline-check.sh` (and the other tests touching those scripts) with it; a Homebrew bash 5 on `PATH` will pass code that breaks on a stock Mac.
+
+Enable the pre-commit secret scan once per clone: `git config core.hooksPath .githooks`.
 
 ### Try your changes locally
 
@@ -61,7 +72,7 @@ claude plugin install pdlc@pdlc-skills
 bash install.sh --global
 ```
 
-Then restart Claude Code and verify `/pdlc-` autocomplete shows all 33 sub-commands.
+Then restart Claude Code and verify `/pdlc-` autocomplete shows all 38 sub-commands.
 
 To uninstall: `claude plugin uninstall pdlc@pdlc-skills`.
 
@@ -82,6 +93,7 @@ Every Layer 1 / Layer 2 sub-skill **that produces artifacts** must `@include tem
 - Tests exist (and fail) before implementation
 - Self-check runs before handoff
 - Auto-repair runs at most once
+- State must advance: a successful stage changes `current_stage`; a stalled stage fails loudly, except a deliberate human-block that records `blocked_reason`
 
 Read-only stages (e.g. `pdlc-status` with `produces: []`) are exempt.
 

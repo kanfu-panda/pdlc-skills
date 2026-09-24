@@ -173,7 +173,7 @@ Skills trigger by description: drive PDLC in natural language (`用 pdlc 写个 
 
 "Loads" is not the same as "trustworthy state": a tool must pass the **state-integrity gate** (`evals/` `honest-checks` — a deliberately red test, checking that `checks` come from real exit codes) before we recommend it for autonomous loops. **Any other tool**: put [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) in your project rules (`AGENTS.md`, …) and drive PDLC in natural language.
 
-- **Autonomous convergence off Claude Code**: `adapters/codex-loop-run.sh <feature-id>... --project <dir>` (= `bin/pdlc-loop.sh --platform codex`) drives `tdd → implement → review` to `review_done`; release stays human.
+- **Autonomous convergence off Claude Code**: `adapters/codex-loop-run.sh <feature-id>... --project <dir>` (= `bin/pdlc-loop.sh --platform codex`) drives `tdd → implement → review` until reviewed and awaiting release (`next_step: pdlc-ship`); release stays human.
 
 Design: [ADR 0007](./docs/decisions/0007-agent-skills-standard.md) (revises the per-platform transpilers of [ADR 0003](./docs/decisions/0003-multi-platform-adapters.md)).
 
@@ -183,7 +183,7 @@ Design: [ADR 0007](./docs/decisions/0007-agent-skills-standard.md) (revises the 
 
 Because every stage writes **objective checks** — real `unit` / `lint` / `coverage` exit codes from `docs/00_standards/test-commands.yml`, never model self-report — to a machine-readable state machine, an outer loop can drive the mechanical stages to done without a human in the seat:
 
-- **`/pdlc-loop-run <feature-id>`** — the convergence engine: auto-advances `tdd → implement → review` to `review_done`, with an iteration cap, **fail-stop** (a stage reports `ok:false` → stop), and **stuck-stop** (state didn't advance → stop). **Release always stays human** — it never auto-ships.
+- **`/pdlc-loop-run <feature-id>`** — the convergence engine: auto-advances `tdd → implement → review` until reviewed and awaiting release (`next_step: pdlc-ship`), with an iteration cap, **fail-stop** (a stage reports `ok:false` → stop), and **stuck-stop** (state didn't advance → stop). **Release always stays human** — it never auto-ships.
 - **`/pdlc-loop-next <feature-id>`** — read-only helper that prints the next convergence command, for your own shell loops.
 - **`bin/pdlc-loop.sh`** — the external driver for several features at once: pass IDs or `--ready`, pick `--platform claude|codex`, and `--parallel N` runs each feature in its own git worktree. It orders features by `depends_on`, never ships, never commits or merges, and keeps a run record that `--status` and `/pdlc-status --loop` read back (per-feature step, time on the current step, stall hints; no ETA). A Claude run requires `--max-budget-usd`.
 - **On Codex** — `adapters/codex-loop-run.sh` is the same driver with `--platform codex` (Codex cleared a real-machine state-integrity gate — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md)).
@@ -247,7 +247,7 @@ Specialized stages you can invoke explicitly.
 - **🔧 Engineering (7):** `/pdlc-code-gen` · `/pdlc-add-service` · `/pdlc-add-app` · `/pdlc-api-mock` · `/pdlc-db-migrate` · `/pdlc-i18n` · `/pdlc-changelog`
 - **🔗 Governance (2):** `/pdlc-standard` · `/pdlc-relate`
 - **🏗️ Project lifecycle (3):** `/pdlc-bootstrap` · `/pdlc-adopt` · `/pdlc-onboard`
-- **🔁 Loop tooling (2):** `/pdlc-loop-next` (prints the next mechanical-convergence command) · `/pdlc-loop-run` (convergence engine: auto-advances `tdd → implement → review` to `review_done`; release stays human) — [design](./docs/decisions/0001-loop-engineering-integration.md)
+- **🔁 Loop tooling (2):** `/pdlc-loop-next` (prints the next mechanical-convergence command) · `/pdlc-loop-run` (convergence engine: auto-advances `tdd → implement → review` until reviewed and awaiting release (`next_step: pdlc-ship`); release stays human) — [design](./docs/decisions/0001-loop-engineering-integration.md)
 - **⚙️ Settings (1):** `/pdlc-settings` (interactive config; currently the optional PDLC statusline — enable/disable/display items) — [design](./docs/decisions/0002-statusline-pdlc-status.md)
 
 ---
