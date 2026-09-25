@@ -84,13 +84,13 @@ else
     fail=$((fail + 1))
 fi
 
-# agent 分支有三条（claude / codex / copilot），每条都必须隔离 stdin
+# agent 分支有五条（claude / codex / copilot / agy / grok），每条都必须隔离 stdin
 agent_calls="$(grep -c '2>&1 </dev/null' "$RUNNER")"
-if [[ "$agent_calls" -eq 3 ]]; then
-    echo "  ✓ 第二道：claude / codex / copilot 三条 agent 调用都带 </dev/null"
+if [[ "$agent_calls" -eq 5 ]]; then
+    echo "  ✓ 第二道：claude / codex / copilot / agy / grok 五条 agent 调用都带 </dev/null"
     pass=$((pass + 1))
 else
-    echo "  ✗ 第二道失守：只有 ${agent_calls}/3 条 agent 调用隔离了 stdin"
+    echo "  ✗ 第二道失守：只有 ${agent_calls}/5 条 agent 调用隔离了 stdin"
     fail=$((fail + 1))
 fi
 
@@ -124,6 +124,91 @@ if grep -qF '被测技能：工作树的 Agent Skills 投影' <<< "$out"; then
     echo "  ✓ 汇总写明被测的是工作树投影"; pass=$((pass + 1))
 else
     echo "  ✗ copilot 臂汇总没写被测的是哪份技能"; fail=$((fail + 1))
+fi
+
+
+# ─── agy 臂：工作树投影临时装进全局目录，跑完即删 ───
+# agy（Antigravity CLI）1.2.9 实测：-p 模式不读工作区 .agents/skills/，只读 ~/.gemini/config/skills/。
+# 只好动全局目录，所以三条纪律：只动 pdlc-*、跑完必删、目录里已有 pdlc-* 就拒跑（不覆盖用户自己装的那份）
+echo ""
+echo "Test: agy 臂把工作树投影临时装进 ~/.gemini/config/skills，跑完即删"
+AGY_HOME="$BIN/agy-home"
+AGY_DIR="$AGY_HOME/.gemini/config/skills"
+mkdir -p "$AGY_DIR/my-own-skill"
+cat > "$BIN/agy" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$@" > "$BIN/agy-argv"
+find "\$HOME/.gemini/config/skills" -mindepth 1 -maxdepth 1 -type d -name 'pdlc-*' 2>/dev/null | wc -l | tr -d ' ' > "$BIN/agy-skills"
+cat >/dev/null 2>&1
+exit 0
+STUB
+chmod +x "$BIN/agy"
+rm -f "$BIN/agy-argv" "$BIN/agy-skills"
+out="$(HOME="$AGY_HOME" PATH="$BIN:$PATH" bash "$RUNNER" --platform agy --only "$one" </dev/null 2>&1)"
+if [[ "$(cat "$BIN/agy-skills" 2>/dev/null)" == "36" ]]; then
+    echo "  ✓ 调用时 ~/.gemini/config/skills 里有 36 个 pdlc skill"; pass=$((pass + 1))
+else
+    echo "  ✗ 调用时全局目录里没有装好投影（看到 $(cat "$BIN/agy-skills" 2>/dev/null || echo 0) 个）"; fail=$((fail + 1))
+fi
+left="$(find "$AGY_DIR" -mindepth 1 -maxdepth 1 -name 'pdlc-*' | wc -l | tr -d ' ')"
+if [[ "$left" == "0" && -d "$AGY_DIR/my-own-skill" ]]; then
+    echo "  ✓ 跑完删掉了 pdlc-*，用户自己的 skill 原样保留"; pass=$((pass + 1))
+else
+    echo "  ✗ 跑完残留 ${left} 个 pdlc-*，或误删了用户自己的 skill"; fail=$((fail + 1))
+fi
+if grep -qx -- '-p' "$BIN/agy-argv" 2>/dev/null && grep -q '^按 pdlc ' "$BIN/agy-argv" 2>/dev/null \
+    && grep -qx -- '--dangerously-skip-permissions' "$BIN/agy-argv" 2>/dev/null; then
+    echo "  ✓ 以 agy -p \"按 pdlc <阶段> …\" --dangerously-skip-permissions 调用"; pass=$((pass + 1))
+else
+    echo "  ✗ agy 调用形态不对：$(tr '\n' ' ' < "$BIN/agy-argv" 2>/dev/null)"; fail=$((fail + 1))
+fi
+if grep -qF '被测技能：工作树的 Agent Skills 投影（运行期间临时装在' <<< "$out"; then
+    echo "  ✓ 汇总写明被测的是临时装进全局目录的工作树投影"; pass=$((pass + 1))
+else
+    echo "  ✗ agy 臂汇总没写被测的是哪份技能"; fail=$((fail + 1))
+fi
+FRESH_HOME="$BIN/agy-fresh-home"; mkdir -p "$FRESH_HOME"
+HOME="$FRESH_HOME" PATH="$BIN:$PATH" bash "$RUNNER" --platform agy --only "$one" </dev/null >/dev/null 2>&1
+if [[ ! -e "$FRESH_HOME/.gemini" ]]; then
+    echo "  ✓ 原本没有 ~/.gemini 时，跑完把自己建的目录也删掉，恢复原样"; pass=$((pass + 1))
+else
+    echo "  ✗ 跑完留下了驱动自己建的目录：$(find "$FRESH_HOME/.gemini" | tr '\n' ' ')"; fail=$((fail + 1))
+fi
+mkdir -p "$AGY_DIR/pdlc-status"; echo "用户自己装的" > "$AGY_DIR/pdlc-status/SKILL.md"
+rm -f "$BIN/agy-argv"
+refuse="$(HOME="$AGY_HOME" PATH="$BIN:$PATH" bash "$RUNNER" --platform agy --only "$one" </dev/null 2>&1)"; rc=$?
+if [[ "$rc" -eq 3 && ! -f "$BIN/agy-argv" && "$(cat "$AGY_DIR/pdlc-status/SKILL.md")" == "用户自己装的" ]] \
+    && grep -qF '已有 pdlc-' <<< "$refuse"; then
+    echo "  ✓ 全局目录里已有 pdlc-* → 拒跑（退出 3），不调用 agy、不动已有的那份"; pass=$((pass + 1))
+else
+    echo "  ✗ 全局目录已有 pdlc-* 时没有拒跑（rc=${rc}），或覆盖了用户的那份"; fail=$((fail + 1))
+fi
+
+
+# ─── grok 臂：grok 自动复用已装的 Claude Code 插件 ───
+# grok 读 ~/.claude/plugins/installed_plugins.json，同名时插件优先于其它 skill 目录，
+# 所以测的是已安装的插件，不是工作树——汇总必须说清楚
+echo ""
+echo "Test: grok 臂以自动批准调用，汇总写明测的是已安装插件"
+cat > "$BIN/grok" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$@" > "$BIN/grok-argv"
+cat >/dev/null 2>&1
+exit 0
+STUB
+chmod +x "$BIN/grok"
+rm -f "$BIN/grok-argv"
+out="$(PATH="$BIN:$PATH" bash "$RUNNER" --platform grok --only "$one" </dev/null 2>&1)"
+if grep -qx -- '-p' "$BIN/grok-argv" 2>/dev/null && grep -q '^按 pdlc ' "$BIN/grok-argv" 2>/dev/null \
+    && grep -qx -- '--always-approve' "$BIN/grok-argv" 2>/dev/null; then
+    echo "  ✓ 以 grok -p \"按 pdlc <阶段> …\" --always-approve 调用"; pass=$((pass + 1))
+else
+    echo "  ✗ grok 调用形态不对：$(tr '\n' ' ' < "$BIN/grok-argv" 2>/dev/null)"; fail=$((fail + 1))
+fi
+if grep -qF '被测插件：已安装的 Claude Code 插件（grok 自动复用' <<< "$out"; then
+    echo "  ✓ 汇总写明被测的是已安装的 Claude Code 插件"; pass=$((pass + 1))
+else
+    echo "  ✗ grok 臂汇总没写被测的是哪份插件"; fail=$((fail + 1))
 fi
 
 

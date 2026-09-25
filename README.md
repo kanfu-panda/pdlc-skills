@@ -156,7 +156,7 @@ Most AI coding tools now load the [Agent Skills open standard](https://agentskil
 git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
 bash install.sh --target agents                  # ~/.agents/skills/  (Copilot, Gemini CLI, OpenCode, Amp, Goose)
 bash install.sh --target agents --project DIR    # DIR/.agents/skills/
-bash install.sh --target agents --dest DIR       # any tool's own directory, e.g. .cursor/skills
+bash install.sh --target agents --dest DIR       # any tool's own directory, e.g. .cursor/skills, ~/.gemini/config/skills (Antigravity CLI)
 bash install.sh --target codex                   # ~/.codex/skills/
 # add --uninstall to remove; only pdlc-* directories are ever written or removed
 ```
@@ -167,7 +167,9 @@ Skills trigger by description: drive PDLC in natural language (`用 pdlc 写个 
 |---|---|---|
 | Claude Code | plugin (this repo) | ✅ first-class |
 | Codex | `--target codex` | ✅ passed the state-integrity gate — [ADR 0004](./docs/decisions/0004-codex-loop-run.md); verified on a Codex distribution that reads `~/.codex/skills/`, vanilla OpenAI Codex unverified |
-| GitHub Copilot | `--target agents` (or `--project DIR`) | CLI 1.0.88: loads and triggers · ❌ **failed** the state-integrity gate (3/3 rounds, default model) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-copilot-准入闸真机); fine for single stages, not for autonomous loops · VS Code not run |
+| GitHub Copilot | `--target agents` (or `--project DIR`) | CLI 1.0.88: loads and triggers · ❌ **failed** the state-integrity gate (3/3 rounds, default model) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸); fine for single stages, not for autonomous loops · VS Code not run |
+| Grok CLI | nothing extra — it loads the installed Claude Code plugin by itself | 1.0.41: ✅ passed the state-integrity gate (3/3 rounds) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) · not yet in the loop driver |
+| Antigravity CLI (`agy`) | `--target agents --dest ~/.gemini/config/skills` (1.2.9 ignores the workspace `.agents/skills/`) | 1.2.9: loads and triggers · ❌ **failed** the gate — claimed "done, state updated" without writing a single file — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) |
 | Gemini CLI · OpenCode · Amp · Goose | `--target agents` | loads per their docs · not run by us |
 | Cursor · Windsurf · Kiro · Roo Code | `--target agents --dest <their skills dir>` | loads per their docs · not run by us |
 

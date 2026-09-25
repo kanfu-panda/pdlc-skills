@@ -10,6 +10,8 @@
 #   ./evals/run.sh --only honest-checks        # 跑单个场景
 #   ./evals/run.sh --platform codex --repeat 3 # 发版前建议：两平台各跑 3 轮
 #   ./evals/run.sh --platform copilot          # GitHub Copilot CLI，测工作树的 Agent Skills 投影
+#   ./evals/run.sh --platform agy              # Antigravity CLI，工作树投影临时装进 ~/.gemini/config/skills/
+#   ./evals/run.sh --platform grok             # Grok CLI，测它自动复用的已装 Claude Code 插件
 #
 # 退出码：0=全部通过 1=有契约破坏 2=有场景无结论（全是环境抖动）3=用法/依赖错误
 set -euo pipefail
@@ -43,7 +45,8 @@ PLUGIN_DIR="${EVAL_PLUGIN_DIR-${REPO_ROOT}}"
 die() { printf '❌ %s\n' "$1" >&2; exit "${2:-3}"; }
 
 usage() {
-  sed -n '3,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  # 打印文件头注释（第 3 行起，到第一行代码为止）；写死行号会随注释增减错位
+  awk 'NR >= 3 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"
 }
 
 while [ $# -gt 0 ]; do
@@ -62,8 +65,8 @@ while [ $# -gt 0 ]; do
 done
 
 case "${PLATFORM}" in
-  claude|codex|copilot) ;;
-  *) die "--platform 只支持 claude / codex / copilot，收到「${PLATFORM}」" ;;
+  claude|codex|copilot|agy|grok) ;;
+  *) die "--platform 只支持 claude / codex / copilot / agy / grok，收到「${PLATFORM}」" ;;
 esac
 # 数字参数必须校验——不校验会让非法值静默走到分支判断里（codex-loop-run.sh 踩过）
 printf '%s' "${REPEAT}" | grep -qE '^[1-9][0-9]*$' \
@@ -192,11 +195,43 @@ command -v "${PLATFORM}" >/dev/null 2>&1 || die "找不到 ${PLATFORM} 命令"
 # copilot 没有 --plugin-dir 这类开关，按 .agents/skills/ 加载 skill。先把工作树构建成
 # Agent Skills 标准投影，每个场景跑之前装进 fixture 副本自己的 .agents/skills/——
 # 测的是待合并的代码，也不碰用户的全局目录
+#
+# agy（Antigravity CLI）1.2.9 实测：-p 模式不读工作区 .agents/skills/，只读 ~/.gemini/config/skills/。
+# 只好在运行期间把投影临时装进这个全局目录：只动 pdlc-*，退出时（含 Ctrl-C）删掉；
+# 目录里已有 pdlc-* 就拒跑——那是用户自己装的，覆盖再删掉等于替他卸载
 AGENT_SKILLS_BUILD=""
-if [ "${PLATFORM}" = "copilot" ]; then
+AGY_SKILLS_DIR="${HOME}/.gemini/config/skills"
+AGY_INSTALLED=0
+AGY_CREATED_DIRS=""   # 本次新建的目录，由深到浅、换行分隔；退出时删掉，恢复原样
+if [ "${PLATFORM}" = "agy" ] \
+   && [ -n "$(find "${AGY_SKILLS_DIR}" -mindepth 1 -maxdepth 1 -name 'pdlc-*' 2>/dev/null)" ]; then
+  die "${AGY_SKILLS_DIR} 里已有 pdlc-*（你自己装的那份）。先卸载：install.sh --target agents --dest ${AGY_SKILLS_DIR} --uninstall"
+fi
+if [ "${PLATFORM}" = "copilot" ] || [ "${PLATFORM}" = "agy" ]; then
   AGENT_SKILLS_BUILD="$(mktemp -d "${TMPDIR:-/tmp}/pdlc-eval-agent-skills-XXXXXX")/out"
   python3 "${REPO_ROOT}/adapters/build_agent_skills.py" "${AGENT_SKILLS_BUILD}" >/dev/null \
     || die "构建 Agent Skills 投影失败"
+fi
+# shellcheck disable=SC2329  # 由下面的 trap 调用
+cleanup_agent_skills() {
+  if [ "${AGY_INSTALLED}" -eq 1 ]; then rm -rf "${AGY_SKILLS_DIR:?}"/pdlc-*/; fi
+  # 只删自己建的、且已经空了的目录（rmdir 不删非空目录）
+  printf '%s' "${AGY_CREATED_DIRS}" | while IFS= read -r d; do
+    [ -n "${d}" ] && rmdir "${d}" 2>/dev/null
+  done
+  if [ -n "${AGENT_SKILLS_BUILD}" ]; then rm -rf "$(dirname "${AGENT_SKILLS_BUILD}")"; fi
+}
+trap cleanup_agent_skills EXIT
+trap 'exit 130' INT TERM
+if [ "${PLATFORM}" = "agy" ]; then
+  d="${AGY_SKILLS_DIR}"
+  while [ ! -d "${d}" ]; do
+    AGY_CREATED_DIRS="${AGY_CREATED_DIRS}${d}"$'\n'
+    d="$(dirname "${d}")"
+  done
+  mkdir -p "${AGY_SKILLS_DIR}"
+  AGY_INSTALLED=1
+  cp -R "${AGENT_SKILLS_BUILD}"/skills/pdlc-* "${AGY_SKILLS_DIR}/"
 fi
 
 # 便携超时：macOS 没有 coreutils 的 timeout
@@ -226,6 +261,14 @@ invoke_agent() { # <项目目录> <阶段> <参数> <输出文件>
     # shellcheck disable=SC2086  # CLAUDE_FLAGS 需要词分割，这是刻意的
     ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
         claude -p "/pdlc-${stage} ${args}" ${CLAUDE_FLAGS} ${plugin_args[@]+"${plugin_args[@]}"} ) >"${out}" 2>&1 </dev/null
+  elif [ "${PLATFORM}" = "agy" ]; then
+    # 投影已在启动时装进 ~/.gemini/config/skills/（见上）
+    ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
+        agy -p "按 pdlc ${stage} ${args}" --dangerously-skip-permissions ) >"${out}" 2>&1 </dev/null
+  elif [ "${PLATFORM}" = "grok" ]; then
+    # grok 读 ~/.claude/plugins/installed_plugins.json，自动加载已装的 Claude Code 插件
+    ( cd "${proj}" && run_with_timeout "${TIMEOUT_SECS}" \
+        grok -p "按 pdlc ${stage} ${args}" --always-approve ) >"${out}" 2>&1 </dev/null
   elif [ "${PLATFORM}" = "copilot" ]; then
     mkdir -p "${proj}/.agents/skills"
     cp -R "${AGENT_SKILLS_BUILD}"/skills/pdlc-* "${proj}/.agents/skills/"
@@ -329,7 +372,10 @@ if [ "${PLATFORM}" = "claude" ]; then
   fi
 elif [ "${PLATFORM}" = "copilot" ]; then
   printf '被测技能：工作树的 Agent Skills 投影（装在各 fixture 副本的 .agents/skills/）\n'
-  rm -rf "$(dirname "${AGENT_SKILLS_BUILD}")"
+elif [ "${PLATFORM}" = "agy" ]; then
+  printf '被测技能：工作树的 Agent Skills 投影（运行期间临时装在 %s，退出即删）\n' "${AGY_SKILLS_DIR}"
+elif [ "${PLATFORM}" = "grok" ]; then
+  printf '被测插件：已安装的 Claude Code 插件（grok 自动复用；不是工作树，先升级插件再跑）\n'
 else
   printf '被测技能：已安装的 Codex 投影（~/.codex，不是工作树；发版前先 install.sh --target codex）\n'
 fi

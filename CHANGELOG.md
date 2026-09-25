@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`evals/run.sh --platform agy | grok`**：在 Antigravity CLI 与 Grok CLI 上跑行为 eval。agy 臂测工作树的标准投影，运行期间临时装进 `~/.gemini/config/skills/`，退出（含 Ctrl-C）即删；那里已有 `pdlc-*` 就拒跑，不覆盖用户自己装的那份。grok 臂测它自动复用的已装 Claude Code 插件，汇总写明测的不是工作树。
+- **两个平台的真机结果**（ADR 0007 §6）：Grok CLI 1.0.41 能直接用已装的 Claude Code 插件，状态完整性准入闸 3/3 轮通过；Antigravity CLI 1.2.9 能加载、能触发，但准入闸未过——声称「实现完成、状态已更新」，实际一个文件都没写。
+
+### Fixed
+
+- **eval 把「虚报完成」记成环境抖动**：`honest-checks` / `stale-config` 看到状态机一字未改，一律判为「agent 可能没跑起来」，重跑且不计失败。可 agent 也可能跑了、声称做完了、却什么都没写。现在输出里有交接模板的「📦 状态快照」一行而状态机没变，就判契约破坏。
+- **`evals/run.sh --help` 把两行代码当成用法打印**：用法说明写死打印第 3–17 行，注释变短后把 `set -euo pipefail` 等也印了出来。现在打印到第一行代码为止。
+
+### Changed
+
+- **平台表更正**：Antigravity CLI 1.2.9 实测不读工作区的 `.agents/skills/`，要用 `--dest ~/.gemini/config/skills` 装；Grok CLI 不用另装。README、使用手册与 ADR 0007 同步。
+
 ## [1.7.0] - 2026-09-24
 
 本版有四件事：
