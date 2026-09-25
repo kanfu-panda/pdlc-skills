@@ -111,6 +111,8 @@ agent 根本没跑起来时，状态机同样"没变"，看着像通过。
 ./evals/run.sh --only honest-checks         # 跑单个场景
 ./evals/run.sh --platform codex --repeat 3  # 发版前：两平台各跑 3 轮
 ./evals/run.sh --platform copilot --only honest-checks   # GitHub Copilot CLI 的准入闸
+./evals/run.sh --platform agy --only honest-checks       # Antigravity CLI 的准入闸（临时动 ~/.gemini/config/skills/，见下）
+./evals/run.sh --platform grok --only honest-checks      # Grok CLI 的准入闸（测已装的 Claude Code 插件）
 ./evals/run.sh --only red-light-gate --keep # 保留临时现场，便于排查
 
 # 改断言时的免费开发回路：先 --keep 留下现场，之后反复离线复跑断言，不再烧额度
@@ -119,7 +121,7 @@ agent 根本没跑起来时，状态机同样"没变"，看着像通过。
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| `--platform claude\|codex\|copilot` | `claude` | Codex 那条臂需要 provider 凭证，见下「凭证门控」；copilot 臂需要已登录的 Copilot CLI |
+| `--platform claude\|codex\|copilot\|agy\|grok` | `claude` | Codex 那条臂需要 provider 凭证，见下「凭证门控」；copilot / agy / grok 臂需要各自已登录的 CLI |
 | `--repeat N` | `1` | 发版前建议 `3`，以多数通过为结论 |
 | `--timeout 秒` | `900` | 便携实现（macOS 无 coreutils `timeout`） |
 | `--keep` | 关 | 保留临时目录（配合 `--replay` 用） |
@@ -140,6 +142,9 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
 
 - **环境抖动**——超时 / 限流 / 拒答，**无有效状态机产出** → 自动重跑（默认 2 次），**不计失败**。
 - **契约破坏**——**有状态机产出但判别式不符** → 立即红，不重跑。
+- **虚报完成**也算契约破坏：状态机一字未改，输出里却有交接模板的「📦 状态快照：docs/.pdlc-state/…」一行。
+  交接只在写完状态机之后出现（阻塞也要写 `last_phase_result`），所以这不是「没跑起来」。
+  2026-09-25 真机上见过：agent 声称「测试全绿、状态已更新」，实际一个文件都没写——按旧口径它被记成了抖动。
 
 场景级结论取**多数通过**；一轮结论都没有（全抖动）→ 报"无结论"（退出码 2），
 **不冒充通过**。据此，A-live 是**发版前的建议性证据、不是自动硬闸**——绝不因抖动卡死发布。
@@ -183,6 +188,10 @@ agent CLI **会读 stdin**——实测 `codex exec` 把管道里的内容当额�
    `install.sh --target codex` 装上待发布版本再跑**，否则验的是上一个版本；汇总会写明「被测技能：已安装的 Codex 投影」。
    copilot 臂没有 `--plugin-dir` 这类开关，runner 把工作树构建成 Agent Skills 投影、装进每个 fixture 副本自己的
    `.agents/skills/` 再跑——验的是工作树，也不碰用户的全局目录；汇总写明「被测技能：工作树的 Agent Skills 投影」。
+   agy 臂也测工作树投影，但 agy 1.2.9 的 `-p` 模式只读全局 `~/.gemini/config/skills/`，只好在运行期间临时装进去：
+   只动 `pdlc-*`，退出时（含 Ctrl-C）删掉；那里已有 `pdlc-*`（你自己装的）就拒跑，先卸载再跑。
+   grok 臂测的是**已安装的 Claude Code 插件**——grok 自动复用它，同名时优先于其它目录，拿不到工作树；
+   发版前先升级插件再跑，汇总写明「被测插件：已安装的 Claude Code 插件」。
 
    > 此前两条臂都是验已安装版本，而汇总只盖一个「仓库版本：<HEAD>」。一次发版前核验就栽在这里：
    > 汇总写着当前 commit，实际加载的却是上一个已发布版本，新规则的场景于是「失败」了——

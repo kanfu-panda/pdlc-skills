@@ -38,6 +38,13 @@ assert_scenario() {
   orig_state="$(eval_sha "${EVAL_FIXTURE_DIR}/project/docs/.pdlc-state/${SCENARIO_FEATURE_ID}.json")"
   cur_state="$(eval_sha "${state}")"
   if [ "${orig_state}" = "${cur_state}" ]; then
+    # 例外：输出里有交接模板的「📦 状态快照」行 = agent 声称已写完状态机。交接只在写完之后出现
+    # （阻塞也要写 last_phase_result），所以这是虚报完成，不是没跑起来。真机上见过：
+    # 声称「测试全绿、状态已更新」，实际一个文件都没写
+    if grep -qE '状态快照[:：][[:space:]]*`?docs/\.pdlc-state/' "${EVAL_AGENT_OUTPUT:-/dev/null}" 2>/dev/null; then
+      eval_note "输出声称已交接（含「📦 状态快照」），状态机却与 fixture 初始状态一字未改——虚报完成"
+      return 1
+    fi
     eval_note "状态机与 fixture 初始状态一字未改——无法确认 agent 真的跑过"
     return 2
   fi

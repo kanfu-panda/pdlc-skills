@@ -156,7 +156,7 @@ Claude Code **集成最全**——38 个斜杠命令 + 状态栏 + 插件内自�
 git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
 bash install.sh --target agents                  # ~/.agents/skills/（Copilot、Gemini CLI、OpenCode、Amp、Goose）
 bash install.sh --target agents --project DIR    # DIR/.agents/skills/
-bash install.sh --target agents --dest DIR       # 工具自己的目录，如 .cursor/skills
+bash install.sh --target agents --dest DIR       # 工具自己的目录，如 .cursor/skills、~/.gemini/config/skills（Antigravity CLI）
 bash install.sh --target codex                   # ~/.codex/skills/
 # 加 --uninstall 移除；只写入、只删除 pdlc-* 目录
 ```
@@ -167,7 +167,9 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 |---|---|---|
 | Claude Code | 插件（本仓库） | ✅ 一等公民 |
 | Codex | `--target codex` | ✅ 已过状态完整性准入闸——[ADR 0004](./docs/decisions/0004-codex-loop-run.md)；验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
-| GitHub Copilot | `--target agents`（或 `--project DIR`） | CLI 1.0.88：能加载、能触发 · ❌ **未过**状态完整性准入闸（3/3 轮，默认模型）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-copilot-准入闸真机)；可跑单个阶段，不建议交给自主循环 · VS Code 未跑 |
+| GitHub Copilot | `--target agents`（或 `--project DIR`） | CLI 1.0.88：能加载、能触发 · ❌ **未过**状态完整性准入闸（3/3 轮，默认模型）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸)；可跑单个阶段，不建议交给自主循环 · VS Code 未跑 |
+| Grok CLI | 不用另装——它会自己加载已装的 Claude Code 插件 | 1.0.41：✅ 已过状态完整性准入闸（3/3 轮）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) · 暂未加进循环驱动 |
+| Antigravity CLI（`agy`） | `--target agents --dest ~/.gemini/config/skills`（1.2.9 不读工作区的 `.agents/skills/`） | 1.2.9：能加载、能触发 · ❌ **未过**准入闸——声称「完成、状态已更新」，实际一个文件都没写——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) |
 | Gemini CLI · OpenCode · Amp · Goose | `--target agents` | 按其文档可加载 · 我们没跑过 |
 | Cursor · Windsurf · Kiro · Roo Code | `--target agents --dest <它的 skills 目录>` | 按其文档可加载 · 我们没跑过 |
 
