@@ -6,7 +6,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: e2e
 produces:
-  - e2e/**/*.spec.ts
+  - docs/04_testing/e2e-tests/<feature-id>-<feature-name>-e2e.md
+  # E2E 测试代码跟随项目既有的 E2E 目录（正文「测试放哪」）
+  - <E2E 测试代码 · 项目既有布局>
 requires: []
 next_step: pdlc-review
 terminal_state: e2e_done
@@ -29,15 +31,38 @@ terminal_state: e2e_done
 **违反任一条 = 立即中止当前命令，输出违规详情，等待人工介入。**
 <!-- @include-end templates/prompts/iron-law.md -->
 
-编写端到端（E2E）测试用例，验证完整的用户操作流程。
+编写端到端（E2E）测试用例，验证完整的用户操作流程。位置在实现之后、评审之前（下一跳 `/pdlc-review`，评审会把 E2E 结果一并纳入闸门）。
+
+<!-- @include templates/prompts/artifact-lookup.md（已内联于下方，无需另读） -->
+## 定位上游产物：先查状态机，再按关键词搜
+
+守卫要找的上游文档（PRD、设计文档、评审记录等），按下面的顺序定位，**命中即停**：
+
+1. **输入是功能ID / 缺陷ID**（`F…` / `B…`）且 `docs/.pdlc-state/<ID>.json` 存在 → 读它 `history[].produced` 里记下的路径，取所需类型的文档。这是上游阶段亲手记的，最可靠
+2. **没有状态机、或 `produced` 里没有所需文档** → 在对应目录下搜：文件名含该 ID 或功能名关键词，或文件顶部 PDLC 追溯头的 `功能ID` 等于该 ID
+3. **命中多份** → 不要随手挑一份：交互模式下列出来请人选；`--autonomous` 下优先取文件名含该 ID 的，仍不止一份则按「真需人判断」阻塞（写 `blocked_reason`，列出候选）
+
+找到后从文件名或追溯头取功能ID，后续产出一律沿用它，**不另分配新 ID**。
+<!-- @include-end templates/prompts/artifact-lookup.md -->
+
+## PDLC 前置检查（必须执行，不可跳过）
+
+1. 按上面的顺序找到本功能的 PRD（必需）与 UI 设计文档（`docs/02_design/ui-ux/`，有则读），确定功能ID
+2. **检查实现是否已完成**：状态机 `current_stage` 应为 `impl`（或更后）；没有状态机时，确认实现代码已存在
+3. **未找到 PRD** 或 **实现未完成** → 输出以下信息后**立即停止**：
+   ```
+   ⛔ PDLC 守卫：「<功能名>」缺少 PRD 或实现尚未完成，E2E 测试无从验证。
+   👉 /pdlc-prd <需求描述>  或  /pdlc-implement <功能ID>
+   ```
 
 ## 工作流程
-1. **阅读需求文档**: 阅读 `docs/01_requirements/prd/` 下对应 PRD 的用户故事与验收标准
-2. **阅读 UI 设计**: 阅读 `docs/02_design/ui-ux/` 下的 UI 设计文档
-3. **梳理测试场景**: 按用户旅程梳理核心操作路径
-4. **编写测试计划**: 在 `docs/04_testing/e2e-tests/` 下补充 E2E 测试用例
-5. **编写测试代码**: 使用项目对应的 E2E 框架编写自动化测试
-6. **运行验证**: 确保测试可通过
+1. **阅读需求文档**: 读 PRD 的用户故事与验收标准——E2E 用例从这里来
+2. **阅读 UI 设计**: 读 UI 设计文档（如有）
+3. **梳理测试场景**: 按用户旅程梳理核心操作路径（分级见下）
+4. **编写测试计划**: 在 `docs/04_testing/e2e-tests/` 下创建 `<功能ID>-<功能名>-e2e.md`，文档顶部带 PDLC 追溯头
+5. **编写测试代码**（测试放哪）: 放进项目**既有的** E2E 目录与框架（看 `test-commands.yml` 的 `e2e` 命令、`playwright.config.*` / `cypress.config.*` 的 testDir、已有的 `*.spec.*` / `*.e2e.*` 文件）；项目还没有 E2E 时，把选用的框架和目录写进报告
+6. **对齐核心流映射**: 若存在 `docs/00_standards/e2e-flow-map.yml`，本功能涉及的核心流（`quality-targets.yml` 的 `core_flows`）要把新写的测试标识填进对应 flow 的 `tests`——`/pdlc-quality` 靠这份映射机械判定「核心流都有 E2E」
+7. **运行验证**: 运行 `bash scripts/pdlc-checks.sh --only e2e <项目根>`，stdout 的 `{"e2e_pass":…}` **原样**写进 `last_phase_result.checks`。`e2e` 命令为空 → `null`（无法判定），在报告里提示补上 `test-commands.yml` 的 `e2e`
 
 ## 测试场景设计
 - **核心路径（P0）**: 必须通过，如登录→主流程→结果验证
@@ -85,6 +110,68 @@ require them.
 - 每个测试结束后清理数据
 
 测试目标: $ARGUMENTS
+
+<!-- @include templates/prompts/check-commands.md（已内联于下方，无需另读） -->
+## 跑 check 命令：退出码的三态语义
+
+**用脚本跑，不要手写 `checks`**：
+
+```bash
+bash scripts/pdlc-checks.sh --only <本阶段要的项，如 unit,lint> <项目根>
+```
+
+脚本是本 skill 自带的 `scripts/pdlc-checks.sh`。它读 `docs/00_standards/test-commands.yml`（唯一真源），逐条真跑，按下表映射，**stdout 只有一行 JSON**——
+**原样**写进 `last_phase_result.checks`，不改键名、不改值、不补不删。每条命令的退出码与输出末尾回显在
+stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等）= 没有可跑的 check → `checks: {}`。
+
+> 为什么不手写：键名、布尔类型、三态这几件事是确定性的，交给模型写，真机上同一份项目轮与轮之间就换一种错法
+> （键名照抄 yml 的 `unit`、值写成 `"4 passed, 1 failed"`、`127` 写成 `false`）。
+> 环境里没有 `bash` 时才按下表手工映射。
+
+脚本按退出码分三态——不是两态。这是 IRON LAW「checks 只认客观事实」在执行层的落法：
+
+| 观察到的 | 含义 | 写进 `checks` |
+|---|---|---|
+| 退出码 `0` | 通过 | 对应键 = `true` |
+| 退出码非 0（命令**跑起来了**，只是没过） | 未通过 | 对应键 = `false` |
+| 退出码 `127` / `command not found` / 脚本文件不存在 / 该项为空字符串 | **无法判定** | **省略该键，或写 `null`**——**绝不能是 `false`** |
+
+> ⛔ **唯一的红线是不许写 `false`**：那是**会误导人的虚报**——它说的是"检查失败了"，
+> 于是有人去查代码，但真正的问题是**配置过期**，代码可能完全没毛病。
+>
+> **省略键与 `null` 等价，两种都可以**：对消费方而言无法区分（`jq '.checks.lint_clean'`
+> 在两种情况下都返回 `null`）。`null` 甚至更明确——省略是歧义的（"没看"还是"看了判不出"），
+> `null` 明说"看了，判不出"。**别在这上面纠结，力气花在不写 `false` 上。**
+>
+> 这与「没有检查命令可跑的阶段 → `checks: {}`」同源。
+
+## 「跑不了」＝ `test-commands.yml` 过期信号（顺带检测，零额外成本）
+
+命令跑不起来，几乎总意味着**这份 yml 已经跟不上项目了**——脚本改名、runner 换了、
+工具从依赖里移除、子项目路径调整。真实项目里这类漂移是常态（例如某前端框架升级后
+移除了内置 lint 子命令，而 yml 里那条命令还在）。
+
+由于**各阶段本来就在跑这些命令**，这个信号是白捡的。检测到时：
+
+1. 在本阶段的报告里单列一条：**「`test-commands.yml` 疑似过期」**，写明是哪一项、
+   观察到什么（退出码 / 报错原文）、以及为什么判定为"跑不了"而非"没通过"。
+2. 提示补救：`/pdlc-test-setup --refresh`（重新探测并给出 diff）。
+3. **不要自作主张改 yml**——本阶段的职责是干活，不是改配置；只报告，不动手。
+
+## 变更方向决定自动化程度（`--refresh` 时适用）
+
+更新这份 yml 等于**改变"通过"的定义**，所以按**方向**区别对待：
+
+| 方向 | 例子 | 处理 |
+|---|---|---|
+| **让闸门变严** | 空着的 `e2e` 现在能跑了、覆盖率阈值上调 | **可自动应用**，报告留痕 |
+| **平移替换** | 命令改名但语义相同，且新命令**已验证能跑** | **可自动应用**，报告留痕 |
+| **让闸门变松** | 删掉某条 check、把命令改成空、下调阈值 | **必须人确认**，绝不自动 |
+
+> ⚠️ 这条方向规则是防「自动修复把闸门修没了」：lint 命令坏掉时，**把它留空**是最省事的
+> "修法"，结果闸门悄悄松了、报告还是绿的——比不更新更危险。
+> **变严可以自动，变松必须由人签字。**
+<!-- @include-end templates/prompts/check-commands.md -->
 
 <!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->
 > **本命令的状态机取值**：阶段短名 `e2e`（写进 `history[].stage` 与 `last_phase_result.stage`）；下一跳 `pdlc-review`（写进 `next_step`，交接时提示）。
@@ -157,7 +244,7 @@ require them.
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。

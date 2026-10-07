@@ -96,9 +96,9 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "12 user-facing templates"                   "12"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "14 shared prompt fragments"                 "14"  "$prompt_count"
+assert_eq "16 shared prompt fragments"                 "16"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands layout-detect artifact-lookup; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
 
@@ -623,7 +623,7 @@ for f in sorted(glob.glob("skills/*/SKILL.md")):
         hits.append(f.split("/")[1])
 print(" ".join(hits))
 PYL
-)"
+)" || done_leak="检查程序出错（python 退出码非 0），结论不可用"
 assert_eq "只有 ship / deploy 被指示写 _done" "" "$done_leak"
 
 }
@@ -696,6 +696,44 @@ for sk in pdlc-tdd pdlc-implement pdlc-review pdlc-quality; do
   assert_exists "${sk} 自带 pdlc-checks.sh" "skills/${sk}/scripts/pdlc-checks.sh"
 done
 
+# 第三档：补强薄弱能力
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+sec_src="$(src_body skills/pdlc-security/SKILL.md)"
+assert_contains "security 跑真实依赖扫描" 'pip-audit' "$sec_src"
+assert_contains "security 跑密钥扫描" 'gitleaks' "$sec_src"
+assert_contains "security 工具缺失不写无漏洞" '未扫描（工具缺失）' "$sec_src"
+assert_contains "security 记录退出码" '退出码' "$sec_src"
+perf_src="$(src_body skills/pdlc-perf/SKILL.md)"
+assert_contains "perf 先测基线" '基线' "$perf_src"
+assert_contains "perf 报告有前后数字" '| 优化前 | 优化后 |' "$perf_src"
+assert_contains "perf 测不了就不改代码" '未测量' "$perf_src"
+refute_contains "perf 报告文件名只有一种写法" 'perf-report.md' "$perf_src"
+assert_exists "布局探测片段" "references/templates/prompts/layout-detect.md"
+assert_exists "按 ID 找上游产物片段" "references/templates/prompts/artifact-lookup.md"
+e2e_src="$(src_body skills/pdlc-e2e/SKILL.md)"
+assert_contains "e2e 用脚本写 e2e_pass" 'scripts/pdlc-checks.sh --only e2e' "$e2e_src"
+assert_contains "e2e 对齐核心流映射" 'e2e-flow-map.yml' "$e2e_src"
+assert_contains "e2e 有前置守卫" 'PDLC 守卫' "$e2e_src"
+refute_contains "e2e 不写死 spec.ts 路径" 'e2e/**/*.spec.ts' "$(cat skills/pdlc-e2e/SKILL.md)"
+refute_contains "评审通过等发布只认 review 阶段" '（或 `e2e` 等）' "$(cat references/templates/prompts/state-update.md)"
+rev_src3="$(src_body skills/pdlc-review/SKILL.md)"
+assert_contains "review 的 checks 含 e2e" 'scripts/pdlc-checks.sh --only unit,coverage,lint,e2e' "$rev_src3"
+assert_contains "review 阻塞判定两种模式一致" '交互与 `--autonomous` 一致' "$rev_src3"
+assert_contains "review 文档评审不写状态机" '文档评审不写状态机' "$rev_src3"
+assert_contains "tdd 守卫：PRD 或设计任一即可" 'PRD 或设计文档任一' "$(src_body skills/pdlc-tdd/SKILL.md)"
+feat_src="$(src_body skills/pdlc-feature/SKILL.md)"
+assert_contains "feature 可按功能ID续跑" '按已有功能ID续跑' "$feat_src"
+assert_contains "feature 逐阶段写状态机" '每个阶段收尾各写一次' "$(cat skills/pdlc-feature/SKILL.md)"
+assert_contains "db-migrate 先探测已有迁移工具" 'Alembic' "$(src_body skills/pdlc-db-migrate/SKILL.md)"
+}
+for sk in pdlc-add-service pdlc-add-app pdlc-bootstrap pdlc-arch pdlc-db-migrate; do
+  assert_contains "${sk} 先探测布局" '@include templates/prompts/layout-detect.md' "$(src_body "skills/${sk}/SKILL.md")"
+done
+for sk in pdlc-design pdlc-tdd pdlc-deploy pdlc-e2e; do
+  assert_contains "${sk} 按 ID 找上游产物" '@include templates/prompts/artifact-lookup.md' "$(src_body "skills/${sk}/SKILL.md")"
+done
+
 # 全仓扫描：引用不存在的命令 / 工具 / 目录
 scan_stale() {
 python3 - <<'PYC'
@@ -732,7 +770,7 @@ for n in sorted(names):
 print("\n".join(sorted(set(bad))))
 PYC
 }
-stale="$(scan_stale)"
+stale="$(scan_stale)" || stale="检查程序出错（python 退出码非 0），结论不可用"
 assert_eq "skill 正文无失效引用、落盘路径与 produces 一致" "" "$stale"
 
 echo ""

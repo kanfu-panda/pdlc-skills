@@ -82,6 +82,16 @@ def meta_block(fm):
         hop = "下一跳 `null`（流程到此结束：`next_step` 写 `null`）"
     else:
         hop = f"下一跳 `{nxt}`（写进 `next_step`，交接时提示）"
+    phases = fm_value(fm, "phases").split()
+    if phases:  # 串联多个阶段的编排命令（如 pdlc-feature）：逐阶段写各自的短名，不写自己的 stage
+        chain = " → ".join(f"`{p}`" for p in phases)
+        return (
+            "<!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->\n"
+            f"> **本命令的状态机取值**：串联多个阶段，阶段短名依次为 {chain}——"
+            "每个阶段收尾各写一次 `history[]` 与 `last_phase_result`（`current_stage` 随之推进，"
+            f"`next_step` 写下一阶段的命令）；不写 `{stage}`。全部走完时{hop}。\n"
+            "<!-- pdlc:meta-end -->\n"
+        )
     return (
         "<!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->\n"
         f"> **本命令的状态机取值**：阶段短名 `{stage}`（写进 `history[].stage` 与 "

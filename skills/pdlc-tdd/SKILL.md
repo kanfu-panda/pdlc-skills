@@ -58,24 +58,36 @@ recommended_effort: medium
 
 根据设计文档，先编写测试用例，再实现代码。严格遵循 TDD 工作流。
 
+<!-- @include templates/prompts/artifact-lookup.md（已内联于下方，无需另读） -->
+## 定位上游产物：先查状态机，再按关键词搜
+
+守卫要找的上游文档（PRD、设计文档、评审记录等），按下面的顺序定位，**命中即停**：
+
+1. **输入是功能ID / 缺陷ID**（`F…` / `B…`）且 `docs/.pdlc-state/<ID>.json` 存在 → 读它 `history[].produced` 里记下的路径，取所需类型的文档。这是上游阶段亲手记的，最可靠
+2. **没有状态机、或 `produced` 里没有所需文档** → 在对应目录下搜：文件名含该 ID 或功能名关键词，或文件顶部 PDLC 追溯头的 `功能ID` 等于该 ID
+3. **命中多份** → 不要随手挑一份：交互模式下列出来请人选；`--autonomous` 下优先取文件名含该 ID 的，仍不止一份则按「真需人判断」阻塞（写 `blocked_reason`，列出候选）
+
+找到后从文件名或追溯头取功能ID，后续产出一律沿用它，**不另分配新 ID**。
+<!-- @include-end templates/prompts/artifact-lookup.md -->
+
 ## PDLC 前置检查（必须执行，不可跳过）
 
-1. 从用户输入中提取功能名称关键词
-2. 在 `docs/02_design/` 的子目录（api/、architecture/、database/、ui-ux/）下搜索包含该关键词的设计文档
-   - 匹配新格式：`F<日期>-<编号>-*<关键词>*-<类型>.md`
-   - 匹配旧格式：`YYYYMMDD-*<关键词>*-<类型>.md`
-   - 同时检查文件内容中是否包含该关键词
-3. **未找到任何设计文档** → 输出以下信息后**立即停止，不继续执行**：
+1. 从用户输入中提取功能ID或功能名称关键词
+2. 按上面的顺序找本功能的**设计文档**（`docs/02_design/` 下 api/、architecture/、database/、ui-ux/ 任一）与 **PRD**（`docs/01_requirements/prd/`）
+3. **PRD 或设计文档任一**找到即可继续：
+   - 有设计文档 → 以设计为准写测试，PRD 用来核对验收标准
+   - 只有 PRD（设计按需跳过的小功能、纯前端 / 配置类改动）→ 直接按 PRD 验收标准写测试，并在测试计划里注明「无设计文档，依据 PRD」
+4. **两者都没有** → 输出以下信息后**立即停止，不继续执行**：
    ```
-   ⛔ PDLC 守卫：未找到与「<功能名>」相关的设计文档（API/架构/数据库/UI 任一）。
-   测试用例必须基于已有的设计文档。请先运行：
-   👉 /pdlc-design <设计目标>
+   ⛔ PDLC 守卫：未找到与「<功能名>」相关的 PRD 或设计文档。
+   测试用例必须有需求依据。请先运行：
+   👉 /pdlc-prd <需求描述>（或 /pdlc-design <设计目标>）
    ```
-4. **找到** → 提取功能ID（如 `F20260326-090000`），读取设计文档内容，继续执行
+5. **找到** → 提取功能ID（如 `F20260326-090000`），读取文档内容，继续执行
 
 ## 工作流程
 
-1. **阅读设计文档**: 阅读找到的设计文档，全面理解接口/架构/数据模型
+1. **阅读设计文档**: 阅读找到的设计文档（只有 PRD 时读 PRD），全面理解接口/架构/数据模型与验收标准
 2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 3. **编写测试计划**: 在 `docs/04_testing/unit-tests/` 下创建测试计划文档
    - **使用模板**: 本 skill 目录下的 `assets/test-plan-template.md`
@@ -381,7 +393,7 @@ stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等�
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。

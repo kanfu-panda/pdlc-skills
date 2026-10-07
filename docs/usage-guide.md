@@ -117,6 +117,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 
 ```
 /pdlc-feature 给用户登录加手机号验证（P0）
+/pdlc-feature F20260502-090000          # 中途停下后按功能ID续跑
 /pdlc-prd 只生成 PRD：登录加验证码
 /pdlc-tdd 给 F20260502-090000 写测试用例
 /pdlc-fix 分页器在结果列表为 0 条时崩溃

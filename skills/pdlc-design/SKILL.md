@@ -36,16 +36,24 @@ terminal_state: design_done
 
 从本命令的参数中判断输入类型：
 - **文件路径**（以 `/`、`./` 开头，或以 `.md`、`.txt`、`.pdf` 结尾，或实际存在的文件）：直接读取该文件作为需求来源，跳过 PRD 搜索
-- **功能名关键词**（默认）：按下方守卫检查搜索 PRD
+- **功能ID**（`F<日期>-<时分秒>`，`/pdlc-prd` 交接时给的就是它）或**功能名关键词**：按下方守卫找 PRD
+
+<!-- @include templates/prompts/artifact-lookup.md（已内联于下方，无需另读） -->
+## 定位上游产物：先查状态机，再按关键词搜
+
+守卫要找的上游文档（PRD、设计文档、评审记录等），按下面的顺序定位，**命中即停**：
+
+1. **输入是功能ID / 缺陷ID**（`F…` / `B…`）且 `docs/.pdlc-state/<ID>.json` 存在 → 读它 `history[].produced` 里记下的路径，取所需类型的文档。这是上游阶段亲手记的，最可靠
+2. **没有状态机、或 `produced` 里没有所需文档** → 在对应目录下搜：文件名含该 ID 或功能名关键词，或文件顶部 PDLC 追溯头的 `功能ID` 等于该 ID
+3. **命中多份** → 不要随手挑一份：交互模式下列出来请人选；`--autonomous` 下优先取文件名含该 ID 的，仍不止一份则按「真需人判断」阻塞（写 `blocked_reason`，列出候选）
+
+找到后从文件名或追溯头取功能ID，后续产出一律沿用它，**不另分配新 ID**。
+<!-- @include-end templates/prompts/artifact-lookup.md -->
 
 ## PDLC 前置检查（必须执行，不可跳过）
 
 1. 若输入为文件路径，直接读取文件内容作为需求，提取功能名和功能ID（如有），跳到步骤 4
-2. 从用户输入中提取功能名称关键词
-3. 在 `docs/01_requirements/prd/` 目录下搜索包含该关键词的 PRD 文档
-   - 匹配新格式：`F<日期>-<编号>-*<关键词>*-prd.md`
-   - 匹配旧格式：`YYYYMMDD-*<关键词>*-prd.md`
-   - 同时检查文件内容中是否包含该关键词
+2. 按上面的顺序在 `docs/01_requirements/prd/` 下找本功能的 PRD
 3. **未找到** → 输出以下信息后**立即停止，不继续执行**：
    ```
    ⛔ PDLC 守卫：未找到与「<功能名>」相关的 PRD 文档。
@@ -224,7 +232,7 @@ require them.
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
