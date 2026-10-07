@@ -26,7 +26,7 @@ pdlc-skills/
 │   ├── pdlc-statusline.sh          ← optional statusline segment (scanned by /pdlc-settings)
 │   ├── pdlc-state-lint.sh          ← state-machine contract check: read side (/pdlc-status · /pdlc-retro · /pdlc-relate) + every state-writing stage after it writes
 │   ├── pdlc-checks.sh              ← runs test-commands.yml and prints the checks JSON (three-state); used by tdd / implement / review / quality
-│   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex, --parallel via worktrees, --status)
+│   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex, --parallel via worktrees, --status, --next = the one next-step mapping that /pdlc-loop-next and /pdlc-loop-run call)
 ├── adapters/
 │   ├── sync_skills.py              ← inlines fragments + copies templates/scripts into skills/ (rerun after editing any of them)
 │   ├── build_agent_skills.py       ← Agent Skills standard projection for non-Claude tools (install.sh --target agents)
@@ -108,7 +108,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All twelve count** — 708 assertions at the time of writing; run them for the current number rather
+**All twelve count** — 722 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 

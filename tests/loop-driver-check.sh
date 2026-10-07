@@ -350,6 +350,23 @@ expect_out "驱动进程已不在 → 提示可能被中断" "中断"
 expect_out "单步过久 → 提示看日志" "日志"
 expect_out "运行中的功能标出阶段" "impl"
 
+echo "Test: --next 只打印下一步（loop-next / loop-run 的唯一映射）"
+P="$ROOT/next"
+mkstate "$P" F20260924-160001 tdd pdlc-implement
+mkstate "$P" F20260924-160002 review pdlc-ship
+mkstate "$P" F20260924-160003 impl pdlc-review "等人确认接口"
+mkstate "$P" F20260924-160004 ship_done null
+printf '{}' > "$P/docs/.pdlc-state/F20260924-160005.json"
+for pair in "F20260924-160001 pdlc-implement" "F20260924-160002 done" "F20260924-160003 blocked" \
+            "F20260924-160004 done" "F20260924-160005 blocked" "F20260924-169999 blocked"; do
+    nid="${pair% *}"; want="${pair#* }"
+    run_driver "$P" --next "$nid"
+    if [[ "$RC" == 0 && "$OUT" == "$want" ]]; then ok "--next $nid → $want"; else bad "--next $nid → $want" "退出 ${RC}，输出：${OUT}"; fi
+done
+STUB_LOG="$ROOT/next.log"
+run_driver "$P" --next F20260924-160001
+[[ "$(calls)" == "0" ]] && ok "--next 不调用模型" || bad "--next 调用了模型"
+
 echo "Test: ok 与 checks 矛盾即停"
 P="$ROOT/okliar"
 mkstate "$P" F20260924-150001 tdd pdlc-implement

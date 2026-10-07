@@ -1,6 +1,6 @@
 ---
 name: pdlc-review
-description: 代码评审 + 文档评审
+description: 代码评审（对照设计、自动修复、跑 check、判定能否发布）或文档评审（PRD / 设计 / 测试计划，不写状态机）
 argument-hint: <功能ID | PR 描述>
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2

@@ -96,9 +96,9 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "12 user-facing templates"                   "12"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "16 shared prompt fragments"                 "16"  "$prompt_count"
+assert_eq "17 shared prompt fragments"                 "17"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands layout-detect artifact-lookup; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands layout-detect artifact-lookup iron-law-tool; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
 
@@ -745,6 +745,28 @@ done
 for sk in pdlc-design pdlc-tdd pdlc-deploy pdlc-e2e; do
   assert_contains "${sk} 按 ID 找上游产物" '@include templates/prompts/artifact-lookup.md' "$(src_body "skills/${sk}/SKILL.md")"
 done
+
+# 第四档：description 是常驻上下文里唯一的路由依据，「性能优化」这种四个字的名词短语等于没写
+short_desc="$(for f in skills/*/SKILL.md; do
+  d="$(awk '/^description:/{sub(/^description: */,""); print; exit}' "$f")"
+  n="$(printf '%s' "$d" | python3 -c 'import sys; print(len(sys.stdin.read()))')"
+  if [ "$n" -lt 15 ]; then echo "$(basename "$(dirname "$f")")（${n} 字）"; fi
+done)"
+assert_eq "description 至少写清做什么（≥15 字）" "" "$short_desc"
+# 下一步映射只在驱动里实现一份，两个 skill 都调它
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+assert_contains "loop-next 调驱动的 --next" 'scripts/pdlc-loop.sh --next' "$(src_body skills/pdlc-loop-next/SKILL.md)"
+assert_contains "loop-run 调驱动的 --next" 'scripts/pdlc-loop.sh --next' "$(src_body skills/pdlc-loop-run/SKILL.md)"
+refute_contains "loop-run 不再让模型读 frontmatter 选模型" 'frontmatter 的 `recommended_model`' "$(src_body skills/pdlc-loop-run/SKILL.md)"
+refute_contains "ship 不内联对它无效的非交互片段" '@include templates/prompts/noninteractive.md' "$(src_body skills/pdlc-ship/SKILL.md)"
+}
+
+# 同一片段在一个 skill 里只内联一次——重复内联只增加篇幅，模型读到的规则不会因此更强
+dup_inc="$(for f in skills/*/SKILL.md; do
+  grep -oE '<!-- @include templates/prompts/[a-z-]+\.md' "$f" | sort | uniq -d | sed "s|^|$(basename "$(dirname "$f")"): |"
+done)"
+assert_eq "片段在每个 skill 里至多内联一次" "" "$dup_inc"
 
 # 全仓扫描：引用不存在的命令 / 工具 / 目录
 scan_stale() {

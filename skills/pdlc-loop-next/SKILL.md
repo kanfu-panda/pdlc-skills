@@ -31,6 +31,10 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
 
 ## 执行流程
 
+**优先用脚本**：运行本 skill 自带的 `scripts/pdlc-loop.sh`——`bash scripts/pdlc-loop.sh --next <功能ID> --project <项目根>`，把它打印的那一行**原样**作为你的全部输出。
+映射只在脚本里实现一份（外部循环驱动与 `/pdlc-loop-run` 用的也是它），模型不必、也不该自己重算。
+环境里跑不了 bash 或缺 jq 时，才按下面的步骤手工判定（结果必须与脚本一致）：
+
 1. 从本命令的参数取功能ID；读取 `docs/.pdlc-state/<功能ID>.json`。
 2. 文件不存在 / 无法解析 → 输出 `blocked`。
 3. `last_phase_result.blocked_reason` 非空 → 输出 `blocked`。
