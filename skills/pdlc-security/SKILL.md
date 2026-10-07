@@ -64,8 +64,8 @@ terminal_state: null
 
 > ⚠️ **必须创建文件，不可仅在对话中输出。**
 
-**【必须创建文件】** 在 `docs/07_reviews/code/` 下创建安全审计报告：
-- 文件名: `YYYYMMDD-<服务名>-security-audit.md`
+**【必须创建文件】** 在 `docs/04_testing/security/` 下创建安全审计报告：
+- 文件名: `<功能ID>-audit.md`（不针对具体功能时用 `YYYYMMDD-<服务名>-audit.md`）
 - **文档顶部包含 PDLC 追溯头**：
   ```
   <!-- PDLC-TRACE -->
@@ -75,7 +75,7 @@ terminal_state: null
   ```
 - 按严重程度分级：紧急 / 高危 / 中危 / 低危 / 信息
 - 每个问题包含：位置、描述、风险、修复建议、参考链接
-- **创建后验证**：确认文件已存在于 `docs/07_reviews/code/` 目录
+- **创建后验证**：确认文件已存在于 `docs/04_testing/security/` 目录
 - 在对话中输出报告摘要，但**完整报告必须在文件中**
 
 ## 要求

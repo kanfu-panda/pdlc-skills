@@ -650,5 +650,77 @@ assert_exists "pdlc-loop-run 自带驱动副本" "skills/pdlc-loop-run/scripts/p
 assert_contains "Codex 驱动委托给同一个驱动" 'bin/pdlc-loop.sh' "$(cat adapters/codex-loop-run.sh)"
 
 echo ""
+echo "Test: 契约断点与失效引用"
+# 任务看板不是主链路阶段：pdlc-task 一写状态机，就把 review 完、等发布的功能改成
+# current_stage=task / next_step=null，功能从 ship 的可发布清单里消失、循环判 blocked
+task_src="$(src_body skills/pdlc-task/SKILL.md)"
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+refute_contains "task 不写状态机" '@include templates/prompts/state-update.md' "$task_src"
+assert_contains "task 写明不写状态机的理由" '不写状态机' "$task_src"
+refute_contains "task 不再声称 status 会自动附任务进度" '运行 `pdlc-status` 时，若 `docs/06_tasks/` 目录存在，自动' "$task_src"
+refute_contains "阶段短名表不再登记 task" '| `task` | `pdlc-task` |' "$(cat references/templates/prompts/state-read.md)"
+assert_contains "implement 只完结自己做了的任务" '类型为 `feat` / `test`' "$(src_body skills/pdlc-implement/SKILL.md)"
+
+# tdd 收尾必须是红灯：正文里「实现代码使测试通过」会让下游 implement 看到全绿而整段跳过
+tdd_src="$(src_body skills/pdlc-tdd/SKILL.md)"
+refute_contains "tdd 不写实现代码" '编写最少量的代码使测试通过' "$tdd_src"
+assert_contains "tdd 红灯：命令跑不了不算红" '`127`' "$tdd_src"
+assert_contains "tdd 红灯：意外全绿要阻塞" '意外全绿' "$tdd_src"
+
+# 守卫拦截在 --autonomous 下要写 blocked，否则驱动只看到 current_stage 没动，误报「卡住」
+assert_contains "守卫拦截写 blocked_reason" '守卫拦截' "$(cat references/templates/prompts/noninteractive.md)"
+
+assert_contains "loop-next：fix 的下一跳是 review" '`pdlc-fix` 写 `pdlc-review`' "$(src_body skills/pdlc-loop-next/SKILL.md)"
+refute_contains "db-migrate 回滚脚本不用 Flyway 的 R 前缀" 'R<版本号>' "$(src_body skills/pdlc-db-migrate/SKILL.md)"
+refute_contains "db-migrate 模板也不用 R 前缀" 'R<版本号>' "$(cat references/templates/db-migrate-template.md)"
+refute_contains "bootstrap 不承诺 git checkout 能回滚新文件" '`git checkout .` 可一键回滚' "$(src_body skills/pdlc-bootstrap/SKILL.md)"
+refute_contains "fix 的 CHANGELOG 条目带缺陷 ID" '（<触发条件>）' "$(src_body skills/pdlc-fix/SKILL.md)"
+}
+# 所有写 CHANGELOG 的阶段用同一格式，ship 才能按 ID 去重（否则同一改动出现两条）
+for sk in pdlc-feature pdlc-fix pdlc-implement pdlc-review pdlc-refactor; do
+  assert_contains "${sk} 的 CHANGELOG 条目带 ID" '<简要描述>（<功能ID 或缺陷ID>）' "$(src_body "skills/${sk}/SKILL.md")"
+done
+
+# 全仓扫描：引用不存在的命令 / 工具 / 目录
+scan_stale() {
+python3 - <<'PYC'
+import os, re, sys
+sys.path.insert(0, "adapters")
+from sync_skills import collapse
+names = set(os.listdir("skills"))
+bad = []
+for n in sorted(names):
+    raw = open(f"skills/{n}/SKILL.md", encoding="utf-8").read()
+    fm, body = raw.split("\n---\n", 1)
+    body = collapse(body)
+    for m in sorted(set(re.findall(r"`/([a-z][a-z0-9-]*)", body))):
+        if m not in names:
+            bad.append(f"{n}: 引用了不存在的命令 /{m}")
+    for m in re.findall(r"make (init|new-service|new-app|status)\b", body):
+        bad.append(f"{n}: 依赖不存在的 make {m}")
+    if "user-stories/" in body:
+        bad.append(f"{n}: 读不存在的 docs/01_requirements/user-stories/")
+    if "coding-standards.md" in body:
+        bad.append(f"{n}: 规范目录是 docs/00_standards/coding/，不是 coding-standards.md")
+    # 正文写的落盘位置必须落在 frontmatter 的 produces 里，否则下游按契约路径找不到
+    sec = fm.split("produces:")[1].split("\nrequires:")[0] if "produces:" in fm else ""
+    prods = [re.split(r"[<*{]", p.strip().strip('"'))[0] for p in re.findall(r"^\s+-\s+(.+)$", sec, re.M)]
+    if not prods:
+        continue
+    for line in body.splitlines():
+        if not ("必须创建文件" in line or "创建后验证" in line or "输出到" in line or line.startswith("📦 产出")):
+            continue
+        for path in re.findall(r"`?(docs/[^`\s，。）]+)", line):
+            path = re.split(r"[<*{]", path)[0]
+            if not any(p.startswith(path) or path.startswith(p) for p in prods):
+                bad.append(f"{n}: 正文写到 {path}，frontmatter produces 是 {prods}")
+print("\n".join(sorted(set(bad))))
+PYC
+}
+stale="$(scan_stale)"
+assert_eq "skill 正文无失效引用、落盘路径与 produces 一致" "" "$stale"
+
+echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

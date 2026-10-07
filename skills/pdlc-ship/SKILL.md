@@ -47,6 +47,9 @@ terminal_state: ship_done
    - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
    - 立即结束命令，交还人类
+   - **守卫拦截也走这一条**：前置守卫（缺设计文档、缺测试、测试没红等）在 `--autonomous` 下拦住本命令时，
+     不能只输出 ⛔ 就停——同样写 `ok=false` + `blocked_reason`（写明哪条守卫、缺什么）并输出哨兵。
+     否则状态机里仍是上一阶段的 `ok=true`，循环驱动只看到 `current_stage` 没动，会把「被拦」误报成「卡住」，真实原因丢失。
 3. **破坏性操作**（发布 / 部署 / 打 tag / 触发 CI / DROP / force-push 等不可逆·外发操作）→ `--autonomous` **无效**，仍必须人工显式确认。
 4. **顺手的 sidecar 产物**（如缺失时创建 `CHANGELOG.md`、补全文档 PDLC-TRACE 的创建时间等本阶段职责内、可安全默认的辅助改动）→ 视为流程性默认，**直接做并记入 `auto_decisions[]`**；这类改动不新增外部副作用，不属破坏性操作。
 
@@ -140,7 +143,7 @@ terminal_state: ship_done
 
 1. 取 §1.1 盘点出的**可发布**功能（含人工确认归入可发布的旧版终态写法）
 2. 分组：缺陷（`B` 开头的 ID）→ "修复"；history 里有 `refactor` 阶段的功能 → "重构"；其余 → "新增"
-3. 每条用"- <简要描述>（<feature-id>）"格式写入 CHANGELOG 的 `[未发布]` 段（`/pdlc-review` 可能已为该功能追加过条目——`[未发布]` 段里已有同一功能 ID 的，不重复写）
+3. 每条用"- <简要描述>（<feature-id>）"格式写入 CHANGELOG 的 `[未发布]` 段（开发各阶段可能已按同一格式为该功能追加过条目——`[未发布]` 段里已有同一 ID 的，不重复写）
 4. 把 `[未发布]` 改为 `[<new-version>] - <今日日期>`
 
 ### 1.5 创建 Tag 并提交

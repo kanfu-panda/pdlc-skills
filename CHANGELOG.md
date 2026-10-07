@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-10-07
+
+本版修一批**契约断点与失效引用**：几处会让状态机走错、或让模型去找不存在的命令和目录的问题。另含 v1.7.0 之后的 eval 改进（agy、grok 两个平台，「虚报完成」判为契约破坏）。没有新增 skill（仍 38 个），升级不需要迁移。
+
+> ⚠️ **行为变更（请留意）**：
+> - **`/pdlc-task` 不再写状态机**。旧版写过 `current_stage=task` 的状态文件，体检会报 `current_stage-unknown`；按 `history` 里最后一个主链路阶段理解进度即可。
+> - **`/pdlc-db-migrate` 的回滚脚本前缀由 `R` 改为 `U`**。已经按旧约定生成的 `R*.sql` 不会被自动改名；用 Flyway 的项目请手动改成 `U`（`R` 在 Flyway 里是可重复迁移，会被当成普通迁移执行）。
+> - **`/pdlc-onboard` 产出改到 `docs/03_development/onboard-guide.md`**，与目标项目契约一致；**`/pdlc-perf`、`/pdlc-security` 的报告改到 `docs/04_testing/perf/`、`docs/04_testing/security/`**，与各自声明的产出一致。
+
 ### Added
 
 - **`evals/run.sh --platform agy | grok`**：在 Antigravity CLI 与 Grok CLI 上跑行为 eval。agy 臂测工作树的标准投影，运行期间临时装进 `~/.gemini/config/skills/`，退出（含 Ctrl-C）即删；那里已有 `pdlc-*` 就拒跑，不覆盖用户自己装的那份。grok 臂测它自动复用的已装 Claude Code 插件，汇总写明测的不是工作树。
@@ -15,10 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **eval 把「虚报完成」记成环境抖动**：`honest-checks` / `stale-config` 看到状态机一字未改，一律判为「agent 可能没跑起来」，重跑且不计失败。可 agent 也可能跑了、声称做完了、却什么都没写。现在输出里有交接模板的「📦 状态快照」一行而状态机没变，就判契约破坏。
+- **`/pdlc-task` 会把功能挤出发布清单**：它带着通用的状态机更新规则，每次 `start` / `done` / `blocked` 都把功能的 `current_stage` 改成 `task`、`next_step` 改成 `null`——评审完、等发布的功能于是从 `/pdlc-ship` 的可发布清单里消失，循环驱动把它判成阻塞。现在本命令不写状态机，任务进度只记在 `docs/06_tasks/`。顺带删掉「`/pdlc-status` 会自动附任务进度表」这句不成立的说法；`/pdlc-implement` 只完结 `feat` / `test` 类任务，不再把「创建评审记录」这类没做的任务也标成完成。
+- **`/pdlc-tdd` 让测试转绿**：执行步骤的第 7、8 步是「实现代码使测试通过」「重构」，和本阶段「红灯收尾」相反；照做的话下游 `/pdlc-implement` 看到全绿，会整段跳过实现。现在删掉这两步，并写明红灯怎么判：命令跑不了（`127`）不算红灯，意外全绿要阻塞交给人。
+- **守卫拦截被循环驱动误报成「卡住」**：前置守卫在 `--autonomous` 下只输出 ⛔ 就停，状态机里仍是上一阶段的 `ok=true`，驱动看到 `current_stage` 没动，按 IRON LAW 第 6 条报「卡住」（退出码 5），真实原因丢了。现在守卫拦截同样写 `ok=false` + `blocked_reason` 并输出哨兵。
+- **CHANGELOG 条目重复**：六个阶段都会写 `[未发布]`，格式各不相同（`/pdlc-fix` 的条目不带缺陷 ID），`/pdlc-ship` 按 ID 去重就认不出来，同一改动出现两条。现在统一为 `- <简要描述>（<功能ID 或缺陷ID>）`。
+- **失效引用**：`/pdlc-loop-next` 仍写着 `/pdlc-fix` 直接到发布（自 v1.7.0 起修复要先评审）；四处依赖不存在的 `make init` / `make new-service` / `make new-app` / `make status`；`/new-feature`、`/tdd` 两个命令名写错；`/pdlc-e2e` 读不存在的 `docs/01_requirements/user-stories/`；规范路径写成 `coding-standards.md`（实为 `docs/00_standards/coding/`）；`/pdlc-bootstrap` 承诺 `git checkout .` 能一键回滚（新建文件删不掉）。
 - **`evals/run.sh --help` 把两行代码当成用法打印**：用法说明写死打印第 3–17 行，注释变短后把 `set -euo pipefail` 等也印了出来。现在打印到第一行代码为止。
 
 ### Changed
 
+- `tests/install-smoke.sh` 新增 20 条守卫：上述各项各一条，外加一次全仓扫描——正文引用的 `/命令` 必须存在、不得依赖上述 `make` target 和目录、正文写的落盘位置必须落在 frontmatter 的 `produces` 里。
 - **平台表更正**：Antigravity CLI 1.2.9 实测不读工作区的 `.agents/skills/`，要用 `--dest ~/.gemini/config/skills` 装；Grok CLI 不用另装。README、使用手册与 ADR 0007 同步。
 
 ## [1.7.0] - 2026-09-24
@@ -477,5 +492,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.1...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0

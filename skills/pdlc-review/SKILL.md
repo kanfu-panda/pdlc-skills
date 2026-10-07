@@ -44,6 +44,9 @@ recommended_effort: medium
    - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
    - 立即结束命令，交还人类
+   - **守卫拦截也走这一条**：前置守卫（缺设计文档、缺测试、测试没红等）在 `--autonomous` 下拦住本命令时，
+     不能只输出 ⛔ 就停——同样写 `ok=false` + `blocked_reason`（写明哪条守卫、缺什么）并输出哨兵。
+     否则状态机里仍是上一阶段的 `ok=true`，循环驱动只看到 `current_stage` 没动，会把「被拦」误报成「卡住」，真实原因丢失。
 3. **破坏性操作**（发布 / 部署 / 打 tag / 触发 CI / DROP / force-push 等不可逆·外发操作）→ `--autonomous` **无效**，仍必须人工显式确认。
 4. **顺手的 sidecar 产物**（如缺失时创建 `CHANGELOG.md`、补全文档 PDLC-TRACE 的创建时间等本阶段职责内、可安全默认的辅助改动）→ 视为流程性默认，**直接做并记入 `auto_decisions[]`**；这类改动不新增外部副作用，不属破坏性操作。
 
@@ -134,7 +137,7 @@ recommended_effort: medium
 5. **SQL 注入风险**：自动改写为参数化查询
 6. **XSS 风险**：自动添加输出转义
 7. **缺失分页**：自动为列表接口补充分页逻辑
-8. **缺失 CHANGELOG**：自动追加变更条目
+8. **缺失 CHANGELOG**：自动追加变更条目。条目格式 `- <简要描述>（<功能ID 或缺陷ID>）`；`[未发布]` 里已有同一 ID 的条目就不再追加（`/pdlc-ship` 按 ID 去重）
 
 **不可自动修复的问题**（记录到评审报告，标记为需人工处理）：
 - 架构层面的设计问题

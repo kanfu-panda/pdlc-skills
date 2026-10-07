@@ -32,7 +32,7 @@ terminal_state: e2e_done
 编写端到端（E2E）测试用例，验证完整的用户操作流程。
 
 ## 工作流程
-1. **阅读需求文档**: 阅读 `docs/01_requirements/user-stories/` 下的用户故事和验收标准
+1. **阅读需求文档**: 阅读 `docs/01_requirements/prd/` 下对应 PRD 的用户故事与验收标准
 2. **阅读 UI 设计**: 阅读 `docs/02_design/ui-ux/` 下的 UI 设计文档
 3. **梳理测试场景**: 按用户旅程梳理核心操作路径
 4. **编写测试计划**: 在 `docs/04_testing/e2e-tests/` 下补充 E2E 测试用例

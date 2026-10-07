@@ -50,8 +50,8 @@ pdlc-tdd | pdlc-implement | pdlc-review | done | blocked
    | 其它 | `blocked` | |
 
    > ⛔ **`null` 判 `blocked` 而不是 `done`**：机械收敛段里没有任何阶段会合法写出
-   > `next_step: null`——`pdlc-implement` 写 `pdlc-review`、`pdlc-review` 与 `pdlc-fix`
-   > 都写 `pdlc-ship`。**收敛完成的信号是 `next_step=pdlc-ship`**（上表已单独映射到
+   > `next_step: null`——`pdlc-implement` 与 `pdlc-fix` 写 `pdlc-review`，`pdlc-review`
+   > 写 `pdlc-ship`（即 `pdlc-fix` 写 `pdlc-review`：修复也要先过评审）。**收敛完成的信号是 `next_step=pdlc-ship`**（上表已单独映射到
    > `done`），不是 `null`。所以 `null` 只可能是状态残缺，判 `done` 等于把「什么都
    > 没发生」报成「机械阶段已完成」——上层会以为可以进发布评估了。
    >

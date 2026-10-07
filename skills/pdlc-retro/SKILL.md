@@ -100,9 +100,11 @@ terminal_state: retro_done
 | `deploy` | `pdlc-deploy` | |
 | `fix` | `pdlc-fix` | `bugfix` |
 | `refactor` | `pdlc-refactor` | |
-| `task` | `pdlc-task` | |
 | `feature` | `pdlc-feature` | |
 <!-- stage-names:end -->
+
+> 旧版 `/pdlc-task` 曾写入 `task`，现已不写（任务看板不是阶段，写入会覆盖主链路的 `current_stage` / `next_step`）。
+> 见到 `current_stage=task` 说明那次任务操作把功能的阶段盖掉了：体检报 `current_stage-unknown`，向用户说明后按 `history` 里最后一个主链路阶段理解进度。
 
 ### 3. 体检块的格式（放在输出最前面）
 

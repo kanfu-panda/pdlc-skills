@@ -105,7 +105,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All eleven count** — 616 assertions at the time of writing; run them for the current number rather
+**All eleven count** — 635 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
@@ -142,7 +142,7 @@ Each `skills/pdlc-<name>/SKILL.md` has:
 - Shared prompt fragments (IRON LAW, handoff, self-audit, state update, …) — authored once in `references/templates/prompts/<x>.md`, referenced as `<!-- @include templates/prompts/<x>.md -->`, and **inlined at build time** by `adapters/sync_skills.py` between generated begin / end markers
 - `assets/` / `scripts/` next to `SKILL.md` — copies of the templates and `bin/` scripts the body references as `` `assets/<file>` `` / `` `scripts/<file>` ``, synced the same way
 
-Why build-time: when a skill fires, the model is handed the skill's base directory and the body — nothing else. It doesn't see the frontmatter (verified), and nothing tells it where `references/` or `bin/` live, so a runtime "go read the fragment" convention was followed only some of the time. Everything the model needs therefore lives inside the skill folder, which is also what the Agent Skills open standard asks for. For the 12 state-writing skills, the sync step also writes the frontmatter's `stage` / `next_step` into the body as a `pdlc:meta` block.
+Why build-time: when a skill fires, the model is handed the skill's base directory and the body — nothing else. It doesn't see the frontmatter (verified), and nothing tells it where `references/` or `bin/` live, so a runtime "go read the fragment" convention was followed only some of the time. Everything the model needs therefore lives inside the skill folder, which is also what the Agent Skills open standard asks for. For the 11 state-writing skills, the sync step also writes the frontmatter's `stage` / `next_step` into the body as a `pdlc:meta` block.
 
 ## Layer structure
 

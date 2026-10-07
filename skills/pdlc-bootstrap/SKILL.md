@@ -33,7 +33,7 @@ terminal_state: null
 ## 前置检查
 
 1. 检查是否有未提交的变更（`git status`），如果有，提示用户先 commit 或 stash，然后继续
-2. 检查 PDLC 目录结构是否存在（`docs/00_standards/` 等），如不存在则先运行 `make init`
+2. 检查 PDLC 目录结构是否存在（`docs/00_standards/` 等），如不存在则直接创建这些目录
 
 ## 功能ID分配
 
@@ -161,8 +161,8 @@ terminal_state: null
 - 运行 `/pdlc-prd <需求描述>` 完善产品需求文档
 - 运行 `/pdlc-design <设计目标>` 细化技术设计
 - 运行 `/pdlc-tdd <功能描述>` 开始测试驱动开发
-- 运行 `git diff` 预览所有变更
-- 运行 `git checkout .` 可一键回滚所有生成内容
+- 运行 `git status` 查看新建与改动的文件（新建文件不在 `git diff` 里）
+- 想撤销：改动过的已跟踪文件用 `git checkout -- <路径>` 还原；新建文件先 `git clean -n` 预览、确认无误再删（`git checkout .` 删不掉新建文件）
 ```
 
 ## 要求

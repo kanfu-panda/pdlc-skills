@@ -32,7 +32,7 @@ terminal_state: null
 在项目中添加一个新的后端微服务，并生成完整的目录结构和初始文档。
 
 ## 工作流程
-1. 运行 `make new-service` 或直接在 `backend/services/` 下创建服务目录
+1. 项目有 `Makefile` 且含创建服务的 target 时用它；否则直接在 `backend/services/` 下创建服务目录
 2. 根据技术栈生成标准目录结构
 3. 创建服务的 README.md、CHANGELOG.md
 4. 在 `backend/services/<服务名>/docs/` 下创建 api-design.md 初始文档
