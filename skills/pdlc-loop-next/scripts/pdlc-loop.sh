@@ -291,7 +291,15 @@ if ! mkdir "$LOCK" 2>/dev/null; then
     if [[ -n "$other" ]] && kill -0 "$other" 2>/dev/null; then
         die "这个项目已有一个循环在跑（进程 ${other}）。两个循环同时写同一批状态机会互相覆盖"
     fi
-    rm -rf "$LOCK"
+    # 死锁：先原子地挪走再建。两个进程同时发现死锁时只有一个挪得动；
+    # 挪走的若不是刚才查过的那把（别人已抢先接管、建了新锁），就挪回去让路
+    stale="$LOCK.stale.$$"
+    mv "$LOCK" "$stale" 2>/dev/null || die "另一个循环刚接管了运行锁 $LOCK"
+    if [[ "$(cat "$stale/pid" 2>/dev/null)" != "$other" ]]; then
+        mv "$stale" "$LOCK" 2>/dev/null
+        die "另一个循环刚接管了运行锁 $LOCK"
+    fi
+    rm -rf "$stale"
     mkdir "$LOCK" 2>/dev/null || die "无法获取运行锁 $LOCK"
 fi
 echo $$ > "$LOCK/pid"

@@ -27,8 +27,8 @@ pass=0
 fail=0
 
 if ! command -v jq >/dev/null 2>&1; then
-    echo "⚠️  jq 未安装，跳过 state-lint 测试"
-    exit 0
+    echo "⚠️  jq 未安装，无法运行 state-lint 测试——这不算通过" >&2
+    exit 1
 fi
 
 TMP="$(mktemp -d)"

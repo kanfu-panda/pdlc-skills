@@ -19,8 +19,8 @@ pass=0
 fail=0
 
 if ! command -v jq >/dev/null 2>&1; then
-    echo "⚠️  jq 未安装，跳过 evals runner 测试"
-    exit 0
+    echo "⚠️  jq 未安装，无法运行 evals runner 测试——这不算通过" >&2
+    exit 1
 fi
 
 expect_n="$(find evals/fixtures -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"

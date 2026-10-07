@@ -88,6 +88,20 @@ Equivalent native commands:
 EOF
 }
 
+# ver_lt A B —— A 是否严格小于 B（按 x.y.z 逐段数值比较；1.7.9 < 1.7.10）
+ver_lt() {
+  local a b i x y
+  IFS=. read -r -a a <<< "$1"
+  IFS=. read -r -a b <<< "$2"
+  for i in 0 1 2; do
+    x="${a[$i]:-0}"; y="${b[$i]:-0}"
+    x="${x%%[!0-9]*}"; y="${y%%[!0-9]*}"
+    (( 10#${x:-0} < 10#${y:-0} )) && return 0
+    (( 10#${x:-0} > 10#${y:-0} )) && return 1
+  done
+  return 1
+}
+
 # ─── Subcommand: --version ───
 do_version() {
   local installed_ver="not installed"
@@ -112,16 +126,23 @@ do_version() {
   fi
   echo "  Installed:    ${installed_ver}"
   echo "  Latest:       ${latest_ver}"
+  # 其它工具用的投影由 install.sh --target codex | agents 装，装时写了版本戳
+  local f
+  for f in "${HOME}/.codex/skills/.pdlc-version:Codex skills" "${HOME}/.agents/skills/.pdlc-version:Agent Skills"; do
+    [[ -f "${f%%:*}" ]] && echo "  ${f#*:}: $(head -1 "${f%%:*}")"
+  done
   echo ""
 
   if [[ "$latest_ver" != "unable to fetch" \
-        && "$installed_ver" != "not installed" \
-        && "$installed_ver" != "$latest_ver" ]]; then
+        && "$installed_ver" != "not installed" ]] && ver_lt "$installed_ver" "$latest_ver"; then
     echo "⚠️  Installed (${installed_ver}) is behind latest (${latest_ver})."
     echo "    Upgrade: bash install.sh --upgrade"
   elif [[ "$installed_ver" == "not installed" ]]; then
     echo "ℹ️  Not installed yet."
     echo "    Install: bash install.sh --global"
+  elif [[ "$latest_ver" == "unable to fetch" ]]; then
+    # 查不了就说查不了，不能报「已是最新」
+    echo "ℹ️  Couldn't fetch the latest version (offline?), so whether ${installed_ver} is current is unknown."
   else
     echo "✅ Up to date."
   fi
@@ -134,6 +155,28 @@ do_version() {
 CODEX_SKILLS_DIR="${HOME}/.codex/skills"
 CODEX_PROMPTS_DIR="${HOME}/.codex/prompts"   # legacy (v1.5.0 wrongly installed here) — cleaned on install/uninstall
 CODEX_PDLC_DIR="${HOME}/.codex/pdlc"
+
+# install_projection <构建产物的 skills 目录> <目标目录>
+# 先拷进目标目录下的暂存目录、核对数量，成功后才删旧换新——拷到一半失败（磁盘满、权限）时用户原有的安装还在。
+# 只动 pdlc-* 与版本戳，目标目录里的其它 skill 不碰。
+install_projection() {
+  local src="$1" dest="$2" stage want got d
+  stage="${dest}/.pdlc-staging.$$"
+  rm -rf "$stage"
+  mkdir -p "$stage"
+  if ! cp -R "$src"/pdlc-* "$stage"/; then
+    rm -rf "$stage"; echo "Error: copy to ${dest} failed; the existing install was left untouched." >&2; exit 1
+  fi
+  want=$(find "$src" -mindepth 1 -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
+  got=$(find "$stage" -mindepth 1 -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
+  if [[ "$want" -eq 0 || "$want" != "$got" ]]; then
+    rm -rf "$stage"; echo "Error: staged ${got} of ${want} skills; the existing install was left untouched." >&2; exit 1
+  fi
+  rm -rf "${dest:?}"/pdlc-*/
+  for d in "$stage"/pdlc-*; do mv "$d" "$dest"/; done
+  rmdir "$stage"
+  if [[ "$IS_LOCAL_CLONE" -eq 1 ]]; then head -1 "$SCRIPT_DIR/VERSION" > "$dest/.pdlc-version"; fi
+}
 
 require_python3() {
   if ! command -v python3 >/dev/null 2>&1; then
@@ -172,10 +215,8 @@ EOF
   mkdir -p "$CODEX_SKILLS_DIR" "$CODEX_PDLC_DIR"
   # v1.6.4 and earlier copied templates here; each skill now ships its own under assets/.
   rm -rf "${CODEX_PDLC_DIR:?}/templates"
-  # Refresh our skill dirs (remove old copies first so renamed/removed files don't linger).
-  # No trailing slash on the source glob: BSD cp -R copies each dir itself, not its contents.
-  rm -rf "${CODEX_SKILLS_DIR}"/pdlc-*/
-  cp -R "$build_dir"/skills/pdlc-* "$CODEX_SKILLS_DIR"/
+  # Refresh our skill dirs (old copies are replaced wholesale so renamed/removed files don't linger).
+  install_projection "$build_dir/skills" "$CODEX_SKILLS_DIR"
   cp "$build_dir/pdlc-methodology.md" "$CODEX_PDLC_DIR"/
 
   local n
@@ -198,7 +239,7 @@ EOF
 do_codex_uninstall() {
   # Only ever touches our own namespaced paths under ~/.codex.
   echo "Removing pdlc skills from ${CODEX_SKILLS_DIR} ..."
-  rm -rf "${CODEX_SKILLS_DIR}"/pdlc-*/
+  rm -rf "${CODEX_SKILLS_DIR}"/pdlc-*/ "${CODEX_SKILLS_DIR}/.pdlc-version"
   clean_legacy_codex_prompts
   if [[ "$CODEX_PDLC_DIR" == "${HOME}/.codex/pdlc" && -d "$CODEX_PDLC_DIR" ]]; then
     rm -rf "$CODEX_PDLC_DIR"
@@ -239,8 +280,7 @@ EOF
   echo "Installing Agent Skills → ${dest}"
   mkdir -p "$dest"
   # Refresh our own dirs only; other skills in the same directory are left alone.
-  rm -rf "${dest:?}"/pdlc-*/
-  cp -R "$build_dir"/skills/pdlc-* "$dest"/
+  install_projection "$build_dir/skills" "$dest"
   n=$(find "$build_dir/skills" -maxdepth 1 -type d -name 'pdlc-*' | wc -l | tr -d ' ')
   echo ""
   echo "✅ Done. ${n} pdlc skills installed in ${dest}"
@@ -252,7 +292,7 @@ do_agents_uninstall() {
   local dest
   dest="$(agents_dest)"
   echo "Removing pdlc skills from ${dest} ..."
-  rm -rf "${dest:?}"/pdlc-*/
+  rm -rf "${dest:?}"/pdlc-*/ "${dest:?}/.pdlc-version"
   echo "✅ Removed. Other skills in ${dest} were not touched."
 }
 
@@ -364,6 +404,9 @@ case "$ACTION" in
     echo "   https://github.com/kanfu-panda/pdlc-skills"
     ;;
   upgrade)
+    # 先刷新 marketplace：否则 plugin update 只看本地缓存的旧目录，可能「升级」到原来的版本
+    echo "Refreshing marketplace ${MARKETPLACE_NAME}..."
+    claude plugin marketplace update "${MARKETPLACE_NAME}" 2>&1 | tail -3
     echo "Updating ${PLUGIN_NAME}@${MARKETPLACE_NAME}..."
     claude plugin update "${PLUGIN_NAME}@${MARKETPLACE_NAME}"
     echo ""

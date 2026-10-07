@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.5] - 2026-10-07
+
+本版加固安装、升级与测试基础设施：测试少了依赖不再报绿，升级先刷新市场索引，投影安装中途失败不再留下半套 skill。skill 正文没有改动（仍 38 个），升级不需要迁移。
+
+> ⚠️ **行为变更（请留意）**：
+> - **`install.sh upgrade` 先执行 `claude plugin marketplace update`**：此前只跑 `claude plugin update`，市场索引没刷新时会回报「已是最新」。
+> - **测试脚本缺依赖时退出码为 1**（此前打印「未安装」后以 0 退出，在测试循环里看起来是通过）。
+
+### Added
+
+- **两个行为评测场景**（A-live，共 8 个）：`tdd-red-verified` 验 `/pdlc-tdd` 收尾是红灯、不写实现代码；`review-not-done` 验评审通过写 `review → pdlc-ship`、不写任何 `_done`。两处都是 1.7.1 修过的契约，此前只有文字守卫，没有真跑验证。判定逻辑在 `tests/evals-scenario-check.sh` 里各有通过 / 契约破坏 / 抖动的桩测。
+- **`install.sh --version` 显示投影安装的版本**：`--target codex` / `agents` 装的 skill 现在写 `.pdlc-version`，`--version` 一并列出，旧了会提示。
+
+### Fixed
+
+- **投影安装中途失败会留下半套 skill**：`install.sh --target codex | agents` 改为先装到临时目录、核对数量后再替换。
+- **`install.sh --version` 取不到最新版本时报「Up to date」**：网络不通时改为明说取不到。
+- **`bin/pdlc-loop.sh` 接管死锁时有竞态**：两个驱动同时发现死锁，可能都认为自己拿到了锁。改为先把旧锁原子地挪走再判断，并清掉挪走的目录。
+- **`tests/frontmatter-check.sh` 只查 IRON LAW 片段存在**，不查条数；现在断言完整版 6 条、工具版 3 条，删掉一条会变红。
+- 卸载时一并删除 `.pdlc-version`。
+
 ## [1.7.4] - 2026-10-07
 
 本版做减法与对齐：工具型命令不再背负它们做不到的阶段规则，重复的规则只留一份，含糊的命令描述写清楚各自管什么。没有新增或删除 skill（仍 38 个），升级不需要迁移。
@@ -573,5 +594,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.4...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.5...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0

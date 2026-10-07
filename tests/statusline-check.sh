@@ -14,10 +14,10 @@ export NO_COLOR=1
 pass=0
 fail=0
 
-# jq 缺失则跳过（脚本本身设计为无 jq 静默降级，测试无意义）
+# jq 缺失时无法测试：退出 1，免得「什么都没测」被门禁当成通过（脚本本身无 jq 时静默降级）
 if ! command -v jq >/dev/null 2>&1; then
-    echo "⚠️  jq 未安装，跳过 statusline 场景测试"
-    exit 0
+    echo "⚠️  jq 未安装，无法运行 statusline 场景测试——这不算通过" >&2
+    exit 1
 fi
 
 # 建一个临时项目根，喂给脚本的 stdin JSON 指向它

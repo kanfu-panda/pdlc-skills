@@ -23,8 +23,8 @@ bad() { echo "  ✗ $1"; [[ -n "${2:-}" ]] && printf '    %s\n' "$2"; fail=$((fa
 assert_eq() { if [[ "$3" == "$2" ]]; then ok "$1"; else bad "$1" "期望 ${2}，实际 $3"; fi; }
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "⚠️  python3 未安装，跳过 Agent Skills 投影测试"
-    exit 0
+    echo "⚠️  python3 未安装，无法运行 Agent Skills 投影测试——这不算通过" >&2
+    exit 1
 fi
 
 ROOT="$(mktemp -d)"
@@ -163,9 +163,13 @@ assert_eq "用户级安装退出 0" "0" "$rc"
 assert_eq "装到 ~/.agents/skills 的 pdlc skill 数" "36" "$(find "$H/.agents/skills" -mindepth 1 -maxdepth 1 -name 'pdlc-*' | wc -l | tr -d ' ')"
 [[ -f "$H/.agents/skills/my-skill/SKILL.md" ]] && ok "不动目标目录里的其它 skill" || bad "其它 skill 被删了"
 [[ -x "$H/.agents/skills/pdlc-status/scripts/pdlc-loop.sh" ]] && ok "安装后脚本仍可执行" || bad "安装后脚本不可执行"
+# 先拷进暂存目录、核对数量再替换：拷到一半失败时用户原有的安装还在
+assert_eq "装完不留暂存目录" "0" "$(find "$H/.agents/skills" -mindepth 1 -maxdepth 1 -name '.pdlc-staging*' | wc -l | tr -d ' ')"
+assert_eq "写入版本戳 .pdlc-version" "$(head -1 VERSION)" "$(cat "$H/.agents/skills/.pdlc-version" 2>/dev/null)"
 inst --target agents --uninstall; rc=$?
 assert_eq "卸载退出 0" "0" "$rc"
 assert_eq "卸载后没有 pdlc-* 残留" "0" "$(find "$H/.agents/skills" -mindepth 1 -maxdepth 1 -name 'pdlc-*' | wc -l | tr -d ' ')"
+[[ -e "$H/.agents/skills/.pdlc-version" ]] && bad "卸载后版本戳还在" || ok "卸载一并删掉版本戳"
 [[ -f "$H/.agents/skills/my-skill/SKILL.md" ]] && ok "卸载不动其它 skill" || bad "卸载删了其它 skill"
 P="$ROOT/proj"; mkdir -p "$P"
 inst --target agents --project "$P"; rc=$?
