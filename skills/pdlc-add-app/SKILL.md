@@ -32,7 +32,7 @@ terminal_state: null
 在项目中添加一个新的前端应用，并生成完整的目录结构和初始文档。
 
 ## 工作流程
-1. 运行 `make new-app` 或直接在 `frontend/web/` 下创建应用目录（或 `frontend/h5/`、`frontend/miniprogram/`、`frontend/app/`）
+1. 项目有 `Makefile` 且含创建应用的 target 时用它；否则直接在 `frontend/web/` 下创建应用目录（或 `frontend/h5/`、`frontend/miniprogram/`、`frontend/app/`）
 2. 根据技术栈生成标准目录结构
 3. 创建应用的 README.md、CHANGELOG.md、package.json
 4. 在 `frontend/<分类>/<应用名>/docs/` 下创建初始文档

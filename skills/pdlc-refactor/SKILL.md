@@ -79,7 +79,7 @@ require them.
 - 重构提交信息格式: `refactor: <简要描述>`
 - 严禁在重构中混入新功能
 - 每个重构步骤都要保证测试通过
-- 更新 CHANGELOG.md
+- 更新 CHANGELOG.md：条目格式 `- <简要描述>（<功能ID 或缺陷ID>）`；`[未发布]` 里已有同一 ID 的条目就不再追加（`/pdlc-ship` 按 ID 去重）
 
 重构目标: $ARGUMENTS
 

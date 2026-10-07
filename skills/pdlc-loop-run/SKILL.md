@@ -30,6 +30,9 @@ terminal_state: null
    - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
    - 立即结束命令，交还人类
+   - **守卫拦截也走这一条**：前置守卫（缺设计文档、缺测试、测试没红等）在 `--autonomous` 下拦住本命令时，
+     不能只输出 ⛔ 就停——同样写 `ok=false` + `blocked_reason`（写明哪条守卫、缺什么）并输出哨兵。
+     否则状态机里仍是上一阶段的 `ok=true`，循环驱动只看到 `current_stage` 没动，会把「被拦」误报成「卡住」，真实原因丢失。
 3. **破坏性操作**（发布 / 部署 / 打 tag / 触发 CI / DROP / force-push 等不可逆·外发操作）→ `--autonomous` **无效**，仍必须人工显式确认。
 4. **顺手的 sidecar 产物**（如缺失时创建 `CHANGELOG.md`、补全文档 PDLC-TRACE 的创建时间等本阶段职责内、可安全默认的辅助改动）→ 视为流程性默认，**直接做并记入 `auto_decisions[]`**；这类改动不新增外部副作用，不属破坏性操作。
 

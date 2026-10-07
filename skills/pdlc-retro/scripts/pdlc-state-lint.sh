@@ -25,7 +25,7 @@ set -u
 #   LEGAL_STAGES / STAGE_ALIASES 必须与 state-read.md 的 stage-names 表一致；
 #   FINDING_CODES 必须与 state-read.md 的偏差代码表逐一对应。
 # 本脚本在目标项目里运行、读不到插件的 skills/，所以清单只能内嵌——断言保证它不漂。
-LEGAL_STAGES="requirements design tdd impl review e2e ship deploy fix refactor task feature"
+LEGAL_STAGES="requirements design tdd impl review e2e ship deploy fix refactor feature"
 STAGE_ALIASES="prd:requirements implement:impl implementation:impl bugfix:fix"
 # shellcheck disable=SC2034  # 脚本自己不读它：它是偏差代码的声明清单，供 frontmatter-check 与片段对账
 FINDING_CODES="json-invalid missing-field field-type-invalid missing-last_phase_result terminal_state-in-instance non-contract-field stage-alias stage-unknown current_stage-unknown next_step-not-command timestamp-no-time relations-not-object relations-unknown-type relations-target-not-id relations-dangling id-prefix-mismatch second-state-dir"

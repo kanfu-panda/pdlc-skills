@@ -47,6 +47,9 @@ recommended_effort: medium
    - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
    - 立即结束命令，交还人类
+   - **守卫拦截也走这一条**：前置守卫（缺设计文档、缺测试、测试没红等）在 `--autonomous` 下拦住本命令时，
+     不能只输出 ⛔ 就停——同样写 `ok=false` + `blocked_reason`（写明哪条守卫、缺什么）并输出哨兵。
+     否则状态机里仍是上一阶段的 `ok=true`，循环驱动只看到 `current_stage` 没动，会把「被拦」误报成「卡住」，真实原因丢失。
 3. **破坏性操作**（发布 / 部署 / 打 tag / 触发 CI / DROP / force-push 等不可逆·外发操作）→ `--autonomous` **无效**，仍必须人工显式确认。
 4. **顺手的 sidecar 产物**（如缺失时创建 `CHANGELOG.md`、补全文档 PDLC-TRACE 的创建时间等本阶段职责内、可安全默认的辅助改动）→ 视为流程性默认，**直接做并记入 `auto_decisions[]`**；这类改动不新增外部副作用，不属破坏性操作。
 
@@ -200,9 +203,14 @@ recommended_effort: medium
        - [已修复] <问题描述>
      ```
 
-6. **确认测试失败**: 运行测试确认全部失败（红灯）。运行命令取自 `docs/00_standards/test-commands.yml` 的 `unit`（不存在则回退项目约定）。收尾写 `last_phase_result.checks = { "red_verified": true }`（红灯已由真跑退出码验证，非模型自评）
-7. **实现代码**: 编写最少量的代码使测试通过
-8. **重构**: 在测试通过的前提下优化代码
+6. **确认测试失败**: 运行测试确认全部失败（红灯）。运行命令取自 `docs/00_standards/test-commands.yml` 的 `unit`（不存在则回退项目约定）。按退出码判定（注意方向与 `tests_pass` 相反——这里**失败才是要的结果**）：
+   - **非 0，且失败来自断言**（新写的测试在报错）→ 红灯成立，收尾写 `last_phase_result.checks = { "red_verified": true }`（由真跑退出码验证，非模型自评）
+   - **非 0，但失败来自编译 / 导入错误**（如被测函数还不存在）→ 也算红灯，但在报告里写明是哪一种；runner 能区分时优先让测试以断言失败的形式红
+   - **`127` / `command not found` / 命令为空** → 命令跑不了，**不是红灯**：`red_verified` 省略或写 `null`，`ok=false`，`blocked_reason` 写明测试命令跑不了（多为 `test-commands.yml` 过期）
+   - **意外全绿**（新写的测试一条都没失败）→ 测试没有约束住待实现的行为（或代码早已存在）：`ok=false`，`blocked_reason` 写明哪些测试意外通过，交给人判断
+
+> ⛔ **本阶段不写实现代码，也不重构**。实现是 `/pdlc-implement` 的事：本阶段若让测试转绿，
+> 下游 implement 会看到全绿而跳过整段实现，红灯验证也就没有意义了。
 
 ## 要求
 

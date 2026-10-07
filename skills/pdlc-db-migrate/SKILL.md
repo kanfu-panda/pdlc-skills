@@ -77,7 +77,8 @@ terminal_state: null
 ### 文件命名
 
 - UP 脚本：`V<版本号>__<描述>.sql`
-- DOWN 脚本（回滚）：`R<版本号>__<描述>.sql`
+- DOWN 脚本（回滚）：`U<版本号>__<描述>.sql`
+  > ⚠️ 不要用 `R` 前缀：Flyway 把 `R` 当作**可重复迁移**（内容一变就重跑），回滚脚本会被当成普通迁移执行；Flyway 的撤销前缀正是 `U`。
 - 版本号格式：`YYYYMMDD_HHMMSS`（如 `20260402_143052`）
 
 ### 文件头部注释
@@ -108,7 +109,7 @@ terminal_state: null
    - 包含头部注释
    - 包含 CREATE TABLE / ALTER TABLE / INSERT 等语句
    - 每条语句末尾添加分号
-6. 生成 DOWN 迁移文件：`R<版本号>__<描述>.sql`
+6. 生成 DOWN 迁移文件：`U<版本号>__<描述>.sql`
    - 包含头部注释
    - 包含对应的回滚操作（DROP TABLE / ALTER TABLE DROP COLUMN 等）
    - 操作顺序与 UP 相反
@@ -148,7 +149,7 @@ terminal_state: null
 1. 读取 `migrations/migration_history.md` 确定已执行的迁移
 2. 取最近 N 个已执行的迁移（默认 N=1）
 3. 按版本号降序排列
-4. 找到对应的 `R*.sql` 回滚文件
+4. 找到对应的 `U*.sql` 回滚文件
 5. 逐个输出回滚 SQL 内容，并提示用户确认
 6. 用户确认后，更新 `migrations/migration_history.md` 中的状态为「已回滚」
 7. 输出回滚结果摘要

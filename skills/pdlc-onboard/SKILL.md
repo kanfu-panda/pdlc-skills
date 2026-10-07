@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: lifecycle
 produces:
-  - docs/ONBOARDING.md
+  - docs/03_development/onboard-guide.md
 requires: []
 next_step: null
 terminal_state: null
@@ -33,7 +33,7 @@ terminal_state: null
 
 ## 工作流程
 1. 扫描整个项目结构，了解当前状态
-2. 运行 `make status` 查看服务和应用列表
+2. 扫描项目目录，列出服务和应用（项目自带 `Makefile` / 脚本能列出时可直接用）
 3. 阅读 `CLAUDE.md`、`README.md` 获取项目概述
 4. 汇总输出新人引导信息
 
@@ -51,14 +51,14 @@ terminal_state: null
 - 配置文件说明
 
 ### 3. 开发规范
-- 引用 `docs/00_standards/coding-standards.md`（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
+- 引用 `docs/00_standards/coding/` 下的规范（未命中 → 提示 `consider /pdlc-standard add coding/<topic>`）
 - Git 分支策略和提交规范
 - PDLC 工作流说明
 
 ### 4. 快速上手
 - 如何运行项目
 - 如何运行测试
-- 如何创建新功能（指向 `/new-feature` 命令）
+- 如何创建新功能（指向 `/pdlc-feature` 命令）
 - 常用 Make 命令一览
 
 ### 5. 关键文档索引
@@ -128,6 +128,6 @@ $ARGUMENTS
 
 ```
 ✅ 新人引导文档 完成
-📦 产出：docs/ONBOARDING.md
+📦 产出：docs/03_development/onboard-guide.md
 👉 下一步：（本次流程结束，无后续）
 ```

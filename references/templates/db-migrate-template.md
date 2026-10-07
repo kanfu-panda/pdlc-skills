@@ -57,11 +57,11 @@ INSERT INTO <table_name> (<columns>) VALUES
 
 ## 2. DOWN 回滚脚本模板
 
-文件名格式：`R<YYYYMMDD_HHMMSS>__<描述>.sql`
+文件名格式：`U<YYYYMMDD_HHMMSS>__<描述>.sql`（`U` 是 Flyway 的撤销前缀；`R` 在 Flyway 里是可重复迁移，不能用）
 
 ```sql
 -- ==============================================
--- 回滚脚本: R<版本号>__<描述>.sql
+-- 回滚脚本: U<版本号>__<描述>.sql
 -- 功能ID: <功能ID>
 -- 描述: 回滚 - <变更描述>
 -- 作者: <作者>
