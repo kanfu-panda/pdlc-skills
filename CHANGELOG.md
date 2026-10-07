@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-10-07
+
+本版把两件确定性的事从模型手里拿走：**`checks` 由脚本按退出码生成**，**状态机写完由脚本体检**。此前键名、布尔类型、退出码三态都靠模型读正文自觉，真机上同一份项目轮与轮之间就换一种错法。没有新增 skill（仍 38 个），升级不需要迁移。
+
+> ⚠️ **行为变更（请留意）**：
+> - **循环驱动多了一种停机**：`ok=true` 但 `checks` 里有 `false` 时，`bin/pdlc-loop.sh` 与 `/pdlc-loop-run` 按阻塞停下（退出码 2），不再往下一阶段推。
+> - **体检多了 4 种偏差**：`checks-key-unknown`、`checks-value-invalid`、`ok-checks-mismatch`、`done-legacy`。旧版写下的 `feature_done` / `review_done` 等会被点名（`/pdlc-ship` 本来就会请人确认它们是否已发布）。
+> - **安装体积略增**：写状态机的 11 个命令各带一份 `pdlc-state-lint.sh`，跑 check 的 5 个命令各带一份 `pdlc-checks.sh`。常驻上下文的 token 不变。
+
+### Added
+
+- **`bin/pdlc-checks.sh`**：读 `docs/00_standards/test-commands.yml`，逐条真跑，stdout 输出 `last_phase_result.checks` 的 JSON——退出码 `0` → `true`，非 0 → `false`，`126` / `127`、空命令、没填的模板占位 → `null`（无法判定，并提示 yml 疑似过期）。`--only` 选本阶段要的项，`--red` 给 tdd 验红灯（输出 `red_verified`，方向相反；意外全绿给出阻塞提示）。`/pdlc-tdd`、`/pdlc-implement`、`/pdlc-review`、`/pdlc-quality` 改为把它的输出原样写入；`tests/checks-check.sh` 15 条断言守住映射。
+- **状态机写完即体检**：写状态机的 11 个命令收尾时跑 `scripts/pdlc-state-lint.sh`，本功能的偏差当场改正，改不了的写进报告；体检跑不了（缺 jq 等）要写明「未体检」。
+- **`pdlc-state-lint.sh` 新增 4 种偏差**：`checks` 里有状态机不认的键（如照抄 yml 的 `unit`）、值不是布尔或 `null`、`ok=true` 却有 check 为 `false`、`ship_done` / `deploy_done` 以外的 `_done` 写法。读侧的处理方式写进 `state-read.md` 的偏差代码表。
+
+### Fixed
+
+- **循环驱动只信 `ok`**：`bin/pdlc-loop.sh` 步后只看 `last_phase_result.ok`，模型写了 `ok:true` 而 `tests_pass:false`，功能照样被推到下一阶段。现在两者矛盾即按阻塞停，并点名是哪一项。`/pdlc-loop-run` 的 Task 版同步。
+
+### Changed
+
+- `evals/EVALS.md` 已知限制 3（Codex 臂 `checks` 写法不稳）补更正：2026-09-25 换模型后复测 10/10 通过，但那是换模型的功劳；本版改为由脚本生成 checks 才算根治。
+- 测试脚本由 11 个增至 12 个（新增 `tests/checks-check.sh`），README、贡献指南、CLAUDE.md 与架构文档同步。
+
 ## [1.7.1] - 2026-10-07
 
 本版修一批**契约断点与失效引用**：几处会让状态机走错、或让模型去找不存在的命令和目录的问题。另含 v1.7.0 之后的 eval 改进（agy、grok 两个平台，「虚报完成」判为契约破坏）。没有新增 skill（仍 38 个），升级不需要迁移。
@@ -492,5 +516,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.1...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.2...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0

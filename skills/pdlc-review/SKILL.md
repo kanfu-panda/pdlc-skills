@@ -188,7 +188,7 @@ recommended_effort: medium
 6. **修复后验证**：自动修复完成后，重新运行全部测试（命令取自 `docs/00_standards/test-commands.yml`），确认修复未引入新问题
    - 测试通过 → 评审完成
    - 测试失败 → 回滚修复，将问题标记为需人工处理
-   - **写 `last_phase_result`**：`checks` 取自真跑 test-commands 的 `unit`/`coverage`/`lint` 退出码，不用自检冒充；
+   - **写 `last_phase_result`**：`checks` 是 `bash scripts/pdlc-checks.sh --only unit,coverage,lint <项目根>` 的 stdout，原样写入，不用自检冒充；
      退出码三态语义与「命令跑不了 = yml 过期信号」见下方 check 命令规则
 7. **`--autonomous` 下的收尾判定**（呼应非交互契约）：
    - 「需人工处理/需人工确认」表中存在**阻塞级**项 → 不推进：`last_phase_result.ok=false` + `blocked_reason="评审存在阻塞级待人工项"` + 输出 blocked 哨兵，交还人类
@@ -323,8 +323,21 @@ require them.
 <!-- @include templates/prompts/check-commands.md（已内联于下方，无需另读） -->
 ## 跑 check 命令：退出码的三态语义
 
-命令取自 `docs/00_standards/test-commands.yml`（唯一真源）。逐条真跑，**按退出码分三态**——
-不是两态。这是 IRON LAW「checks 只认客观事实」在执行层的落法：
+**用脚本跑，不要手写 `checks`**：
+
+```bash
+bash scripts/pdlc-checks.sh --only <本阶段要的项，如 unit,lint> <项目根>
+```
+
+脚本是本 skill 自带的 `scripts/pdlc-checks.sh`。它读 `docs/00_standards/test-commands.yml`（唯一真源），逐条真跑，按下表映射，**stdout 只有一行 JSON**——
+**原样**写进 `last_phase_result.checks`，不改键名、不改值、不补不删。每条命令的退出码与输出末尾回显在
+stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等）= 没有可跑的 check → `checks: {}`。
+
+> 为什么不手写：键名、布尔类型、三态这几件事是确定性的，交给模型写，真机上同一份项目轮与轮之间就换一种错法
+> （键名照抄 yml 的 `unit`、值写成 `"4 passed, 1 failed"`、`127` 写成 `false`）。
+> 环境里没有 `bash` 时才按下表手工映射。
+
+脚本按退出码分三态——不是两态。这是 IRON LAW「checks 只认客观事实」在执行层的落法：
 
 | 观察到的 | 含义 | 写进 `checks` |
 |---|---|---|
@@ -450,6 +463,7 @@ require them.
 1. **文件不存在** → 创建文件，写入初始结构（`history` 为含当前阶段的数组）
 2. **文件存在** → 读取 JSON，追加当前阶段到 `history`，更新 `current_stage` 和 `next_step`
 3. **写回文件**：用 `jq` 或等效工具保持格式化
+4. **写完体检**：运行本 skill 自带的 `scripts/pdlc-state-lint.sh`（`bash scripts/pdlc-state-lint.sh <项目根>`）。输出里**属于本功能状态文件**的偏差当场改正（键名、类型、`ok` 与 `checks` 不一致等），改不了的写进本阶段报告；其它功能的偏差不归本命令管。退出码 `2`（缺 jq 等）= 没体检，报告里写明「未体检」，不得当作通过。
 
 ⚠️ 若更新失败（文件损坏/权限问题），必须中止命令并在最终报告中报错。状态机不可跳过。
 

@@ -2,8 +2,21 @@
 
 ## 跑 check 命令：退出码的三态语义
 
-命令取自 `docs/00_standards/test-commands.yml`（唯一真源）。逐条真跑，**按退出码分三态**——
-不是两态。这是 IRON LAW「checks 只认客观事实」在执行层的落法：
+**用脚本跑，不要手写 `checks`**：
+
+```bash
+bash scripts/pdlc-checks.sh --only <本阶段要的项，如 unit,lint> <项目根>
+```
+
+脚本是本 skill 自带的 `scripts/pdlc-checks.sh`。它读 `docs/00_standards/test-commands.yml`（唯一真源），逐条真跑，按下表映射，**stdout 只有一行 JSON**——
+**原样**写进 `last_phase_result.checks`，不改键名、不改值、不补不删。每条命令的退出码与输出末尾回显在
+stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等）= 没有可跑的 check → `checks: {}`。
+
+> 为什么不手写：键名、布尔类型、三态这几件事是确定性的，交给模型写，真机上同一份项目轮与轮之间就换一种错法
+> （键名照抄 yml 的 `unit`、值写成 `"4 passed, 1 failed"`、`127` 写成 `false`）。
+> 环境里没有 `bash` 时才按下表手工映射。
+
+脚本按退出码分三态——不是两态。这是 IRON LAW「checks 只认客观事实」在执行层的落法：
 
 | 观察到的 | 含义 | 写进 `checks` |
 |---|---|---|

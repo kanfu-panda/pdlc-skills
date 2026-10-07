@@ -352,6 +352,11 @@ run_feature() {  # run_feature <ID> <工作目录>（后台子进程）
         if [[ "$okv" != true ]]; then
             finish "$id" blocked 2 "⛔ fail-stop：$(jq -r '.last_phase_result.blocked_reason // "last_phase_result.ok 不是 true"' "$state" 2>/dev/null)" "$after"
         fi
+        # ok=true 却有 check 为 false：状态自相矛盾，按 checks 为准停下，不往下一阶段推
+        badck="$(jq -r '[.last_phase_result.checks // {} | objects | to_entries[] | select(.value == false) | "checks.\(.key)=false"] | join("、")' "$state" 2>/dev/null)"
+        if [[ -n "$badck" ]]; then
+            finish "$id" blocked 2 "⛔ fail-stop：ok=true 但 ${badck}——状态与检查结果矛盾，以 checks 为准" "$after"
+        fi
         [[ "$after" == "$before" ]] && finish "$id" stuck 5 "🛑 stuck-stop：current_stage 没推进（仍是 ${after}，违反 IRON LAW 第 6 条）" "$after"
         echo "[$id]    ✓ $before → $after"
     done

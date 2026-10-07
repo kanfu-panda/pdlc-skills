@@ -139,7 +139,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.1（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.2（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -323,7 +323,7 @@ docs/.pdlc-state/<feature-id>.json   ← 每个功能一个状态机文件（如
 本地跑测试：
 
 ```bash
-for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 11 个脚本，遇红即停
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # 全部 12 个脚本，遇红即停
 python3 adapters/sync_skills.py --check                         # 各 skill 与共享源头是否一致
 shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit

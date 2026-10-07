@@ -33,13 +33,13 @@ For "how do I..." questions, design discussions, or anything where you're not ye
 - `bin/` — scripts shipped with the plugin: `pdlc-statusline.sh`, `pdlc-state-lint.sh`, `pdlc-loop.sh` (synced into the skills that use them)
 - `adapters/` — `sync_skills.py` (inlines fragments, syncs `assets/` / `scripts/`) and `build_agent_skills.py` (the Agent Skills standard projection for other tools; `build_codex.py` is the same projection with a Codex default output)
 - `install.sh` — curl-based installer wrapping `claude plugin marketplace add` + `claude plugin install`; `--target agents | codex` installs the standard projection instead
-- `tests/` — the local gate (11 scripts, see below); `evals/` — behavioural evals that run a real model
+- `tests/` — the local gate (12 scripts, see below); `evals/` — behavioural evals that run a real model
 - `docs/usage-guide.md` — single user manual; `docs/decisions/` — ADRs
 
 ### Run the tests
 
 ```bash
-# All 11 scripts under tests/, stopping at the first red one
+# All 12 scripts under tests/, stopping at the first red one
 for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done
 
 # Bash linting

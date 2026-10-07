@@ -213,6 +213,14 @@ agent CLI **会读 stdin**——实测 `codex exec` 把管道里的内容当额�
    > 失败方向多数是安全的（缺席 / `null` → 消费方判「无法判定」而非假绿），
    > 但 `127 → false` 那种会把人支去查代码。**Codex 臂目前不作为发布闸门证据**。
 
+   > **更正（2026-09-25 复测 + v1.7.2 改法）**：在 `gpt-6-astra`（reasoning low）、commit `181ecf1` 上，
+   > 两个场景各 `--repeat 5` 共 10/10 通过、抖动 0，逐轮写法完全一致（`honest-checks` 恒为
+   > `{tests_pass:false, lint_clean:true}`，`stale-config` 恒为 `{tests_pass:false}`、lint 键缺席）。
+   > 唯一变化是换了模型，所以这**不能算规范修好了**，换模型可能复发。v1.7.2 起改为根治：checks 由
+   > `bin/pdlc-checks.sh` 按退出码生成，模型只把 stdout 原样抄进状态机，键名、类型与三态不再靠模型自觉；
+   > 映射本身在 `tests/checks-check.sh` 里桩测（A-det）。这两个场景从此验的是「模型真的用了脚本、原样抄写」。
+   > 上文正文保留作 2026-08-09 的时间点记录。
+
 ## fixture 布局（曾经的硬约束，现已解除）
 
 **历史**：`pdlc-implement` 的守卫早期只在一份**写死的路径清单**下找测试

@@ -79,6 +79,7 @@ bash <本 skill 目录>/scripts/pdlc-loop.sh --status
    4. 否则用 **Task 工具派发**该命令到一个 fresh subagent，**带 `--autonomous`**，模型取目标 skill frontmatter 的 `recommended_model`（无则继承）。
    5. subagent 返回后重新读状态机 `last_phase_result`：
       - `ok=false` → **fail-stop**：停机、不重跑同一 stage，输出 blocked 哨兵。
+      - `ok=true` 但 `checks` 里有 `false` → 状态自相矛盾，同样 **fail-stop**（以 checks 为准，不往下一阶段推）。
       - `current_stage` 未推进（违反 IRON LAW 第 6 条）→ **stuck-stop**：停机报错。
       - `ok=true` 且已推进 → 记一步，继续下一轮。
    6. 步数 > `--max-steps` → **上限停机**（防病态空转烧 token）。
