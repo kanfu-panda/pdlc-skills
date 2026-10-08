@@ -1,6 +1,6 @@
 ---
 name: pdlc-deploy
-description: 创建部署文档
+description: 按已评审的功能或发布版本写部署手册（docs/05_deployment/guides/），不执行真实部署；要发布版本先用 /pdlc-ship
 argument-hint: <v<版本> | 功能ID | 服务名 | 应用名>
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2

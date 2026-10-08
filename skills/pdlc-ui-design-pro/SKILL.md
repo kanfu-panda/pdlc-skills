@@ -1,6 +1,6 @@
 ---
 name: pdlc-ui-design-pro
-description: UI/UX 专业设计（PDLC 集成层，依赖 ui-ux-pro-max）
+description: 在 /pdlc-ui-design 基础上加视觉设计系统（配色、字体、组件规范），依赖 ui-ux-pro-max，缺失时降级为基础设计
 argument-hint: <功能描述 | 设计目标>
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
@@ -14,20 +14,17 @@ terminal_state: null
 
 # UI/UX 专业设计（PDLC 集成层）
 
-<!-- @include templates/prompts/iron-law.md（已内联于下方，无需另读） -->
-⛔ **IRON LAW · 不可违反的硬门禁**
+<!-- @include templates/prompts/iron-law-tool.md（已内联于下方，无需另读） -->
+⛔ **IRON LAW · 不可违反的硬门禁（工具型命令）**
 
-以下规则为**不可协商**的执行约束：
+本命令不是主链路上的阶段：**不追加 `history`，不改 `current_stage` / `next_step` / `last_phase_result`**，也不为此分配功能ID。以下规则不可协商：
 
-1. **文件必须落盘**：所有带编号（功能ID / 缺陷ID）的文档，必须作为实际文件写入磁盘，不可仅在对话中输出。
-2. **阶段必须落章**：每个阶段完成后必须在状态机 `docs/.pdlc-state/<feature-id>.json` 追加 history，不可跳过。
-3. **测试必须存在**：进入 `/pdlc-implement` 前，对应测试必须存在且处于红灯状态。违反则中止。
-4. **自检必须执行**：段二自检为强制步骤，不得以"已经很好了"为由跳过。
-5. **防循环**：段三修复为单次，不递归。无法自动修复的问题记录到报告，继续往下走。
-6. **状态必推进**：成功执行某 phase 后 `current_stage` 必须变更。收尾时若发现 `current_stage` 未推进，视为失败并报错，**不得静默返回**（防止外层循环拿滞后的状态空转烧额度）。唯一例外：命中人工点主动 block 时，`current_stage` 保持不变但必须写 `last_phase_result.ok=false` + `blocked_reason`。
+1. **文件必须落盘**：正文要求创建的文件必须作为实际文件写入磁盘，不可仅在对话中输出（只要求在对话里输出的，照正文办）。
+2. **自检必须执行**：产出后按本命令的自检项逐项核对，不得以"已经很好了"为由跳过。
+3. **防循环**：修复只做一次，不递归。修不了的问题记进报告，继续往下走。
 
 **违反任一条 = 立即中止当前命令，输出违规详情，等待人工介入。**
-<!-- @include-end templates/prompts/iron-law.md -->
+<!-- @include-end templates/prompts/iron-law-tool.md -->
 
 本命令是 PDLC 的 UI 设计集成点，负责 PRD 守卫、PDLC 文档结构管理、以及调用设计智能引擎。
 优先调用 `ui-ux-pro-max` 开源 skill（67 种风格 / 161 款配色 / 57 组字体搭配 / 161 行业推理规则），skill 未安装时自动启用内置流程。

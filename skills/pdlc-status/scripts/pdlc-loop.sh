@@ -5,6 +5,7 @@
 #   pdlc-loop.sh <功能ID>... --platform claude|codex [选项]
 #   pdlc-loop.sh --ready     --platform claude|codex [选项]   # 挑出所有处于收敛段、未阻塞的功能
 #   pdlc-loop.sh --status [--project DIR]                     # 看最近一次运行的进度
+#   pdlc-loop.sh --next <功能ID> [--project DIR]               # 只打印该功能的下一步（只读，不调用模型）
 # 选项：
 #   --parallel N          同时跑几个功能（默认 1）。N>1 时每个功能在自己的 git worktree 里跑
 #   --max-steps N         每个功能至多跑几步（默认 4 = 3 段 + 1 步余量）
@@ -37,6 +38,7 @@ PROJECT="$PWD"
 DRY_RUN=0
 READY=0
 STATUS=0
+NEXT_ID=""
 IDS=""
 POLL="${PDLC_LOOP_POLL:-2}"
 STALE_MIN="${PDLC_LOOP_STALE_MIN:-45}"
@@ -59,6 +61,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)        DRY_RUN=1; shift ;;
         --ready)          READY=1; shift ;;
         --status)         STATUS=1; shift ;;
+        --next)           NEXT_ID="${2:-}"; shift 2 || die "--next 需要功能ID" ;;
         -h|--help)        usage 0 ;;
         -*)               echo "未知参数：$1" >&2; usage 64 ;;
         *)                IDS="$IDS $1"; shift ;;
@@ -69,6 +72,31 @@ done
 PROJECT="$(cd "$PROJECT" && pwd)"
 STATE_DIR="$PROJECT/docs/.pdlc-state"
 command -v jq >/dev/null 2>&1 || die "需要 jq"
+
+# 下一步映射的唯一实现（--next 直接打印它；/pdlc-loop-next 与 /pdlc-loop-run 都调 --next）：以 next_step 为主键，blocked_reason / 终态优先。
+# next_step 缺失或为 null → blocked：收敛段里没有阶段会合法写出 null，那只可能是状态残缺。
+compute_next() {
+    local n
+    n="$(jq -r '
+      if (.last_phase_result.blocked_reason // null) != null then "blocked"
+      elif ((.current_stage // "") | endswith("_done")) then "done"
+      else (.next_step // "null") as $ns
+        | if ($ns == "pdlc-tdd" or $ns == "pdlc-implement" or $ns == "pdlc-review") then $ns
+          elif ($ns == "pdlc-ship" or $ns == "pdlc-deploy") then "done"
+          else "blocked" end
+      end' "$1" 2>/dev/null)"
+    case "$n" in
+        pdlc-tdd|pdlc-implement|pdlc-review|done|blocked) printf '%s\n' "$n" ;;
+        *) printf 'blocked\n' ;;
+    esac
+}
+
+# ════════════════════════════ --next ════════════════════════════
+# 只读：打印一个 token（pdlc-tdd / pdlc-implement / pdlc-review / done / blocked），状态文件不存在或解析不了 → blocked
+if [[ -n "$NEXT_ID" ]]; then
+    if [[ -f "$STATE_DIR/$NEXT_ID.json" ]]; then compute_next "$STATE_DIR/$NEXT_ID.json"; else echo blocked; fi
+    exit 0
+fi
 
 IS_GIT=0
 COMMON=""
@@ -186,23 +214,6 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     [[ "$PARALLEL" -gt 1 && "$IS_GIT" -eq 0 ]] && die "--parallel 大于 1 需要 git 仓库（每个功能在自己的 worktree 里跑）"
 fi
 
-# 与 pdlc-loop-next 同一张映射：以 next_step 为主键，blocked_reason / 终态优先。
-# next_step 缺失或为 null → blocked：收敛段里没有阶段会合法写出 null，那只可能是状态残缺。
-compute_next() {
-    local n
-    n="$(jq -r '
-      if (.last_phase_result.blocked_reason // null) != null then "blocked"
-      elif ((.current_stage // "") | endswith("_done")) then "done"
-      else (.next_step // "null") as $ns
-        | if ($ns == "pdlc-tdd" or $ns == "pdlc-implement" or $ns == "pdlc-review") then $ns
-          elif ($ns == "pdlc-ship" or $ns == "pdlc-deploy") then "done"
-          else "blocked" end
-      end' "$1" 2>/dev/null)"
-    case "$n" in
-        pdlc-tdd|pdlc-implement|pdlc-review|done|blocked) printf '%s\n' "$n" ;;
-        *) printf 'blocked\n' ;;
-    esac
-}
 
 if [[ "$READY" -eq 1 ]]; then
     for f in "$STATE_DIR"/*.json; do

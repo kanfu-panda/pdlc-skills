@@ -1,6 +1,6 @@
 ---
 name: pdlc-loop-run
-description: 收敛循环引擎（自动推进 tdd→implement→review 到 review_done 或 blocked）
+description: 收敛循环引擎——自动推进 tdd → implement → review，直到评审通过、待发布（next_step 为 pdlc-ship）或阻塞；发布永远由人做
 argument-hint: <功能ID> [--max-steps N]
 allowed-tools: Read, Glob, Bash, Task
 layer: 3
@@ -73,10 +73,10 @@ bash <本 skill 目录>/scripts/pdlc-loop.sh --status
 
 1. 从本命令的参数取功能ID；`--max-steps` 取迭代上限（缺省 **4**）。读 `docs/.pdlc-state/<功能ID>.json`。
 2. 循环，每轮：
-   1. 按 `/pdlc-loop-next` 的映射判定下一条命令：`pdlc-tdd` / `pdlc-implement` / `pdlc-review` / `done` / `blocked`。
+   1. 运行 `bash scripts/pdlc-loop.sh --next <功能ID> --project <项目根>` 取下一条命令，输出只会是 `pdlc-tdd` / `pdlc-implement` / `pdlc-review` / `done` / `blocked` 之一（映射只在脚本里实现一份，不要自己重算）。
    2. `done` → **成功停机**，输出 `<<<PDLC done stage=review>>>`，提示交人工 `/pdlc-ship`。
    3. `blocked` → 停机交还人类，输出 `<<<PDLC blocked reason="...">>>`。
-   4. 否则用 **Task 工具派发**该命令到一个 fresh subagent，**带 `--autonomous`**，模型取目标 skill frontmatter 的 `recommended_model`（无则继承）。
+   4. 否则用 **Task 工具派发**该命令到一个 fresh subagent，**带 `--autonomous`**，模型继承当前会话（要按阶段选模型，用外部驱动 `scripts/pdlc-loop.sh`——它读得到各 skill 的推荐模型，Task 版读不到）。
    5. subagent 返回后重新读状态机 `last_phase_result`：
       - `ok=false` → **fail-stop**：停机、不重跑同一 stage，输出 blocked 哨兵。
       - `ok=true` 但 `checks` 里有 `false` → 状态自相矛盾，同样 **fail-stop**（以 checks 为准，不往下一阶段推）。

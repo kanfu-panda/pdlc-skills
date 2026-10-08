@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.4] - 2026-10-07
+
+本版做减法与对齐：工具型命令不再背负它们做不到的阶段规则，重复的规则只留一份，含糊的命令描述写清楚各自管什么。没有新增或删除 skill（仍 38 个），升级不需要迁移。
+
+> ⚠️ **行为变更（请留意）**：
+> - **常驻上下文增加约 700–900 token**：19 条含糊的 description 改写为「做什么 + 产出 + 何时改用别的命令」（总字数 958 → 1850），换的是 Claude 按自然语言选对命令。
+> - **`bin/pdlc-loop.sh --next <功能ID>`**：只打印下一步，`/pdlc-loop-next` 与 `/pdlc-loop-run` 改为调用它；Task 版 `/pdlc-loop-run` 的子任务改为继承当前会话的模型。
+
+### Added
+
+- **`iron-law-tool.md`**：不写阶段状态的 23 个命令（Layer 3 工具，以及 `/pdlc-task`、`/pdlc-retro`）改用精简版 IRON LAW——文件落盘、自检、修复只做一次，并写明不追加 `history`、不改 `current_stage`。完整版要求「每阶段追加 history、推进 `current_stage`」，对没有功能ID的工具命令自相矛盾，模型可能编一个 ID 去写状态机。`tests/frontmatter-check.sh` 断言完整版只给写状态机的命令用。
+- **`bin/pdlc-loop.sh --next <功能ID>`**：下一步映射只在驱动里实现一份。此前同一张映射在驱动、`/pdlc-loop-next`、`/pdlc-loop-run` 各有一份，且 `/pdlc-loop-run` 写的是「按 `/pdlc-loop-next` 的映射」——它运行时根本读不到另一个 skill 的文件。
+
+### Fixed
+
+- **`/pdlc-loop-run` 让模型读 frontmatter 选模型**：frontmatter 对模型不可见，这一步做不到；改为继承当前会话，要按阶段选模型用外部驱动。
+- **`/pdlc-feature` 把防循环规则内联了三次**，`/pdlc-ship` 内联了对它无效的非交互规则（正文随即声明 `--autonomous` 对本命令无效）。现在各留一处 / 去掉，`tests/install-smoke.sh` 断言同一片段在一个 skill 里至多内联一次。
+- **测试脚本在 `set -e` 下中途退出**：新加的检查在命令替换里用了 `[ … ] && echo`，最后一次条件不成立就让整个脚本静默退出（退出码 1，但连汇总行都不打）。已改写，并留作写新断言时的注意事项。
+- **`/pdlc-ship` 合并方式表暗示 `--autonomous` 有效**：1.7.3 新增的表格写着「`--autonomous` 不替人判」，与本命令开头「`--autonomous` 对本命令无效」矛盾，已改为直接问人。
+
+### Changed
+
+- 19 条 description 重写，`tests/install-smoke.sh` 断言每条至少 15 字（「性能优化」这类四个字的名词短语等于没写路由依据）。
+- 共享片段 16 → 17。架构文档与 CLAUDE.md 同步。
+
 ## [1.7.3] - 2026-10-07
 
 本版补强几个只有清单、没有可执行步骤的命令，并让上游产物的查找、项目布局的判断、`/pdlc-feature` 的状态写入有了确定的做法。没有新增 skill（仍 38 个），升级不需要迁移。
@@ -548,5 +573,5 @@ docs/.pdlc-state/<feature-id>.json                     # per-feature state machi
 - **Defensive `.gitignore`** + comprehensive secrets policy in
   `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.3...HEAD
+[Unreleased]: https://github.com/kanfu-panda/pdlc-skills/compare/v1.7.4...HEAD
 [1.0.0]: https://github.com/kanfu-panda/pdlc-skills/releases/tag/v1.0.0

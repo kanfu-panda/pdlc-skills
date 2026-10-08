@@ -135,9 +135,18 @@ for f in skills/*/SKILL.md; do
     esac
 
     if [[ "$layer" == "1" || "$layer" == "2" ]] && has_non_empty_produces "$f"; then
-        if ! grep -q '@include templates/prompts/iron-law\.md' "$f"; then
-            issues+=("Layer $layer sub-skill (with non-empty produces) must @include templates/prompts/iron-law.md")
+        if ! grep -qE '@include templates/prompts/iron-law(-tool)?\.md' "$f"; then
+            issues+=("Layer $layer sub-skill (with non-empty produces) must @include templates/prompts/iron-law.md (or iron-law-tool.md)")
         fi
+    fi
+    # 完整版 IRON LAW 要求每阶段追加 history、推进 current_stage——只有写状态机的命令做得到；
+    # 不写阶段状态的命令要用精简版，否则正文自相矛盾，模型可能编一个功能ID去写状态机
+    writes_state=0; grep -q '@include templates/prompts/state-update\.md' "$f" && writes_state=1
+    if [[ "$writes_state" == 0 ]] && grep -q '@include templates/prompts/iron-law\.md' "$f"; then
+        issues+=("does not write the state machine, so it must @include iron-law-tool.md instead of iron-law.md")
+    fi
+    if [[ "$writes_state" == 1 ]] && grep -q '@include templates/prompts/iron-law-tool\.md' "$f"; then
+        issues+=("writes the state machine, so it must @include the full iron-law.md, not iron-law-tool.md")
     fi
 
     if has_field "$f" next_step; then
