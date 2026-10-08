@@ -139,7 +139,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.1 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.2 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -344,7 +344,7 @@ For private security concerns, see [SECURITY.md](./SECURITY.md).
 Run the tests locally:
 
 ```bash
-for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 11 scripts, stop at the first red one
+for f in tests/*.sh; do echo "== $f"; bash "$f" || break; done   # all 12 scripts, stop at the first red one
 python3 adapters/sync_skills.py --check                         # skills in sync with their shared sources
 shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit

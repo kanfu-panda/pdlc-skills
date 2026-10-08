@@ -28,7 +28,7 @@ set -u
 LEGAL_STAGES="requirements design tdd impl review e2e ship deploy fix refactor feature"
 STAGE_ALIASES="prd:requirements implement:impl implementation:impl bugfix:fix"
 # shellcheck disable=SC2034  # 脚本自己不读它：它是偏差代码的声明清单，供 frontmatter-check 与片段对账
-FINDING_CODES="json-invalid missing-field field-type-invalid missing-last_phase_result terminal_state-in-instance non-contract-field stage-alias stage-unknown current_stage-unknown next_step-not-command timestamp-no-time relations-not-object relations-unknown-type relations-target-not-id relations-dangling id-prefix-mismatch second-state-dir"
+FINDING_CODES="json-invalid missing-field field-type-invalid missing-last_phase_result terminal_state-in-instance non-contract-field stage-alias stage-unknown current_stage-unknown next_step-not-command timestamp-no-time checks-key-unknown checks-value-invalid ok-checks-mismatch done-legacy relations-not-object relations-unknown-type relations-target-not-id relations-dangling id-prefix-mismatch second-state-dir"
 
 ROOT="${1:-.}"
 STATE_DIR="$ROOT/docs/.pdlc-state"
@@ -90,6 +90,7 @@ for f in "$STATE_DIR"/*.json; do
         def allowed: ["feature_id", "feature_name", "created_at", "current_stage", "run_mode",
                       "history", "last_phase_result", "relations", "next_step"];
         def idre: "^[FB][0-9]{8}-([0-9]{6}|[0-9]{2})$";
+        def checkkeys: ["tests_pass", "coverage_pass", "lint_clean", "e2e_pass", "red_verified"];
         def hist: (.history | if type == "array" then to_entries[] | select(.value | type == "object") else empty end);
         # 字段在、类型不对：只查 has() 会把 current_stage 是数字、history 不是数组这类文件放过去
         def typecheck($k; $want):
@@ -126,6 +127,19 @@ for f in "$STATE_DIR"/*.json; do
                 | emit("field-type-invalid"; "last_phase_result.stage 应为 string，实际是 \(.stage | type)") ),
               ( select(has("at") and (.at | type) != "string")
                 | emit("field-type-invalid"; "last_phase_result.at 应为 string，实际是 \(.at | type)") ) ),
+          ( select((.last_phase_result | type) == "object") | .last_phase_result
+            | select(has("checks")) | .checks as $c
+            | if ($c | type) != "object" then
+                emit("field-type-invalid"; "last_phase_result.checks 应为 object，实际是 \($c | type)，不据此判定任何 check")
+              else
+                ( $c | to_entries[]
+                  | ( select(inarr(checkkeys; .key) | not)
+                      | emit("checks-key-unknown"; "checks.\(.key) 不是状态机的键（只认 \(checkkeys | join(" / "))），消费方读不到它") ),
+                    ( select(.value != null and (.value | type) != "boolean")
+                      | emit("checks-value-invalid"; "checks.\(.key)=\(.value | tojson) 不是布尔或 null，按「无法判定」处理") ) ),
+                ( select(.ok == true) | $c | to_entries[] | select(.value == false)
+                  | emit("ok-checks-mismatch"; "ok=true，但 checks.\(.key)=false——本阶段不该算成功") )
+              end ),
           ( select(has("last_phase_result") | not)
             | emit("missing-last_phase_result"; "缺 last_phase_result（多为旧文件），不推断本阶段结果与 checks") ),
           ( select(has("terminal_state"))
@@ -138,6 +152,9 @@ for f in "$STATE_DIR"/*.json; do
           ( .current_stage as $cs | select(($cs | type) == "string")
             | select(($cs | endswith("_done")) | not) | select(inarr(legal; $cs) | not)
             | emit("current_stage-unknown"; "current_stage=\($cs) 既不是阶段短名，也不以 _done 结尾") ),
+          ( .current_stage as $cs | select(($cs | type) == "string")
+            | select(($cs | endswith("_done")) and ($cs != "ship_done") and ($cs != "deploy_done"))
+            | emit("done-legacy"; "current_stage=\($cs) 是旧版终态写法，分不清是否已发布（_done 只由 ship / deploy 写）") ),
           ( select(has("next_step")) | .next_step as $n | select($n != null)
             | select((($n | type) == "string" and ($n | test("^pdlc-[a-z][a-z-]*$"))) | not)
             | emit("next_step-not-command"; "next_step=\($n) 不是纯命令名，不据此推断下一步") ),

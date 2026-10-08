@@ -682,6 +682,20 @@ for sk in pdlc-feature pdlc-fix pdlc-implement pdlc-review pdlc-refactor; do
   assert_contains "${sk} 的 CHANGELOG 条目带 ID" '<简要描述>（<功能ID 或缺陷ID>）' "$(src_body "skills/${sk}/SKILL.md")"
 done
 
+# checks 交给脚本生成、状态机写完就体检：这两件确定性的事不再靠模型读正文自觉
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+assert_contains "check 规则指向 pdlc-checks.sh" '`scripts/pdlc-checks.sh`' "$(cat references/templates/prompts/check-commands.md)"
+assert_contains "tdd 用 --red 验红灯" 'scripts/pdlc-checks.sh --red' "$(src_body skills/pdlc-tdd/SKILL.md)"
+assert_contains "implement 用脚本写 checks" 'scripts/pdlc-checks.sh --only unit,coverage,lint' "$(src_body skills/pdlc-implement/SKILL.md)"
+assert_contains "review 用脚本写 checks" 'scripts/pdlc-checks.sh --only unit,coverage,lint' "$(src_body skills/pdlc-review/SKILL.md)"
+assert_contains "状态机写完要体检" '`scripts/pdlc-state-lint.sh`' "$(cat references/templates/prompts/state-update.md)"
+assert_contains "loop-run：ok 与 checks 矛盾即停" '`ok=true` 但 `checks` 里有 `false`' "$(src_body skills/pdlc-loop-run/SKILL.md)"
+}
+for sk in pdlc-tdd pdlc-implement pdlc-review pdlc-quality; do
+  assert_exists "${sk} 自带 pdlc-checks.sh" "skills/${sk}/scripts/pdlc-checks.sh"
+done
+
 # 全仓扫描：引用不存在的命令 / 工具 / 目录
 scan_stale() {
 python3 - <<'PYC'

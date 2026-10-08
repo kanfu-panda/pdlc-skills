@@ -65,7 +65,7 @@ CLEAN_A='{"feature_id":"F20260728-101500","feature_name":"calc-add",
  "next_step":"pdlc-review"}'
 # 已到终态的（current_stage 以 _done 结尾），也是 A 的 depends_on 目标
 CLEAN_B='{"feature_id":"F20260727-090000","feature_name":"calc-base",
- "created_at":"2026-07-27T09:00:00+08:00","current_stage":"feature_done","run_mode":"interactive",
+ "created_at":"2026-07-27T09:00:00+08:00","current_stage":"ship_done","run_mode":"interactive",
  "history":[{"stage":"review","done_at":"2026-07-27T18:00:00+08:00","produced":[]}],
  "last_phase_result":{"stage":"review","ok":true,"advanced_to":null,"checks":{},
    "blocked_reason":null,"at":"2026-07-27T18:00:00+08:00"},
@@ -215,6 +215,39 @@ assert_detail "last_phase_result 是字符串 → field-type-invalid"    field-t
 assert_detail "history 混入非对象条目 → field-type-invalid"        field-type-invalid F20260802-03 "history[0]"
 assert_detail "history 条目的 stage 是数字 → field-type-invalid"   field-type-invalid F20260802-03 "history[1].stage"
 assert_none   "合契约的那份仍不误报"                               field-type-invalid F20260727-090000
+
+echo "Test: checks 的键名 / 类型、ok 与 checks 一致、_done 来源"
+P="$(new_proj)"
+put "$P" F20260727-090000.json "$CLEAN_B"
+# ① 键名照抄了 yml 的 unit / lint，值写成字符串摘要
+put "$P" F20260802-101500.json '{"feature_id":"F20260802-101500","feature_name":"a",
+ "created_at":"2026-08-02T10:15:00+08:00","current_stage":"tdd","history":[],
+ "last_phase_result":{"stage":"impl","ok":false,"checks":{"unit":"4 passed, 1 failed","lint_clean":"ok"},
+   "at":"2026-08-02T10:15:00+08:00"},"next_step":"pdlc-implement"}'
+# ② ok=true，但 tests_pass=false
+put "$P" F20260802-101600.json '{"feature_id":"F20260802-101600","feature_name":"b",
+ "created_at":"2026-08-02T10:16:00+08:00","current_stage":"impl","history":[],
+ "last_phase_result":{"stage":"impl","ok":true,"checks":{"tests_pass":false,"lint_clean":true},
+   "at":"2026-08-02T10:16:00+08:00"},"next_step":"pdlc-review"}'
+# ③ 旧版的 _done 写法（review 完就写了 review_done，分不清是否已发布）
+put "$P" F20260802-101700.json '{"feature_id":"F20260802-101700","feature_name":"c",
+ "created_at":"2026-08-02T10:17:00+08:00","current_stage":"review_done","history":[],
+ "last_phase_result":{"stage":"review","ok":true,"checks":{"tests_pass":true,"lint_clean":null},
+   "at":"2026-08-02T10:17:00+08:00"},"next_step":null}'
+# ④ checks 不是对象
+put "$P" F20260802-101800.json '{"feature_id":"F20260802-101800","feature_name":"d",
+ "created_at":"2026-08-02T10:18:00+08:00","current_stage":"impl","history":[],
+ "last_phase_result":{"stage":"impl","ok":false,"checks":"tests failed",
+   "at":"2026-08-02T10:18:00+08:00"},"next_step":"pdlc-review"}'
+lint "$P"
+assert_rc "有偏差 → 退出 1" 1
+assert_has "照抄 yml 键名 → checks-key-unknown" checks-key-unknown F20260802-101500
+assert_has "值是字符串 → checks-value-invalid" checks-value-invalid F20260802-101500
+assert_has "ok=true 但有 check 为 false → ok-checks-mismatch" ok-checks-mismatch F20260802-101600
+assert_none "null 是合法的「无法判定」，不报类型错" checks-value-invalid F20260802-101700
+assert_has "review_done 之类旧写法 → done-legacy" done-legacy F20260802-101700
+assert_none "ship_done 是合契约的终态" done-legacy F20260727-090000
+assert_has "checks 不是对象 → field-type-invalid" field-type-invalid F20260802-101800
 
 echo "Test: 仓库根另有一个 .pdlc-state/"
 P="$(new_proj)"

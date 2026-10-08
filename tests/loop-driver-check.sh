@@ -36,7 +36,7 @@ trap 'rm -rf "$ROOT"' EXIT
 
 # ─── 假的 claude / codex ───
 # 两者都从各自的参数里取出「阶段 + 功能ID」，把调用记进 ${STUB_LOG}，再按 $STUB_PLAN
-# （每行「功能ID 行为」）改写当前目录下的状态机。行为：advance（默认）/ failstop / stuck / error。
+# （每行「功能ID 行为」）改写当前目录下的状态机。行为：advance（默认）/ failstop / stuck / okliar（ok=true 但 tests_pass=false）/ error。
 # STUB_SLEEP 秒数用来制造重叠，验证并行。
 BIN="$ROOT/bin"
 mkdir -p "$BIN"
@@ -53,6 +53,7 @@ case "$beh" in
   error) printf '%s\t%s\t%s\t%s\tend\n' "$plat" "$id" "$stage" "$wd" >> "$STUB_LOG"; exit 1 ;;
   failstop) jq '.last_phase_result={ok:false,blocked_reason:"stub failstop"}' "$S" > "$tmp" ;;
   stuck)    jq '.last_phase_result={ok:true,blocked_reason:null}' "$S" > "$tmp" ;;
+  okliar)   jq '.current_stage="impl"|.next_step="pdlc-review"|.last_phase_result={ok:true,blocked_reason:null,checks:{tests_pass:false,lint_clean:true}}' "$S" > "$tmp" ;;
   *)
     case "$stage" in
       tdd)       jq '.current_stage="tdd"   |.next_step="pdlc-implement"|.last_phase_result={ok:true,blocked_reason:null}' "$S" > "$tmp" ;;
@@ -348,6 +349,16 @@ run_driver "$P" --status
 expect_out "驱动进程已不在 → 提示可能被中断" "中断"
 expect_out "单步过久 → 提示看日志" "日志"
 expect_out "运行中的功能标出阶段" "impl"
+
+echo "Test: ok 与 checks 矛盾即停"
+P="$ROOT/okliar"
+mkstate "$P" F20260924-150001 tdd pdlc-implement
+STUB_LOG="$ROOT/okliar.log"
+printf 'F20260924-150001 okliar\n' > "$ROOT/plan"
+STUB_PLAN="$ROOT/plan" run_driver "$P" F20260924-150001 --platform codex
+expect_rc "ok=true 但 tests_pass=false → 按阻塞停（不往 review 推）" 2
+expect_out "说明是哪一项矛盾" "checks.tests_pass=false"
+[[ "$(calls)" == "1" ]] && ok "矛盾后不再调用下一步" || bad "矛盾后仍继续调用（共 $(calls) 次）"
 
 echo ""
 echo "Final: $pass passed, $fail failed"

@@ -59,6 +59,10 @@ terminal_state: null
 | `relations-target-not-id` | 关系目标不是 feature ID（散文、模块路径等） | 该条不入图 |
 | `relations-dangling` | 目标 ID 没有对应的状态文件 | 标「悬空」，不参与影响半径计算 |
 | `id-prefix-mismatch` | 走的是修复流程（有 `fix` 阶段），ID 却不以 `B` 开头 | 缺陷计数按 ID 前缀的契约口径算，同时在体检块点名这份 |
+| `checks-key-unknown` | `last_phase_result.checks` 里有状态机不认的键（如照抄 yml 的 `unit` / `lint`） | 该键当作不存在：对应维度记「无法判定」，**不**按键名猜它对应哪个 check |
+| `checks-value-invalid` | check 的值不是布尔也不是 `null`（如 `"4 passed, 1 failed"`） | 该项记「无法判定」，不从字符串里解析结论 |
+| `ok-checks-mismatch` | `ok=true`，但有 check 为 `false` | **以 checks 为准**：本阶段按未通过展示，在体检块点名这份 |
+| `done-legacy` | `current_stage` 以 `_done` 结尾，但不是 `ship_done` / `deploy_done`（旧版写法） | 按「已走完」展示但标「是否已发布未知」；`/pdlc-ship` 会列出来请人确认 |
 | `second-state-dir` | 仓库根另有一个 `.pdlc-state/` | 本命令只读 `docs/.pdlc-state/`，提示两处并存 |
 <!-- finding-codes:end -->
 

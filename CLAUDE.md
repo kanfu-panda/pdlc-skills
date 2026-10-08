@@ -24,7 +24,8 @@ pdlc-skills/
 │   └── ... (38 dirs total)
 ├── bin/
 │   ├── pdlc-statusline.sh          ← optional statusline segment (scanned by /pdlc-settings)
-│   ├── pdlc-state-lint.sh          ← read-side contract check run by /pdlc-status · /pdlc-retro · /pdlc-relate
+│   ├── pdlc-state-lint.sh          ← state-machine contract check: read side (/pdlc-status · /pdlc-retro · /pdlc-relate) + every state-writing stage after it writes
+│   ├── pdlc-checks.sh              ← runs test-commands.yml and prints the checks JSON (three-state); used by tdd / implement / review / quality
 │   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex, --parallel via worktrees, --status)
 ├── adapters/
 │   ├── sync_skills.py              ← inlines fragments + copies templates/scripts into skills/ (rerun after editing any of them)
@@ -38,7 +39,7 @@ pdlc-skills/
 ├── install.sh                      ← curl-based one-line installer wrapping `claude plugin install`
 ├── docs/
 │   └── usage-guide.md              ← single user manual (architecture + reference + scenarios)
-├── tests/                          ← 11 scripts, all of them part of the local gate
+├── tests/                          ← 12 scripts, all of them part of the local gate
 │   ├── frontmatter-check.sh        ← validates skills/<name>/SKILL.md frontmatter
 │   ├── install-smoke.sh            ← end-to-end install layout test
 │   ├── statusline-check.sh         ← pdlc-statusline.sh scenario regression
@@ -48,6 +49,7 @@ pdlc-skills/
 │   ├── evals-runner-check.sh       ← evals/run.sh driver (stubbed, no model spend)
 │   ├── evals-scenario-check.sh     ← assert_scenario verdicts (stubbed, no model spend)
 │   ├── state-lint-check.sh         ← bin/pdlc-state-lint.sh findings + read-only check
+│   ├── checks-check.sh             ← bin/pdlc-checks.sh exit-code → checks JSON mapping
 │   ├── skills-selfcontained-check.sh ← skills self-contained + in sync with their sources
 │   └── loop-driver-check.sh        ← bin/pdlc-loop.sh with stubbed claude / codex (no model spend)
 └── VERSION                         ← canonical version (mirrored in plugin.json)
@@ -95,6 +97,7 @@ bash tests/adapter-codex-loop-run-check.sh   # Codex loop-run mapping + guardrai
 bash tests/evals-runner-check.sh             # evals/run.sh driver (stubbed, no model spend)
 bash tests/evals-scenario-check.sh           # assert_scenario verdicts (stubbed, no model spend)
 bash tests/state-lint-check.sh               # bin/pdlc-state-lint.sh contract-check findings
+bash tests/checks-check.sh                   # bin/pdlc-checks.sh three-state checks JSON
 bash tests/skills-selfcontained-check.sh     # skills self-contained + in sync with their sources
 bash tests/loop-driver-check.sh              # bin/pdlc-loop.sh: scheduling, worktrees, guardrails, --status (stubbed)
 
@@ -105,7 +108,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All eleven count** — 635 assertions at the time of writing; run them for the current number rather
+**All twelve count** — 669 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 
@@ -197,7 +200,7 @@ Changing this contract requires updating both the relevant `skills/pdlc-*/SKILL.
 - After editing a fragment, a template or a `bin/` script, run `python3 adapters/sync_skills.py`. Never hand-edit an inlined region, a `pdlc:meta` block, or anything under `skills/*/assets/` / `skills/*/scripts/` — they are regenerated, and `tests/skills-selfcontained-check.sh` fails on drift.
 - In a skill body, reference templates and scripts as `` `assets/<file>` `` / `` `scripts/<file>` `` (relative to the skill folder), never as `templates/…` or `../../…` — the model can't resolve those. Use `$ARGUMENTS` exactly once, on its own `label: $ARGUMENTS` line: Claude Code substitutes every occurrence, with an empty string when there are no arguments.
 - New required frontmatter fields → also update `required_fields` in `tests/frontmatter-check.sh`.
-- Run all eleven test scripts and shellcheck before committing (see "Common commands").
+- Run all twelve test scripts and shellcheck before committing (see "Common commands").
 - New shared prompt fragments → put under `references/templates/prompts/`, reference via `<!-- @include templates/prompts/<name>.md -->` (path is relative to `references/`), then run the sync. Inside a fragment, don't point at another fragment by file name — after inlining, only the fragments a skill itself includes are there.
 - New sub-skill: create `skills/pdlc-<name>/SKILL.md` with the standard frontmatter (`name: pdlc-<name>`, layer/stage, produces/requires, etc.). The `pdlc-` prefix in directory and `name:` is mandatory.
 
