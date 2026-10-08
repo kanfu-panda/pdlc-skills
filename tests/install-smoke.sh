@@ -593,6 +593,18 @@ refute_contains "ship 前置检查不再按 _done 判未完成" '不在 `[*_done
 refute_contains "ship 发布说明不再只收 _done 的功能" '在 `[*_done]` 的功能' "$ship_src"
 assert_contains "ship 发布后把纳入的功能写成 ship_done" '`current_stage` 写 `ship_done`' "$ship_src"
 assert_contains "ship 对旧版 _done 写法请人确认" '旧版终态写法' "$ship_src"
+
+# ship 在发布分支上提交 release 并立刻打 tag。分支若以 squash / rebase 合进主干，主干上是一个
+# 新提交，tag 指向的提交永远不在主干——发布说明、`git describe`、按 tag 触发的 CI 都对不上。
+# 合并方式各项目不同，所以要先判断再决定当场打还是合并后补打，且补打要有入口。
+assert_contains "ship 先判断合并方式再决定何时打 tag" "合并方式" "$ship_src"
+assert_contains "ship 点名 squash 合并会让 tag 落在主干之外" "squash" "$ship_src"
+assert_contains "ship 提供合并后补打 tag 的入口" "/pdlc-ship --tag-after-merge" "$ship_src"
+assert_contains "ship 的 argument-hint 列出 --tag-after-merge" \
+  "tag-after-merge" "$(sed -n '/^argument-hint:/p' skills/pdlc-ship/SKILL.md)"
+assert_contains "ship 补打前核对提交在主干上" "merge-base --is-ancestor" "$ship_src"
+refute_contains "ship 自检不再无条件要求当场有 tag" \
+  'tag 已创建（`git tag -l v<new-version>` 返回非空）' "$ship_src"
 assert_contains "ship 默认不生成 CI 配置" '默认不生成、不修改任何 CI 配置' "$ship_src"
 assert_contains "ship 生成 CI 时默认只用手动 + tag 触发" 'workflow_dispatch' "$ship_src"
 refute_contains "ship 不再默认 push / PR 触发" 'push 到 main / tag v* / PR' "$ship_src"

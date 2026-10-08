@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > - **`/pdlc-review` 评审文档时不写状态机**，评审代码时 `checks` 多了 `e2e_pass`（没配 e2e 命令时为 `null`，不影响通过与否）；有阻塞级待人工项时，交互模式也不再推进到 `pdlc-ship`。
 > - **`/pdlc-tdd` 的守卫放宽**：PRD 或设计文档有其一即可，不再要求必须有设计文档。
 > - **`/pdlc-e2e` 的产出**改为 `docs/04_testing/e2e-tests/<功能ID>-<功能名>-e2e.md` 加项目既有 E2E 目录里的测试代码，不再写死 `e2e/**/*.spec.ts`。
+> - **`/pdlc-ship` 按合并方式决定何时打 tag**：发布分支以 squash / rebase 合进主干时不在分支上打，改为合并后运行 `/pdlc-ship --tag-after-merge` 补打。
 
 ### Added
 
@@ -29,13 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/pdlc-perf` 没有测量就改代码**：现在按「定指标 → 测基线 → 一次改一项 → 同一命令复测」走，报告写优化前后的实测数字；没有可重复的测量手段就只出分析、不改代码。报告文件名原先有两种写法，已统一。
 - **`/pdlc-e2e` 没接进任何契约**：补上前置守卫（要有 PRD、实现已完成），测试放进项目既有的 E2E 目录，涉及核心流时更新 `e2e-flow-map.yml`，结果由 `scripts/pdlc-checks.sh --only e2e` 写成 `e2e_pass`。`state-update.md` 里「评审通过、等发布也可以是 `e2e` 阶段」的说法与 `/pdlc-e2e` 的下一跳（`pdlc-review`）矛盾，已更正。
 - **`/pdlc-review` 两种模式下「评审通过」的定义不同**：阻塞级待人工项原先只在 `--autonomous` 下拦住推进；现在两种模式一致，交互模式下人可以当场放行并记入报告。文档评审原先也走状态机写入，会把功能误标成已评审。
+- **`/pdlc-ship` 的 tag 可能落在主干之外**：它在发布分支上提交后立刻打 tag，分支若以 squash / rebase 合并，主干上是新提交，tag 指向的提交永远不在主干，发布说明、`git describe`、按 tag 触发的 CI 都对不上。现在先判断合并方式（项目规范 → 托管平台设置 → 主干历史 → 问人）：普通合并当场打，squash / rebase 合并等合并后用新增的 `--tag-after-merge` 在主干上补打，补打前核对提交确在主干上。
 - **`/pdlc-design` 守卫的步骤编号重复**（两个「3.」），随按 ID 查找的改写一并理顺。
 - **测试检查程序崩溃时静默变绿**：`skills-selfcontained-check.sh` 的逐 skill 检查、`install-smoke.sh` 的 `_done` 泄漏扫描与失效引用扫描，都是内嵌 Python 跑出结果再比对；Python 一崩，结果为空，断言反而通过（一次真实崩溃时表面是「8 passed, 0 failed」，实际 19 条只跑了 8 条）。现在崩溃即判红。
 
 ### Changed
 
 - `adapters/sync_skills.py` 支持 frontmatter 的 `phases:` 字段：串联多个阶段的编排命令据此在正文生成逐阶段的状态机说明；`tests/skills-selfcontained-check.sh` 断言每个阶段都写进去了。
-- `tests/install-smoke.sh` 新增 33 条守卫，共享片段数 14 → 16。架构文档与使用手册同步。
+- `tests/install-smoke.sh` 新增 39 条守卫，共享片段数 14 → 16。架构文档与使用手册同步。
 
 ## [1.7.2] - 2026-10-07
 
