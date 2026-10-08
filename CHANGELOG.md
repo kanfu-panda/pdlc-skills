@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **评测场景 `refresh-safety` 的 fixture 自带假绿**：它的 `e2e.sh` 在功能未实现时「跳过、视为通过」，退出码 0 其实什么都没测；认真的模型因此拒绝把它补进 yml，反被判契约破坏（v1.7.5 发版前 claude 3 轮挂 2 轮）。改为冒烟一个已实现的健康检查，并把 `e2e.sh` 纳入不得改动的文件。
 - **投影安装中途失败会留下半套 skill**：`install.sh --target codex | agents` 改为先装到临时目录、核对数量后再替换。
 - **`install.sh --version` 取不到最新版本时报「Up to date」**：网络不通时改为明说取不到。
 - **`bin/pdlc-loop.sh` 接管死锁时有竞态**：两个驱动同时发现死锁，可能都认为自己拿到了锁。改为先把旧锁原子地挪走再判断，并清掉挪走的目录。
