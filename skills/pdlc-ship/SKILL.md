@@ -1,7 +1,7 @@
 ---
 name: pdlc-ship
 description: 发布工作流（收评审通过的功能 → 跑测试 → bump VERSION → 更 CHANGELOG → tag）
-argument-hint: [--version <x.y.z>] [--skip-tests (仅 hotfix)]
+argument-hint: [--version <x.y.z>] [--skip-tests (仅 hotfix)] | --tag-after-merge [v<x.y.z>]
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 layer: 2
 stage: ship
@@ -59,6 +59,8 @@ terminal_state: ship_done
 > ⛔ **发布是破坏性·不可逆操作**：打 tag / bump 版本 / 触发 CI/CD 属破坏性范畴。**`--autonomous` 对本命令无效**——即使带该参数，§1.1（未完成功能）与 §1.2（测试门）的人工确认仍必须真实由人应答。自主循环（`/pdlc-loop-run`）停在「评审通过、`next_step` 为 `pdlc-ship`」（循环文档里称 `review_done`），永不进入本命令。
 
 ## 段一：执行
+
+> 参数带 `--tag-after-merge`：只做「合并后补打」（见 1.5 末尾），跳过下面全部步骤。
 
 ### 1.1 前置检查
 
@@ -146,15 +148,63 @@ terminal_state: ship_done
 3. 每条用"- <简要描述>（<feature-id>）"格式写入 CHANGELOG 的 `[未发布]` 段（开发各阶段可能已按同一格式为该功能追加过条目——`[未发布]` 段里已有同一 ID 的，不重复写）
 4. 把 `[未发布]` 改为 `[<new-version>] - <今日日期>`
 
-### 1.5 创建 Tag 并提交
+### 1.5 提交，按合并方式决定何时打 Tag
 
 ```bash
 git add VERSION CHANGELOG.md
 git commit -m "release: v<new-version>"
-git tag -a "v<new-version>" -m "Release v<new-version>"
 ```
 
 若选项 B（跳过测试）：commit 消息末尾追加 `[skip-tests: <理由>]`。
+
+**tag 必须指向最终留在主干上的那个提交。**本命令跑在发布分支上，分支怎么合进主干决定了现在打的 tag 还算不算数：
+
+| 合并方式 | 发布分支上的提交会不会原样进主干 | 本命令的做法 |
+|---|---|---|
+| 普通合并（merge commit）/ 快进 | 会 | **当场打** tag |
+| squash 合并 / rebase 合并 | 不会——主干上是新提交 | **不在分支上打**，标为「待合并后打」 |
+| 判断不了 | — | 问人；`--autonomous` 不替人判，按待合并后打处理 |
+
+判断合并方式，按顺序取，命中即停：
+
+1. 项目规范里写了（`CLAUDE.md`、`CONTRIBUTING.md`、`docs/00_standards/` 中关于合并的约定）
+2. 托管平台的仓库设置，例如 GitHub 用 `gh repo view --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed`：只开了一种就是它；开了多种不算命中
+3. 主干最近的历史：近 10 个提交几乎都是单亲、标题以 `(#<编号>)` 结尾 → squash；有带两个父提交的合并提交 → 普通合并。两种迹象都有、或历史太短 → 不算命中
+4. 以上都没命中 → 问人
+
+当场打：
+
+```bash
+git tag -a "v<new-version>" -m "Release v<new-version>"
+```
+
+待合并后打：不建 tag，交接里写明「tag 待合并后打」，并给出下面的补打命令。
+
+#### 合并后补打：`/pdlc-ship --tag-after-merge [v<x.y.z>]`
+
+分支合并后，在主干上运行本命令的这个模式。它只打 tag，**不跑 1.1–1.4、不改状态机**（`ship_done` 已在发布时写过）。
+所以本模式下「分支不是 main/master」的检查与自检项不适用，IRON LAW 的状态写入与「状态必推进」两条也不适用——它不是一次阶段推进。
+参数带 `--tag-after-merge` 时，直接从这里开始，做完按下面的交接收尾：
+
+1. 切到主干并拉取最新（`git switch <主干> && git pull --ff-only`）
+2. 版本号：取参数里的；没给就取主干上 `VERSION` 的值
+3. 若 `v<x.y.z>` 已存在：指向主干上的提交 → 告知已打过，结束；指向主干之外 → 列出它指向的提交，**问人**是否删掉重打（删 tag 属破坏性操作，不自动做）
+4. 找发布提交：主干上**第一个**让 `VERSION` 变成该版本号的提交。不要用 `git log -S`，它也会命中把版本号改走的那个提交：
+
+   ```bash
+   git log --reverse --format=%H <主干> -- VERSION | while read -r c; do
+     [ "$(git show "$c:VERSION" | tr -d '[:space:]')" = "<x.y.z>" ] && { echo "$c"; break; }
+   done
+   ```
+
+   找不到 → 问人（可能是版本号写在别的文件里，由人指定提交）
+5. 核对它在主干上：`git merge-base --is-ancestor <提交> <主干>` 退出码为 0 才继续
+6. 打 tag：`git tag -a "v<x.y.z>" <提交> -m "Release v<x.y.z>"`，**不推送**（推送 tag 会触发按 tag 运行的 CI，由人决定）
+
+```
+✅ 已补打 tag：v<x.y.z> → <提交短 SHA>（<提交标题>），已核对在 <主干> 上
+👉 下一步：git push origin v<x.y.z>（有按 tag 触发的 CI 时会随之运行），再 /pdlc-deploy v<x.y.z>
+```
 
 ### 1.6 CI/CD 配置（默认不动）
 
@@ -207,7 +257,7 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 **发布自检清单：**
 - [ ] VERSION 已更新到新版本号
 - [ ] CHANGELOG 有本次发布条目
-- [ ] tag 已创建（`git tag -l v<new-version>` 返回非空）
+- [ ] 合并方式已判明（或已问人），tag 与之相符：当场打的，`git tag -l v<new-version>` 返回非空；待合并后打的，没有在分支上建 tag，交接里给了补打命令
 - [ ] 若选 A，测试已全绿
 - [ ] 若选 B，commit 消息含 `[skip-tests]` 标记
 - [ ] 分支不是 main/master
@@ -232,7 +282,7 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 针对未通过项：
 - VERSION 未更新 → 重跑 1.3
 - CHANGELOG 缺失 → 重跑 1.4
-- tag 未创建 → 重跑 1.5
+- 应当场打的 tag 未创建 → 重跑 1.5 的打 tag 一步；squash / rebase 合并却在分支上建了 tag → 删掉这个刚建、还没推送的 tag（`git tag -d v<new-version>`），改为待合并后打
 - 分支错误 → 立即中止（不可自动修复）
 
 ## 段四：更新状态机 + 交接
@@ -308,7 +358,7 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
@@ -394,10 +444,16 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 ✅ 发布准备完成：v<new-version>
   - VERSION：已更新
   - CHANGELOG：已追加
-  - Tag：v<new-version> 已创建
+  - Tag：<v<new-version> 已创建 / 待合并后打（合并方式：squash 或 rebase）>
   - 测试：<通过 / [skip-tests: 理由]>
 📦 状态机：<N> 个功能已推进到 ship_done（<ID 列表>）
 👉 下一步：/pdlc-deploy v<new-version>（部署本次发布；项目有 tag 触发的 CI 时，也可手动 git push origin v<new-version>）
+```
+
+tag 待合并后打时，下一步改为：
+
+```
+👉 下一步：开 PR 合并发布分支；合并后在主干上运行 /pdlc-ship --tag-after-merge v<new-version>，再 /pdlc-deploy v<new-version>
 ```
 
 ---

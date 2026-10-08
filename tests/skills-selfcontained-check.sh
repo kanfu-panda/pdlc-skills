@@ -152,6 +152,9 @@ for d in sorted(SK.iterdir()):
                 bad_meta.append(f"{name}: meta 未写阶段短名 {stage}")
             if f"`{nxt}`" not in txt:
                 bad_meta.append(f"{name}: meta 未写下一跳 {nxt}")
+            for ph in (fm_val(fm, "phases") or "").split():  # 串联多阶段的编排命令：每个阶段短名都要写进去
+                if f"`{ph}`" not in txt:
+                    bad_meta.append(f"{name}: meta 未写串联阶段 {ph}")
             if body.find("<!-- pdlc:meta") > body.find("<!-- @include templates/prompts/state-update.md"):
                 bad_meta.append(f"{name}: meta 应在 state-update 区块之前")
 
@@ -188,9 +191,11 @@ report(bad_args, "$ARGUMENTS 至多一处且独占一行")
 report(bad_xref, "提到的片段文件名都内联在本 skill 里")
 print("\n".join(out))
 PY
-results="$(python3 "$PYCHK")"
+results="$(python3 "$PYCHK")"; pyrc=$?
 echo ""
 echo "Test: 逐 skill 结构"
+# 检查程序自己崩了，results 只剩崩溃前打印的那些行——缺掉的断言不会变红，必须单独判
+if [ "$pyrc" -ne 0 ]; then bad "逐 skill 结构检查程序正常跑完" "python 退出码 ${pyrc}，其后的检查一条都没跑"; fi
 while IFS=$'\t' read -r st desc detail; do
     [ -n "$st" ] || continue
     if [ "$st" = "OK" ]; then ok "$desc"; else bad "$desc" "$detail"; fi

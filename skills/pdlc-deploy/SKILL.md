@@ -67,11 +67,21 @@ terminal_state: deploy_done
 
 对上面确定的每个功能（或关键词）做评审记录检查：
 
+<!-- @include templates/prompts/artifact-lookup.md（已内联于下方，无需另读） -->
+## 定位上游产物：先查状态机，再按关键词搜
+
+守卫要找的上游文档（PRD、设计文档、评审记录等），按下面的顺序定位，**命中即停**：
+
+1. **输入是功能ID / 缺陷ID**（`F…` / `B…`）且 `docs/.pdlc-state/<ID>.json` 存在 → 读它 `history[].produced` 里记下的路径，取所需类型的文档。这是上游阶段亲手记的，最可靠
+2. **没有状态机、或 `produced` 里没有所需文档** → 在对应目录下搜：文件名含该 ID 或功能名关键词，或文件顶部 PDLC 追溯头的 `功能ID` 等于该 ID
+3. **命中多份** → 不要随手挑一份：交互模式下列出来请人选；`--autonomous` 下优先取文件名含该 ID 的，仍不止一份则按「真需人判断」阻塞（写 `blocked_reason`，列出候选）
+
+找到后从文件名或追溯头取功能ID，后续产出一律沿用它，**不另分配新 ID**。
+<!-- @include-end templates/prompts/artifact-lookup.md -->
+
+
 1. 从用户输入中提取服务/功能名称关键词（输入已是版本号或功能ID时，用上面确定的功能ID）
-2. 在 `docs/07_reviews/code/` 目录下搜索包含该功能ID或关键词的评审记录
-   - 匹配新格式：`F<日期>-<编号>-*<关键词>*-review.md`
-   - 匹配旧格式：`YYYYMMDD-*<关键词>*-review.md`
-   - 同时检查文件内容中是否包含该关键词
+2. 按下面「定位上游产物」的顺序找 `docs/07_reviews/code/` 下的评审记录（有功能ID时先看状态机里 `review` 阶段记下的 `produced`）
 3. **未找到评审记录** → 输出以下信息后**立即停止，不继续执行**：
    ```
    ⛔ PDLC 守卫：未找到与「<功能名>」相关的评审记录。
@@ -258,7 +268,7 @@ require them.
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。

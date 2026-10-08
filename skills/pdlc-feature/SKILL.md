@@ -5,6 +5,8 @@ argument-hint: <功能描述 | 已有 PRD 路径>
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 layer: 1
 stage: feature
+# 串联的阶段：逐阶段写状态机（adapters/sync_skills.py 据此生成正文里的 pdlc:meta）
+phases: requirements design tdd impl review
 produces:
   - docs/01_requirements/prd/<feature-id>-<feature-name>-prd.md
   - docs/02_design/**
@@ -48,7 +50,12 @@ terminal_state: feature_done
 
 3. **文本输入**：按原有逻辑，从一句话描述自动推断
 
-4. **已有 PRD 路径**：如果输入指向 `docs/01_requirements/prd/` 下已有的 PRD 文件，则**跳过阶段一**，直接从阶段一-B（任务拆解）或阶段二（技术设计）开始
+4. **已有 PRD 路径**：如果输入指向 `docs/01_requirements/prd/` 下已有的 PRD 文件，则**跳过阶段一**，直接从阶段一-B（任务拆解）或阶段二（技术设计）开始。
+   功能ID **沿用该 PRD 追溯头里的 `功能ID`**，不另分配（PRD 没有追溯头时才按下文分配新 ID）
+
+5. **按已有功能ID续跑**：输入是功能ID（`F<日期>-<时分秒>`）且 `docs/.pdlc-state/<功能ID>.json` 存在 → 读它的 `current_stage` / `next_step`，
+   **从下一个未完成的阶段继续**（`requirements` 完成 → 阶段二；`design` → 阶段三；`tdd` → 阶段四；`impl` → 阶段五；`review` 且 `next_step=pdlc-ship` → 已走完，只出最终报告）。
+   上次停在阻塞（`last_phase_result.ok=false`）时，先读 `blocked_reason`：原因已消除才继续，否则报告原因后停止
 
 ## 执行规则
 
@@ -58,6 +65,19 @@ terminal_state: feature_done
 - **TDD 强制**：代码实现前测试必须已存在且处于失败状态
 - **自查通过才结束**：所有测试通过、评审记录完成后才输出最终报告
 - **功能ID贯穿全程**：阶段一分配功能ID后，所有后续文档和产出物统一使用该ID
+- **逐阶段写状态机**（中途失败也能续跑，`/pdlc-retro` 也看得到每个阶段）：每个阶段收尾各写一次，规则见文末「状态机更新」。
+
+  | 阶段 | `stage` / `current_stage` | `next_step` | `checks` |
+  |---|---|---|---|
+  | 一（PRD + 任务拆解 + PRD 评审）完成时**创建**状态文件 | `requirements` | `pdlc-design` | `{}` |
+  | 二（技术设计） | `design` | `pdlc-tdd` | `{}` |
+  | 三（TDD 红灯） | `tdd` | `pdlc-implement` | `bash scripts/pdlc-checks.sh --red <项目根>` 的输出 |
+  | 四（编码实现） | `impl` | `pdlc-review` | `bash scripts/pdlc-checks.sh --only unit,coverage,lint <项目根>` 的输出 |
+  | 五（自查评审） | `review` | `pdlc-ship` | `bash scripts/pdlc-checks.sh --only unit,coverage,lint,e2e <项目根>` 的输出 |
+
+  `checks` 一律用本 skill 自带的 `scripts/pdlc-checks.sh` 生成、原样写入，不手写键名与布尔值。
+  某阶段失败或卡在需人判断的点 → 状态停在上一阶段，写 `ok=false` + `blocked_reason`，最终报告说明可用 `/pdlc-feature <功能ID>` 续跑。
+  旧版本只在最后写一条 `stage: feature`，读侧仍认这个短名，但本版起不再写它
 
 ---
 
@@ -77,7 +97,7 @@ terminal_state: feature_done
 - 描述含「基于 / 扩展 / 增强 X」→ 建议 `extends X`
 - 描述含「需要 / 依赖 X」→ 建议 `depends_on X`
 - 描述含「替代 / 重做 X」→ 建议 `supersedes X`
-- 命中后填入 PRD §6.1 关系表，并在阶段四状态机的 `relations` 块写入。类型语义与方向性见本命令正文里的「Feature 关系链（6 种类型）」一节
+- 命中后填入 PRD §6.1 关系表，并在阶段一结束时创建的状态机 `relations` 块写入。类型语义与方向性见本命令正文里的「Feature 关系链（6 种类型）」一节
 - 无明显关系则跳过
 
 ---
@@ -499,7 +519,7 @@ mermaid 可视化。边样式按类型区分：`supersedes` 虚线、`conflicts_
 <!-- @include-end templates/prompts/relations.md -->
 
 <!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->
-> **本命令的状态机取值**：阶段短名 `feature`（写进 `history[].stage` 与 `last_phase_result.stage`）；下一跳 `pdlc-ship`（写进 `next_step`，交接时提示）。
+> **本命令的状态机取值**：串联多个阶段，阶段短名依次为 `requirements` → `design` → `tdd` → `impl` → `review`——每个阶段收尾各写一次 `history[]` 与 `last_phase_result`（`current_stage` 随之推进，`next_step` 写下一阶段的命令）；不写 `feature`。全部走完时下一跳 `pdlc-ship`（写进 `next_step`，交接时提示）。
 <!-- pdlc:meta-end -->
 <!-- @include templates/prompts/state-update.md（已内联于下方，无需另读） -->
 ## 状态机更新（段四必须执行）
@@ -569,7 +589,7 @@ mermaid 可视化。边样式按类型区分：`supersedes` 虚线、`conflicts_
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。

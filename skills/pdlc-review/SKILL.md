@@ -55,6 +55,12 @@ recommended_effort: medium
 
 对指定的服务或应用进行全面的代码评审。
 
+## 先分流：代码评审还是文档评审
+
+- 评审对象是**文档**（参数是 `.md` 等文档路径，或明说评审 PRD / 设计 / 测试计划 / 部署手册）→ 直接跳到下文「文档评审」一节。
+  **文档评审不写状态机**：它是阶段内的质量关卡，不是主链路上的一个阶段——写了会把功能的 `current_stage` 改成 `review`、`next_step` 改成 `pdlc-ship`，等于宣称代码已评审。下文的代码评审守卫也不适用
+- 其余（功能ID、缺陷ID、服务 / 模块名）→ **代码评审**，从下面的前置检查开始
+
 ## PDLC 前置检查（必须执行，不可跳过）
 
 1. 从用户输入中提取功能 ID 或功能名称关键词。输入是缺陷 ID（`B` 开头，`/pdlc-fix` 的下一跳）时，
@@ -188,10 +194,11 @@ recommended_effort: medium
 6. **修复后验证**：自动修复完成后，重新运行全部测试（命令取自 `docs/00_standards/test-commands.yml`），确认修复未引入新问题
    - 测试通过 → 评审完成
    - 测试失败 → 回滚修复，将问题标记为需人工处理
-   - **写 `last_phase_result`**：`checks` 是 `bash scripts/pdlc-checks.sh --only unit,coverage,lint <项目根>` 的 stdout，原样写入，不用自检冒充；
+   - **写 `last_phase_result`**：`checks` 是 `bash scripts/pdlc-checks.sh --only unit,coverage,lint,e2e <项目根>` 的 stdout，原样写入，不用自检冒充（`e2e` 没配置时为 `null`，不影响 `ok`）；
      退出码三态语义与「命令跑不了 = yml 过期信号」见下方 check 命令规则
-7. **`--autonomous` 下的收尾判定**（呼应非交互契约）：
-   - 「需人工处理/需人工确认」表中存在**阻塞级**项 → 不推进：`last_phase_result.ok=false` + `blocked_reason="评审存在阻塞级待人工项"` + 输出 blocked 哨兵，交还人类
+7. **收尾判定**（交互与 `--autonomous` 一致——「评审通过」只有一个定义）：
+   - 「需人工处理/需人工确认」表中存在**阻塞级**项 → 不推进：`current_stage` 不变，`last_phase_result.ok=false` + `blocked_reason="评审存在阻塞级待人工项"`；
+     `--autonomous` 下另输出 blocked 哨兵交还人类。交互模式下可以把阻塞项列给用户：用户当场明确放行的，在评审报告里记「人工放行：<项> · <理由>」后不再算阻塞
    - 仅有非阻塞级人工项 → 记录在案并正常推进：`current_stage` 写 `review`，`next_step` 写 `pdlc-ship`（评审通过即此状态，不写任何 `_done`）
 
 ## 要求
@@ -452,7 +459,7 @@ stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等�
 > 其它命令的 `current_stage` 一律写本命令的阶段短名，走完整条链路的编排命令（`/pdlc-feature`）也一样——
 > 它收尾时 `current_stage` 是最后一个阶段的短名，`next_step` 是 `pdlc-ship`。
 >
-> - 「评审通过、等待发布」就是 `current_stage` 为 `review`（或 `e2e` 等）且 `next_step` 为 `pdlc-ship`。
+> - 「评审通过、等待发布」就是 `current_stage` 为 `review` 且 `next_step` 为 `pdlc-ship`（`/pdlc-e2e` 在评审之前，它的下一跳是 `pdlc-review`）。
 >   循环相关文档里说的 `review_done` 指的就是这个状态，**不是**要写进 `current_stage` 的值。
 > - 为什么：读侧判「已抵达终态」只看 `current_stage` 是否以 `_done` 结尾。评审通过就写 `_done`，
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。

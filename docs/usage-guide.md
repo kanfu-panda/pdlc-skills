@@ -117,6 +117,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 
 ```
 /pdlc-feature 给用户登录加手机号验证（P0）
+/pdlc-feature F20260502-090000          # 中途停下后按功能ID续跑
 /pdlc-prd 只生成 PRD：登录加验证码
 /pdlc-tdd 给 F20260502-090000 写测试用例
 /pdlc-fix 分页器在结果列表为 0 条时崩溃
@@ -420,6 +421,7 @@ Claude 会自动：
 ```
 
 自动：收集评审通过、待发布的功能（其余进行中的列出来问你） → 询问是否跑测试 → bump VERSION → 汇总 CHANGELOG → git tag → 把纳入的功能写成 `ship_done`。
+tag 要落在主干上：它先判断发布分支怎么合进主干。普通合并就当场打；squash 或 rebase 合并会让分支上的提交进不了主干，这时不打，等合并后在主干上运行 `/pdlc-ship --tag-after-merge v<版本>` 补打（只打 tag、不推送）。
 CI 配置默认不生成也不修改；需要时明确说，它会先给出用量估算，且默认只用手动触发 + 发布 tag 触发。
 之后 `/pdlc-deploy v<版本>` 出一份覆盖该版本全部功能的部署文档，并把这些功能推进到 `deploy_done`。
 
