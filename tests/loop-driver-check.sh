@@ -27,8 +27,8 @@ ok()  { echo "  ✓ $1"; pass=$((pass + 1)); }
 bad() { echo "  ✗ $1"; [[ -n "${2:-}" ]] && printf '    %s\n' "$2"; fail=$((fail + 1)); }
 
 if ! command -v jq >/dev/null 2>&1; then
-    echo "⚠️  jq 未安装，跳过循环驱动测试"
-    exit 0
+    echo "⚠️  jq 未安装，无法运行循环驱动测试——这不算通过" >&2
+    exit 1
 fi
 
 ROOT="$(mktemp -d)"
@@ -314,6 +314,7 @@ echo 999999 > "$P/docs/.pdlc-state/_loop/lock/pid"
 run_driver "$P" F20260924-170001 --platform codex
 expect_rc "锁里的进程已不在 → 接管锁照常跑" 0
 [[ ! -e "$P/docs/.pdlc-state/_loop/lock" ]] && ok "跑完释放锁" || bad "跑完没释放锁"
+[[ -z "$(find "$P/docs/.pdlc-state/_loop" -maxdepth 1 -name 'lock.stale*' 2>/dev/null)" ]] && ok "接管死锁不留旧锁目录" || bad "接管死锁留下了旧锁目录"
 P="$ROOT/intr"
 mkstate "$P" F20260924-171001 impl pdlc-review
 STUB_LOG="$ROOT/intr.log"

@@ -23,8 +23,8 @@ pass=0
 fail=0
 
 if ! command -v jq >/dev/null 2>&1; then
-    echo "⚠️  jq 未安装，跳过 scenario 判定测试"
-    exit 0
+    echo "⚠️  jq 未安装，无法运行 scenario 判定测试——这不算通过" >&2
+    exit 1
 fi
 
 TMP="$(mktemp -d)"
@@ -226,6 +226,64 @@ assert_verdict "散文目标被解读成边 → 契约破坏(1)" 1 "$(rt_verdict
 p="$(rt_proj)"; rt_index "$p" false true
 printf '\n' >> "$p/docs/.pdlc-state/F20260728-110000.json"
 assert_verdict "rebuild 改动了状态文件 → 契约破坏(1)" 1 "$(rt_verdict "$p")"
+
+echo "Test: tdd-red-verified 的判定"
+TRV="tdd-red-verified"; TFID="F20260801-090000"
+# trv_proj <current_stage> <next_step> <last_phase_result JSON> <写测试:yes|no> <实现 mul:yes|no>
+trv_proj() {
+    local d="$TMP/trv-$RANDOM"
+    mkdir -p "$d"
+    (cd "evals/fixtures/$TRV/project" && tar cf - .) | (cd "$d" && tar xf -)
+    jq --arg c "$1" --arg n "$2" --argjson l "$3" '.current_stage=$c | .next_step=$n | .last_phase_result=$l' \
+        "evals/fixtures/$TRV/project/docs/.pdlc-state/$TFID.json" > "$d/docs/.pdlc-state/$TFID.json"
+    if [ "$4" = yes ]; then
+        # shellcheck disable=SC2016  # 写进文件的是字面量，不在此展开
+        printf '%s\n' 'source src/mul.sh' '[ "$(mul 2 3)" = 6 ] || { echo "mul 2 3 应为 6"; exit 1; }' > "$d/tests/test_mul.sh"
+    fi
+    if [ "$5" = yes ]; then
+        # shellcheck disable=SC2016  # 写进文件的是字面量，不在此展开
+        printf '%s\n' 'mul() { echo $(( $1 * $2 )); }' > "$d/src/mul.sh"
+    fi
+    printf '%s' "$d"
+}
+RED='{"stage":"tdd","ok":true,"advanced_to":"impl","checks":{"red_verified":true},"blocked_reason":null}'
+p="$(trv_proj tdd pdlc-implement "$RED" yes no)"
+assert_verdict "写了测试、没实现、真跑是红的 → 通过(0)" 0 "$(verdict "$TRV" "$p")"
+p="$(trv_proj tdd pdlc-implement "$RED" yes yes)"
+assert_verdict "顺手实现了 mul（测试转绿）→ 契约破坏(1)" 1 "$(verdict "$TRV" "$p")"
+p="$(trv_proj tdd pdlc-implement "$RED" no no)"
+assert_verdict "声称红灯但一条测试都没写 → 契约破坏(1)" 1 "$(verdict "$TRV" "$p")"
+p="$(trv_proj tdd pdlc-implement '{"stage":"tdd","ok":true,"checks":{},"blocked_reason":null}' yes no)"
+assert_verdict "red_verified 缺失 → 契约破坏(1)" 1 "$(verdict "$TRV" "$p")"
+p="$TMP/trv-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$TRV/project" && tar cf - .) | (cd "$p" && tar xf -)
+assert_verdict "状态机一字未改 → 抖动(2)" 2 "$(verdict "$TRV" "$p")"
+
+echo "Test: review-not-done 的判定"
+RND="review-not-done"
+# rnd_proj <current_stage> <next_step> <last_phase_result JSON> <写报告:yes|no>
+rnd_proj() {
+    local d="$TMP/rnd-$RANDOM"
+    mkdir -p "$d"
+    (cd "evals/fixtures/$RND/project" && tar cf - .) | (cd "$d" && tar xf -)
+    jq --arg c "$1" --arg n "$2" --argjson l "$3" '.current_stage=$c | .next_step=$n | .last_phase_result=$l' \
+        "evals/fixtures/$RND/project/docs/.pdlc-state/$TFID.json" > "$d/docs/.pdlc-state/$TFID.json"
+    if [ "$4" = yes ]; then
+        mkdir -p "$d/docs/07_reviews/code"
+        echo "# 评审" > "$d/docs/07_reviews/code/$TFID-calc-mul-review.md"
+    fi
+    printf '%s' "$d"
+}
+PASS_LPR='{"stage":"review","ok":true,"checks":{"tests_pass":true,"lint_clean":true},"blocked_reason":null}'
+p="$(rnd_proj review pdlc-ship "$PASS_LPR" yes)"
+assert_verdict "review → pdlc-ship、报告落盘 → 通过(0)" 0 "$(verdict "$RND" "$p")"
+p="$(rnd_proj review_done null "$PASS_LPR" yes)"
+assert_verdict "写了 review_done → 契约破坏(1)" 1 "$(verdict "$RND" "$p")"
+p="$(rnd_proj review pdlc-ship "$PASS_LPR" no)"
+assert_verdict "没写评审报告 → 契约破坏(1)" 1 "$(verdict "$RND" "$p")"
+p="$(rnd_proj impl null '{"stage":"review","ok":false,"checks":{},"blocked_reason":"评审存在阻塞级待人工项"}' yes)"
+assert_verdict "干净代码判了阻塞 → 抖动(2)" 2 "$(verdict "$RND" "$p")"
+p="$TMP/rnd-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$RND/project" && tar cf - .) | (cd "$p" && tar xf -)
+assert_verdict "状态机一字未改 → 抖动(2)" 2 "$(verdict "$RND" "$p")"
 
 echo ""
 echo "Final: $pass passed, $fail failed"

@@ -1,0 +1,19 @@
+{
+  "feature_id": "F20260801-090000",
+  "feature_name": "calc-mul",
+  "created_at": "2026-08-01T09:00:00+08:00",
+  "current_stage": "design",
+  "run_mode": "autonomous",
+  "history": [
+    { "stage": "requirements", "done_at": "2026-08-01T09:05:00+08:00",
+      "produced": ["docs/01_requirements/prd/F20260801-090000-calc-mul-prd.md"] },
+    { "stage": "design", "done_at": "2026-08-01T09:15:00+08:00",
+      "produced": ["docs/02_design/api/F20260801-090000-calc-mul-design.md"] }
+  ],
+  "last_phase_result": {
+    "stage": "design", "ok": true, "advanced_to": "tdd", "checks": {},
+    "blocked_reason": null, "run_mode": "autonomous", "at": "2026-08-01T09:15:00+08:00"
+  },
+  "relations": { "extends": [], "depends_on": [], "supersedes": [], "resolves": [], "conflicts_with": [], "relates_to": [] },
+  "next_step": "pdlc-tdd"
+}

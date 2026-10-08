@@ -18,8 +18,8 @@ pass=0
 fail=0
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "⚠️  python3 未安装，跳过 Codex 适配器测试"
-    exit 0
+    echo "⚠️  python3 未安装，无法运行 Codex 适配器测试——这不算通过" >&2
+    exit 1
 fi
 
 OUT="$(mktemp -d)"

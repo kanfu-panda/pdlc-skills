@@ -308,6 +308,17 @@ for sk in pdlc-status pdlc-retro pdlc-relate; do
     fi
 done
 
+# IRON LAW 的条数：删掉一条不会让任何别的测试变红，只能在这里数
+for pair in "iron-law:6" "iron-law-tool:3"; do
+    frag="references/templates/prompts/${pair%%:*}.md"; want="${pair##*:}"
+    got="$(grep -cE '^[0-9]+\. \*\*' "$frag" 2>/dev/null || true)"
+    if [[ "$got" == "$want" ]]; then
+        echo "  ✓ ${pair%%:*}.md 有 ${want} 条"; pass=$((pass + 1))
+    else
+        echo "  ✗ ${pair%%:*}.md 应有 ${want} 条，实际 ${got:-0} 条"; fail=$((fail + 1))
+    fi
+done
+
 echo ""
 echo "Result: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

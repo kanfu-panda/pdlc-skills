@@ -47,6 +47,14 @@ assert_eq() {
     fi
 }
 
+refute_contains() {  # refute_contains <描述> <不该出现的文本> <被查文本>
+    if grep -qF -- "$2" <<< "$3"; then
+        echo "  ✗ $1"; echo "    不该包含: $2"; fail=$((fail + 1))
+    else
+        echo "  ✓ $1"; pass=$((pass + 1))
+    fi
+}
+
 # ─── Test 1: plugin manifest layout ───
 echo "Test: plugin manifest"
 assert_exists ".claude-plugin/ directory exists"   ".claude-plugin"
@@ -353,6 +361,28 @@ version_out="$(bash install.sh --version 2>&1)"
 assert_contains "--version shows version status"    "pdlc-skills version status"      "$version_out"
 assert_contains "--version shows local clone"       "Local clone:"                    "$version_out"
 
+# 版本比较按数值：已安装的比线上新（本地预发布）不能报「落后」；1.7.10 比 1.7.9 新
+VSTUB="$(mktemp -d)"
+cat > "$VSTUB/claude" <<'STUB'
+#!/usr/bin/env bash
+printf 'Installed plugins:\n  pdlc@pdlc-skills\n    Version: %s\n' "$STUB_INSTALLED"
+STUB
+cat > "$VSTUB/curl" <<'STUB'
+#!/usr/bin/env bash
+echo "$STUB_LATEST"
+STUB
+chmod +x "$VSTUB/claude" "$VSTUB/curl"
+vcheck() { STUB_INSTALLED="$1" STUB_LATEST="$2" PATH="$VSTUB:$PATH" bash install.sh --version 2>&1; }
+assert_contains "--version：旧于线上 → 提示落后" "is behind latest" "$(vcheck 1.7.3 1.7.4)"
+refute_contains "--version：新于线上 → 不报落后" "is behind latest" "$(vcheck 1.7.5 1.7.4)"
+assert_contains "--version：1.7.9 旧于 1.7.10（按数值比）" "is behind latest" "$(vcheck 1.7.9 1.7.10)"
+assert_contains "--version：相同 → 最新" "Up to date" "$(vcheck 1.7.4 1.7.4)"
+refute_contains "--version：取不到线上版本 → 不能说已是最新" "Up to date" "$(vcheck 1.7.4 "")"
+mkdir -p "$VSTUB/home/.codex/skills" && echo 1.7.1 > "$VSTUB/home/.codex/skills/.pdlc-version"
+assert_contains "--version：列出已装的 Codex 投影版本" "Codex skills: 1.7.1" \
+  "$(HOME="$VSTUB/home" STUB_INSTALLED=1.7.4 STUB_LATEST=1.7.4 PATH="$VSTUB:$PATH" bash install.sh --version 2>&1)"
+rm -rf "$VSTUB"
+
 bogus_out="$(bash install.sh --bogus 2>&1 || true)"
 assert_contains "unknown arg shows error"           "Unknown argument"                "$bogus_out"
 
@@ -577,13 +607,6 @@ from sync_skills import collapse
 print(collapse(open(sys.argv[1], encoding="utf-8").read()))
 PYB
 }
-refute_contains() {  # refute_contains <描述> <不该出现的文本> <被查文本>
-    if grep -qF -- "$2" <<< "$3"; then
-        echo "  ✗ $1"; echo "    不该包含: $2"; fail=$((fail + 1))
-    else
-        echo "  ✓ $1"; pass=$((pass + 1))
-    fi
-}
 assert_contains "state-update: _done 只由发布写入" \
   '只由 `/pdlc-ship`（写 `ship_done`）与 `/pdlc-deploy`（写 `deploy_done`）写入' \
   "$(cat references/templates/prompts/state-update.md)"
@@ -761,6 +784,12 @@ assert_contains "loop-run 调驱动的 --next" 'scripts/pdlc-loop.sh --next' "$(
 refute_contains "loop-run 不再让模型读 frontmatter 选模型" 'frontmatter 的 `recommended_model`' "$(src_body skills/pdlc-loop-run/SKILL.md)"
 refute_contains "ship 不内联对它无效的非交互片段" '@include templates/prompts/noninteractive.md' "$(src_body skills/pdlc-ship/SKILL.md)"
 }
+
+# 测试自己缺依赖时不能以 0 退出：本地门禁按退出码判，「什么都没测」会被当成「全部通过」
+skip_ok="$(for f in tests/*.sh; do
+  awk -v f="$f" '/echo .*(未安装|not installed)/ {w=NR} w && NR<=w+2 && /^[ \t]*exit 0/ {print f ":" NR; w=0}' "$f"
+done)"
+assert_eq "测试脚本缺依赖时不以 0 退出" "" "$skip_ok"
 
 # 同一片段在一个 skill 里只内联一次——重复内联只增加篇幅，模型读到的规则不会因此更强
 dup_inc="$(for f in skills/*/SKILL.md; do
