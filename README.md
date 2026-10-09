@@ -12,12 +12,13 @@
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**pdlc-skills** turns AI software engineering into an **auditable, on-disk state machine**. It's a [Claude Code plugin](https://docs.anthropic.com/) shipping a staged PDLC (Product Development Life Cycle) workflow — PRD → design → TDD → implement → review → ship → retro — where every stage enforces hard contracts (artifacts persisted to `docs/`, per-feature state machine, tests-before-code, mandatory self-check, single-shot auto-repair), so AI work produces real, reviewable files instead of chat-only output.
+**pdlc-skills** is built on one rule: **an AI saying "done" doesn't count — exit codes do.** It's a [Claude Code plugin](https://docs.anthropic.com/) shipping a staged PDLC (Product Development Life Cycle) workflow — PRD → design → TDD → implement → review → ship → deploy → retro — on top of an **auditable, on-disk state machine**: every stage persists its artifacts to `docs/`, updates a per-feature state file, demands red tests before code, self-checks before handing off, and auto-repairs at most once.
 
-Three things fall out of that state machine:
+Four things fall out of that:
 
+- **Verified** — the test / lint / coverage results in the state machine are produced by a script from **real command exit codes**, never typed in by the model; every state write is followed by a contract check; and behavioural evals run the skills against real models to catch the model quietly ignoring the rules. See [How it's verified](#how-its-verified).
 - **Auditable** — every artifact lands on disk; you `git diff` exactly what the AI did.
-- **Autonomous** — checks come from **real command exit codes** (never model self-report), so an autonomous loop can drive `tdd → implement → review` to convergence unattended, with fail-stop, stuck-stop, and budget guards.
+- **Autonomous** — because the checks are objective, a loop can drive `tdd → implement → review` to convergence unattended, each step in a fresh process, with fail-stop, stuck-stop, and budget guards.
 - **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (38 slash commands + statusline + in-plugin loop engine); **Codex** (Claude-Code-compatible distributions) and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
@@ -41,6 +42,32 @@ Without this plugin, an AI assistant working on a feature typically:
 | Each stage runs a self-check before handing off | Catch drift at stage boundary, not in review |
 | Auto-repair runs at most once | No infinite "fix → check → fix" loops |
 | Each stage declares its `next_step` | Multi-stage flows are command-driven, not memorized |
+
+---
+
+## How it's verified
+
+A typical AI workflow kit is prompts plus templates: it *asks* the model to write tests first and report honestly, then trusts that it did. pdlc-skills assumes the model will sometimes not comply, and checks at three layers:
+
+| Layer | Who decides | What it catches |
+|---|---|---|
+| **Checks in the state machine** | `pdlc-checks.sh` runs the commands in your `docs/00_standards/test-commands.yml` and maps their exit codes to `tests_pass` / `coverage_pass` / `lint_clean`. Three-state: a command that couldn't run is `null` — never `false`, never `true` | The model reporting "all tests pass" when they don't |
+| **State contract check** | `pdlc-state-lint.sh` runs right after every stage writes its state file (and before any command reads one) | Missing fields, unknown stage names, a stage other than ship / deploy writing `_done` |
+| **Behavioural evals** | `evals/` runs real skills against real models (Claude Code and Codex) in throwaway fixtures, each built so the honest outcome and the lazy one look different | The model ignoring the skill's instructions — e.g. copying the schema example and claiming every check green, or writing code before a red test |
+
+The deterministic parts — the scripts above, the loop driver, the installer — are covered by the plugin's own local test suite. Evals cost model turns, so they run before a release rather than in CI, and they are advisory, not a release gate. Scenarios, and how each one tells honest from lazy: [`evals/EVALS.md`](./evals/EVALS.md).
+
+### Compared with a typical prompt-based workflow
+
+| | Typical prompt-based workflow | pdlc-skills |
+|---|---|---|
+| Who decides "tests pass" | The model's own report | Real exit codes |
+| Where progress lives | The chat, or a free-form notes file | A machine-readable state file per feature, contract-checked on every write |
+| How far it goes | Usually up to code review | Through ship, deploy, retro, and a quality report a human signs off |
+| Unattended runs | Within one session | An external driver: fresh process per step, parallel git worktrees, budget / fail / stuck stops |
+| Is the workflow itself tested | Rarely against real models | Behavioural evals on both Claude Code and Codex |
+
+The trade-off is structure: 38 commands and a `docs/` layout are more than a single-entry kit asks of you. Layer 1 (`/pdlc-feature`, `/pdlc-fix`, `/pdlc-status`) is all you need to start.
 
 ---
 
@@ -183,7 +210,9 @@ Design: [ADR 0007](./docs/decisions/0007-agent-skills-standard.md) (revises the 
 
 ## Autonomous convergence (loop engineering)
 
-Because every stage writes **objective checks** — real `unit` / `lint` / `coverage` exit codes from `docs/00_standards/test-commands.yml`, never model self-report — to a machine-readable state machine, an outer loop can drive the mechanical stages to done without a human in the seat:
+Because every stage writes **objective checks** — real `unit` / `lint` / `coverage` exit codes from `docs/00_standards/test-commands.yml`, never model self-report — to a machine-readable state machine, an outer loop can drive the mechanical stages to done without a human in the seat.
+
+Every step runs in a **fresh process** (`claude -p` / `codex exec`, or a fresh subagent inside Claude Code), and steps hand off through files on disk rather than through conversation — so a long run doesn't degrade as one session's context fills up.
 
 - **`/pdlc-loop-run <feature-id>`** — the convergence engine: auto-advances `tdd → implement → review` until reviewed and awaiting release (`next_step: pdlc-ship`), with an iteration cap, **fail-stop** (a stage reports `ok:false` → stop), and **stuck-stop** (state didn't advance → stop). **Release always stays human** — it never auto-ships.
 - **`/pdlc-loop-next <feature-id>`** — read-only helper that prints the next convergence command, for your own shell loops.
