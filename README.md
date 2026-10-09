@@ -67,7 +67,7 @@ The deterministic parts — the scripts above, the loop driver, the installer �
 | Unattended runs | Within one session | An external driver: fresh process per step, parallel git worktrees, budget / fail / stuck stops |
 | Is the workflow itself tested | Rarely against real models | Behavioural evals on both Claude Code and Codex |
 
-The trade-off is structure: 38 commands and a `docs/` layout are more than a single-entry kit asks of you. Layer 1 (`/pdlc-feature`, `/pdlc-fix`, `/pdlc-status`) is all you need to start.
+The trade-off is structure: 38 commands and a `docs/` layout are more than a single-entry kit asks of you. Layer 1 (`/pdlc-feature`, `/pdlc-fix`, `/pdlc-status`) is all you need to start, and `/pdlc-feature --lite` skips the task breakdown, PRD review and design for small features — tests-first, exit-code checks and code review still apply.
 
 ---
 
