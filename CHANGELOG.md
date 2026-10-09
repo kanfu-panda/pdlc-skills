@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.7] - 2026-10-09
+
+本版给 `/pdlc-feature` 加上轻量模式 `--lite`，降低小功能的上手门槛。仍 38 个命令，状态文件没有新字段，升级不需要迁移。
+
+### Added
+
+- **`/pdlc-feature --lite`**：PRD 只写「背景与目标」「功能需求」「待确认问题」三章，跳过任务拆解、PRD 评审和技术设计；先红灯再实现、`checks` 按退出码生成、代码评审照常。PRD 之后 `next_step` 直接是 `pdlc-tdd`，`/pdlc-loop-run` 可以从这里接手。只写 `docs/` 下四个目录。改到对外接口、表结构或跨服务调用时，最终报告建议补 `/pdlc-design`。
+- **行为评测场景 `feature-lite`**（A-live，共 10 个）：验轻量模式没产出设计文档 / 任务清单 / PRD 评审记录，且照常走到 `review → pdlc-ship`。判定逻辑在 `tests/evals-scenario-check.sh` 里有桩测；`tests/loop-driver-check.sh` 补了 `requirements → pdlc-tdd` 的下一步映射用例。
+
 ## [1.7.6] - 2026-10-09
 
 本版给 `/pdlc-prd` 与 `/pdlc-feature` 加上开工前的需求澄清：一句话需求不再被模型悄悄「自动推断」掉缺的部分。仍 38 个命令，升级不需要迁移。

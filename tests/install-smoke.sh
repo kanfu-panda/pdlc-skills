@@ -857,6 +857,21 @@ assert_contains "prd 自检清单查澄清留痕" '需求澄清：文字输入�
 refute_contains "feature 不再声称全程不询问用户" '直到产出可上线状态，中途不暂停、不询问用户' "$(src_body skills/pdlc-feature/SKILL.md)"
 }
 
+# /pdlc-feature --lite：小功能只砍文档开销（任务拆解、PRD 评审、技术设计），不砍核心约束；
+# PRD 之后 next_step 直接是 pdlc-tdd，循环驱动才接得上（--next 的映射见 loop-driver-check）。
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+fea_src="$(src_body skills/pdlc-feature/SKILL.md)"
+assert_contains "feature 的 argument-hint 列出 --lite" '[--lite]' "$(sed -n '/^argument-hint:/p' skills/pdlc-feature/SKILL.md)"
+assert_contains "feature 有轻量模式一节" '## 轻量模式（`--lite`）' "$fea_src"
+assert_contains "轻量模式 PRD 之后下一跳是 pdlc-tdd" '`next_step: pdlc-tdd`（完整模式是 `pdlc-design`）' "$fea_src"
+assert_contains "轻量模式照常先红灯、checks 按退出码" '**照常**：先有红灯测试才写实现' "$fea_src"
+assert_contains "轻量模式只写四处 docs/" '不创建其它 `docs/` 子目录' "$fea_src"
+assert_contains "按功能ID续跑认得轻量模式" '但 `next_step` 是 `pdlc-tdd`（轻量模式）→ 阶段三' "$fea_src"
+assert_contains "轻量模式评审跳过设计一致性" '轻量模式没有设计文档，跳过本条' "$fea_src"
+assert_contains "轻量模式遇到接口 / 表结构改动建议补设计" '建议补一份 `/pdlc-design <功能ID>`' "$fea_src"
+}
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

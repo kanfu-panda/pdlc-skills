@@ -327,6 +327,42 @@ p="$(pcl_proj requirements pdlc-design true 4 4)"
 jq '.current_stage="impl"' "$p/docs/.pdlc-state/$TFID.json" > "$p/x" && mv "$p/x" "$p/docs/.pdlc-state/$TFID.json"
 assert_verdict "改动了已有功能的状态机 → 契约破坏(1)" 1 "$(verdict "$PCL" "$p")"
 
+echo "Test: feature-lite 的判定"
+FLT="feature-lite"
+# flt_proj <current_stage> <next_step> <ok> <history 阶段，空格分隔> [多产出的文件，相对项目根]
+flt_proj() {
+    local d="$TMP/flt-$RANDOM" extra
+    mkdir -p "$d"
+    (cd "evals/fixtures/$FLT/project" && tar cf - .) | (cd "$d" && tar xf -)
+    mkdir -p "$d/docs/01_requirements/prd" "$d/docs/07_reviews/code"
+    printf '# PRD\n## 1. 背景与目标\n## 3. 功能需求\n## 8. 待确认问题\n' > "$d/docs/01_requirements/prd/$NFID-calc-div-prd.md"
+    echo "# 评审" > "$d/docs/07_reviews/code/$NFID-calc-div-review.md"
+    jq -n --arg c "$1" --arg n "$2" --argjson ok "$3" --arg h "$4" --arg f "$NFID" \
+        '{feature_id:$f,current_stage:$c,next_step:$n,history:($h|split(" ")|map({stage:.})),
+          last_phase_result:{stage:$c,ok:$ok,checks:{},blocked_reason:(if $ok then null else "等人确认" end)}}' \
+        > "$d/docs/.pdlc-state/$NFID.json"
+    for extra in "${@:5}"; do mkdir -p "$d/$(dirname "$extra")"; echo x > "$d/$extra"; done
+    printf '%s' "$d"
+}
+LITE_H="requirements tdd impl review"
+p="$(flt_proj review pdlc-ship true "$LITE_H")"
+assert_verdict "跳过设计、走完 review → pdlc-ship → 通过(0)" 0 "$(verdict "$FLT" "$p")"
+p="$(flt_proj review pdlc-ship true "requirements design tdd impl review")"
+assert_verdict "history 里有 design → 契约破坏(1)" 1 "$(verdict "$FLT" "$p")"
+p="$(flt_proj review pdlc-ship true "$LITE_H" "docs/02_design/api/$NFID-calc-div-api.md")"
+assert_verdict "产出了设计文档 → 契约破坏(1)" 1 "$(verdict "$FLT" "$p")"
+p="$(flt_proj review pdlc-ship true "$LITE_H" "docs/06_tasks/$NFID-calc-div-tasks.md")"
+assert_verdict "产出了任务清单 → 契约破坏(1)" 1 "$(verdict "$FLT" "$p")"
+p="$(flt_proj review pdlc-ship true "$LITE_H")"
+printf '## 4. 非功能需求\n' >> "$p/docs/01_requirements/prd/$NFID-calc-div-prd.md"
+assert_verdict "PRD 写了非功能需求一章 → 契约破坏(1)" 1 "$(verdict "$FLT" "$p")"
+p="$(flt_proj impl pdlc-review true "requirements tdd impl")"
+assert_verdict "没走到 review → 契约破坏(1)" 1 "$(verdict "$FLT" "$p")"
+p="$(flt_proj tdd pdlc-implement false "requirements tdd")"
+assert_verdict "中途判了阻塞 → 抖动(2)" 2 "$(verdict "$FLT" "$p")"
+p="$TMP/flt-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$FLT/project" && tar cf - .) | (cd "$p" && tar xf -)
+assert_verdict "没有新状态机 → 抖动(2)" 2 "$(verdict "$FLT" "$p")"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

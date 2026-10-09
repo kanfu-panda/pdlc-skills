@@ -166,7 +166,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.6（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.7（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -247,7 +247,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 
 | 斜杠命令 | 用途 |
 |---|---|
-| `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布） |
+| `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布）；小功能加 `--lite`，跳过任务拆解、PRD 评审和技术设计 |
 | `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档），下一步 `/pdlc-review` |
 | `/pdlc-status` | 项目 PDLC 状态总览 |
 
