@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.6] - 2026-10-09
+
+本版给 `/pdlc-prd` 与 `/pdlc-feature` 加上开工前的需求澄清：一句话需求不再被模型悄悄「自动推断」掉缺的部分。仍 38 个命令，升级不需要迁移。
+
+> ⚠️ **行为变更（请留意）**：
+> - **`/pdlc-feature` 可能在开工前问一轮**：文字描述缺了「给谁用 / 要做什么 / 明确不做什么 / 怎样算做完 / 有什么限制」中 3 项及以上时，先问最多 3 个问题（每题带默认答案）再开工；开工后仍全程不停。要保持以前一问不问的跑法，加 `--autonomous`。
+
+### Added
+
+- **需求澄清**（新共享片段 `clarify.md`，`/pdlc-prd`、`/pdlc-feature` 内联）：对照五项清单判断描述是否太单薄，太单薄时交互模式问一轮；`--autonomous` 下不问，把靠默认补上的项逐条列进 PRD「待确认问题」并记入 `auto_decisions[]`；连「要做什么」都没有时输出 blocked 哨兵、不写任何文件。输入是文件、已有 PRD 或功能ID 时跳过。
+- **行为评测场景 `prd-clarify`**（A-live，共 9 个）：单薄需求在 `--autonomous` 下必须照常写出 PRD 并推进状态机，且默认补上的项都摆出来。判定逻辑在 `tests/evals-scenario-check.sh` 里有桩测。
+- `/pdlc-prd`、`/pdlc-feature` 的 `argument-hint` 列出 `--autonomous`；PRD 自检清单加一条「澄清留痕」。
+
 ## [1.7.5] - 2026-10-07
 
 本版加固安装、升级与测试基础设施：测试少了依赖不再报绿，升级先刷新市场索引，投影安装中途失败不再留下半套 skill。skill 正文没有改动（仍 38 个），升级不需要迁移。

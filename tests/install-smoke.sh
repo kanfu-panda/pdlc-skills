@@ -104,9 +104,9 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "12 user-facing templates"                   "12"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "17 shared prompt fragments"                 "17"  "$prompt_count"
+assert_eq "18 shared prompt fragments"                 "18"  "$prompt_count"
 
-for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands layout-detect artifact-lookup iron-law-tool; do
+for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands layout-detect artifact-lookup iron-law-tool clarify; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
 done
 
@@ -835,6 +835,27 @@ PYC
 }
 stale="$(scan_stale)" || stale="检查程序出错（python 退出码非 0），结论不可用"
 assert_eq "skill 正文无失效引用、落盘路径与 produces 一致" "" "$stale"
+
+# 需求澄清：一句话需求以前直接「自动推断」，缺的东西被模型悄悄猜掉。文字描述太单薄时，
+# 交互模式问一轮；--autonomous 不问，但靠默认补上的项必须摆进 PRD「待确认问题」，不能藏起来。
+# shellcheck disable=SC2016  # 反引号是要匹配的字面文本
+{
+clar="$(cat references/templates/prompts/clarify.md)"
+assert_contains "澄清片段：缺 3 项及以上才算太单薄" '缺 3 项及以上' "$clar"
+assert_contains "澄清片段：一次最多问 3 个" '一次最多 3 个' "$clar"
+assert_contains "澄清片段：只问一轮" '只问这一轮' "$clar"
+assert_contains "澄清片段：autonomous 下把默认列进待确认问题" '「待确认问题」一节逐条列出' "$clar"
+assert_contains "澄清片段：autonomous 下默认记入 auto_decisions" '"point": "需求澄清：<项>"' "$clar"
+assert_contains "澄清片段：连要做什么都没有时 block 不猜" '<<<PDLC blocked reason="需求描述没有说要做什么">>>' "$clar"
+assert_contains "澄清片段：文件 / 已有 PRD 输入跳过" '输入是文件、已有 PRD 或功能ID 时跳过本节' "$clar"
+assert_contains "PRD 模板有待确认问题一节" '## 8. 待确认问题' "$(cat references/templates/prd-template.md)"
+for s in pdlc-prd pdlc-feature; do
+  assert_contains "$s 内联需求澄清片段" '<!-- @include templates/prompts/clarify.md' "$(cat "skills/$s/SKILL.md")"
+  assert_contains "$s 的 argument-hint 列出 --autonomous" '[--autonomous]' "$(sed -n '/^argument-hint:/p' "skills/$s/SKILL.md")"
+done
+assert_contains "prd 自检清单查澄清留痕" '需求澄清：文字输入时已对照澄清清单' "$(src_body skills/pdlc-prd/SKILL.md)"
+refute_contains "feature 不再声称全程不询问用户" '直到产出可上线状态，中途不暂停、不询问用户' "$(src_body skills/pdlc-feature/SKILL.md)"
+}
 
 echo ""
 echo "Final: $pass passed, $fail failed"

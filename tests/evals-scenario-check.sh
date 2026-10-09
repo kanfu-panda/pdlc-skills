@@ -285,6 +285,48 @@ assert_verdict "干净代码判了阻塞 → 抖动(2)" 2 "$(verdict "$RND" "$p"
 p="$TMP/rnd-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$RND/project" && tar cf - .) | (cd "$p" && tar xf -)
 assert_verdict "状态机一字未改 → 抖动(2)" 2 "$(verdict "$RND" "$p")"
 
+echo "Test: prd-clarify 的判定"
+PCL="prd-clarify"
+NFID="F20261009-100000"
+# pcl_proj <current_stage> <next_step> <ok> <待确认行数> <需求澄清 auto_decisions 条数>
+pcl_proj() {
+    local d="$TMP/pcl-$RANDOM" i rows="" decs="[]"
+    mkdir -p "$d"
+    (cd "evals/fixtures/$PCL/project" && tar cf - .) | (cd "$d" && tar xf -)
+    for i in $(seq 1 "$4"); do rows="${rows}| $i | 缺项 $i | 默认 $i | 待确认 |"$'\n'; done
+    for i in $(seq 1 "$5"); do decs="$(jq --arg i "$i" '. + [{"point":("需求澄清：项"+$i),"chose":"默认","at":"2026-10-09T10:00:00+08:00"}]' <<< "$decs")"; done
+    mkdir -p "$d/docs/01_requirements/prd"
+    printf '# PRD\n\n## 8. 待确认问题\n| 序号 | 问题 | 采用的默认 | 状态 |\n|---|---|---|---|\n%s\n## 9. 自审记录\n| 待确认 | 不该被数进来 |\n' "$rows" \
+        > "$d/docs/01_requirements/prd/$NFID-calc-div-prd.md"
+    jq -n --arg c "$1" --arg n "$2" --argjson ok "$3" --argjson decs "$decs" --arg f "$NFID" \
+        '{feature_id:$f,current_stage:$c,next_step:$n,history:[{stage:"requirements",auto_decisions:$decs}],
+          last_phase_result:{stage:"requirements",ok:$ok,checks:{},blocked_reason:null}}' \
+        > "$d/docs/.pdlc-state/$NFID.json"
+    printf '%s' "$d"
+}
+p="$(pcl_proj requirements pdlc-design true 4 4)"
+assert_verdict "写出 PRD、4 项待确认且都留痕 → 通过(0)" 0 "$(verdict "$PCL" "$p")"
+p="$(pcl_proj requirements pdlc-design true 1 4)"
+assert_verdict "待确认问题只列 1 项（自审记录里的不算）→ 契约破坏(1)" 1 "$(verdict "$PCL" "$p")"
+p="$(pcl_proj requirements pdlc-design true 4 0)"
+assert_verdict "默认没记进 auto_decisions → 契约破坏(1)" 1 "$(verdict "$PCL" "$p")"
+p="$(pcl_proj requirements_done null true 4 4)"
+assert_verdict "状态没推进到 requirements → pdlc-design → 契约破坏(1)" 1 "$(verdict "$PCL" "$p")"
+p="$(pcl_proj requirements pdlc-design true 4 4)"
+printf '<<<PDLC blocked reason="需求描述没有说要做什么">>>\n' > "$TMP/pcl-blocked.txt"
+assert_verdict "说清了要做什么却 block → 契约破坏(1)" 1 "$(verdict "$PCL" "$p" "$TMP/pcl-blocked.txt")"
+# shellcheck disable=SC2016  # 反引号是 skill 原文里的字面文本
+printf -- '- 末行输出哨兵 `<<<PDLC blocked reason="需求描述没有说要做什么">>>` 后结束\n' > "$TMP/pcl-skilltext.txt"
+assert_verdict "输出里只是引用了 skill 原文中的哨兵 → 通过(0)" 0 "$(verdict "$PCL" "$p" "$TMP/pcl-skilltext.txt")"
+p="$TMP/pcl-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$PCL/project" && tar cf - .) | (cd "$p" && tar xf -)
+printf '1. 这个除法函数给谁用？（默认：项目内其它脚本）\n' > "$TMP/pcl-ask.txt"
+assert_verdict "没建状态机、输出在提问 → 契约破坏(1)" 1 "$(verdict "$PCL" "$p" "$TMP/pcl-ask.txt")"
+assert_verdict "没建状态机、也没输出 → 抖动(2)" 2 "$(verdict "$PCL" "$p")"
+assert_verdict "没建状态机且 agent 异常退出（输出里有问号也算抖动）→ 抖动(2)" 2 "$(EVAL_AGENT_RC=1 verdict "$PCL" "$p" "$TMP/pcl-ask.txt")"
+p="$(pcl_proj requirements pdlc-design true 4 4)"
+jq '.current_stage="impl"' "$p/docs/.pdlc-state/$TFID.json" > "$p/x" && mv "$p/x" "$p/docs/.pdlc-state/$TFID.json"
+assert_verdict "改动了已有功能的状态机 → 契约破坏(1)" 1 "$(verdict "$PCL" "$p")"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
