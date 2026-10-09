@@ -515,6 +515,14 @@ PDLC 把 38 个阶段按使用频率分 3 层暴露：
 
 **违反任一条 = 立即中止**。这避免 AI "轻飘飘地说做了但没落盘"，也避免循环拿滞后状态空转。
 
+### 规则写了，怎么确认模型真的照做
+
+IRON LAW 写在 skill 正文里，执行者是模型——光写不查，等于相信模型自觉。所以另有三层去查：
+
+- **检查结果不让模型填**：`last_phase_result.checks` 由 skill 自带的 `scripts/pdlc-checks.sh` 按 `test-commands.yml` 的真实退出码生成；命令跑不起来记 `null`，不记 `false`，更不记 `true`
+- **写完即体检**：每个写状态的阶段写完立刻跑 `scripts/pdlc-state-lint.sh`，缺字段、未知阶段名、非 ship / deploy 写 `_done` 都当场报出来
+- **拿真实模型跑**：仓库里的 `evals/` 在一次性样例项目里真跑 skill，每个样例都设计成「老实干」和「偷懒」结果不一样；发版前在 Claude Code 和 Codex 两边跑，场景见 `evals/EVALS.md`
+
 ### Handoff：显式下一跳
 
 每个 Layer 1/2 阶段结束时，Claude 会输出 handoff 块，告诉你"下一步该做什么"，并给出可直接复制的下一句调用。
