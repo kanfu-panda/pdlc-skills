@@ -67,7 +67,7 @@
 | 无人值守 | 限于一个会话之内 | 外部驱动：每步全新进程、git worktree 并行、预算 / 失败 / 卡住即停 |
 | 工作流本身有没有被测 | 很少拿真实模型测 | Claude Code 和 Codex 两边都有行为评测 |
 
-代价是结构更重：38 个命令加一套 `docs/` 目录，比单入口的套件要求得多。起步只用第一层（`/pdlc-feature`、`/pdlc-fix`、`/pdlc-status`）就够了。
+代价是结构更重：38 个命令加一套 `docs/` 目录，比单入口的套件要求得多。起步只用第一层（`/pdlc-feature`、`/pdlc-fix`、`/pdlc-status`）就够了；小功能用 `/pdlc-feature --lite`，跳过任务拆解、PRD 评审和技术设计，先红灯测试、按退出码判定、代码评审这几样照常。
 
 ---
 
@@ -166,7 +166,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.6（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.7（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -247,7 +247,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 
 | 斜杠命令 | 用途 |
 |---|---|
-| `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布） |
+| `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布）；小功能加 `--lite`，跳过任务拆解、PRD 评审和技术设计 |
 | `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档），下一步 `/pdlc-review` |
 | `/pdlc-status` | 项目 PDLC 状态总览 |
 

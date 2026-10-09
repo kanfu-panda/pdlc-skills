@@ -33,6 +33,7 @@ A-det 覆盖的其实只是 loop 驱动那一小块（护栏退出码、收敛�
 | `tdd-red-verified` | A-live | `pdlc-tdd` 收尾必须红灯、不写实现代码 | 新写了测试 **且** `src/mul.sh` 原样 **且** 真跑 unit 非 0 **且** `red_verified:true`、`tdd → pdlc-implement` |
 | `review-not-done` | A-live | 评审通过写 `review → pdlc-ship`，不写任何 `_done` | `current_stage`/`history` 无 `_done` **且** `review → pdlc-ship`、`ok:true` **且** 评审报告落盘 |
 | `prd-clarify` | A-live | 单薄文字需求在 `--autonomous` 下不问不卡，靠默认补的项摆出来 | 新建状态机 `requirements → pdlc-design`、`ok:true` **且** PRD「待确认问题」≥ 3 行标「待确认」**且** ≥ 3 条「需求澄清」`auto_decisions` **且** 无 blocked 哨兵、旧功能状态机未改 |
+| `feature-lite` | A-live | `/pdlc-feature --lite` 只砍文档开销、不砍核心约束 | 本功能无设计文档 / 任务清单 / PRD 评审记录、history 无 `design` **且** PRD 无「非功能需求」一章 **且** 走到 `review → pdlc-ship`、`ok:true`、评审记录落盘、unit 真跑为绿 |
 
 ### `honest-checks` 为什么抗虚报
 
@@ -166,12 +167,15 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
 | 跑法 | 模型 turn |
 |---|---|
 | 单场景 1 轮 | 1 |
-| 全部场景（**9 个**）1 轮 | 9 |
-| 全部场景 `--repeat 3` | 27 |
-| 发版前两平台 × `--repeat 3` | 54 |
+| 全部场景（**10 个**）1 轮 | 10 |
+| 全部场景 `--repeat 3` | 30 |
+| 发版前两平台 × `--repeat 3` | 60 |
 
 量级仍可接受，但**每加一个 A-live 场景，发版前的固定开销就 +6 turn**（两平台 × 3 轮）。
 加场景前先确认它非 A-live 不可（回到上面的分档判据）。
+
+> turn 数不等于开销：`feature-lite` 一轮就是一整条 feature 链路（PRD → tdd → impl → review），
+> token 用量是单阶段场景的数倍。codex 臂按 API 计费，跑它之前尤其要先算一下。
 
 > 这张表此前长期写着「全部场景（2 个）」，而实际已有 4 个——**成本账自己过期了**，
 > 按它估会低报一半以上。改场景数时记得同步这里；`--list` 是当前的真实数量。

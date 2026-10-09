@@ -358,8 +358,11 @@ mkstate "$P" F20260924-160002 review pdlc-ship
 mkstate "$P" F20260924-160003 impl pdlc-review "等人确认接口"
 mkstate "$P" F20260924-160004 ship_done null
 printf '{}' > "$P/docs/.pdlc-state/F20260924-160005.json"
+mkstate "$P" F20260924-160006 requirements pdlc-design
+mkstate "$P" F20260924-160007 requirements pdlc-tdd   # /pdlc-feature --lite：PRD 之后直接进 tdd
 for pair in "F20260924-160001 pdlc-implement" "F20260924-160002 done" "F20260924-160003 blocked" \
-            "F20260924-160004 done" "F20260924-160005 blocked" "F20260924-169999 blocked"; do
+            "F20260924-160004 done" "F20260924-160005 blocked" "F20260924-169999 blocked" \
+            "F20260924-160006 blocked" "F20260924-160007 pdlc-tdd"; do
     nid="${pair% *}"; want="${pair#* }"
     run_driver "$P" --next "$nid"
     if [[ "$RC" == 0 && "$OUT" == "$want" ]]; then ok "--next $nid → $want"; else bad "--next $nid → $want" "退出 ${RC}，输出：${OUT}"; fi
