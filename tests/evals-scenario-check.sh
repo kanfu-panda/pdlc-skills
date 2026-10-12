@@ -449,6 +449,45 @@ p="$(setup_proj "$STM")"; git -C "$p" tag -a v1.1.0 "$(cat "$p/.git/eval-expecte
 echo 1.1.0 > "$p/VERSION"; "${G[@]}" -C "$p" commit -qam "chore: 改版本" >/dev/null 2>&1
 assert_verdict "补打时还提交了改动 → 契约破坏(1)" 1 "$(verdict "$STM" "$p")"
 
+echo "Test: design-options 的判定"
+DOP="design-options"; DFID="F20260901-100000"
+# dop_proj <方案行数> <是否记 decision:1/0> [是否写方案比较节:1/0] → 一个跑完的现场
+dop_proj() {
+    local rows="$1" dec="$2" sec="${3:-1}" d i
+    d="$TMP/$DOP-$RANDOM"; mkdir -p "$d"
+    (cd "evals/fixtures/$DOP/project" && tar cf - .) | (cd "$d" && tar xf -)
+    mkdir -p "$d/docs/02_design/architecture"
+    {
+        echo "# calc-history 设计"
+        if [ "$sec" = 1 ]; then
+            echo "## 方案比较"
+            echo "| 方案 | 做法 | 改动面 | 风险 | 对 PRD | 契合 |"
+            echo "|---|---|---|---|---|---|"
+            for i in $(seq "$rows"); do echo "| 方案$i | 做法$i | 小 | 低 | 满足 | 好 |"; done
+            echo "选定：方案1（按推荐自动选）"
+        fi
+        echo "## 存储"; echo "追加写文本文件。"
+    } > "$d/docs/02_design/architecture/$DFID-calc-history-arch.md"
+    jq --argjson dec "$dec" '.current_stage = "design" | .next_step = "pdlc-tdd"
+        | .history += [{stage: "design", done_at: "2026-09-01T11:00:00+08:00",
+                        produced: ["docs/02_design/architecture/F20260901-100000-calc-history-arch.md"]}
+                       + (if $dec == 1 then {auto_decisions: [{point: "设计方案", chose: "方案1（不加依赖）", at: "x"}]} else {} end)]
+        | .last_phase_result = {stage: "design", ok: true, advanced_to: "tdd", checks: {}, blocked_reason: null}' \
+        "$d/docs/.pdlc-state/$DFID.json" > "$d/s.tmp" && mv "$d/s.tmp" "$d/docs/.pdlc-state/$DFID.json"
+    printf '%s' "$d"
+}
+assert_verdict "两个候选 + 选定 + 记了设计方案决策 → 通过(0)" 0 "$(verdict "$DOP" "$(dop_proj 2 1)")"
+assert_verdict "三个候选也通过(0)" 0 "$(verdict "$DOP" "$(dop_proj 3 1)")"
+assert_verdict "没有方案比较节 → 契约破坏(1)" 1 "$(verdict "$DOP" "$(dop_proj 0 1 0)")"
+assert_verdict "表里只有一个方案（凑不成比较）→ 契约破坏(1)" 1 "$(verdict "$DOP" "$(dop_proj 1 1)")"
+assert_verdict "自主模式下没记设计方案决策 → 契约破坏(1)" 1 "$(verdict "$DOP" "$(dop_proj 2 0)")"
+p="$(dop_proj 2 1)"; echo 'echo hacked' >> "$p/src/calc.sh"
+assert_verdict "设计阶段改了实现代码 → 契约破坏(1)" 1 "$(verdict "$DOP" "$p")"
+p="$TMP/$DOP-raw"; mkdir -p "$p"; (cd "evals/fixtures/$DOP/project" && tar cf - .) | (cd "$p" && tar xf -)
+assert_verdict "什么都没动 → 抖动(2)" 2 "$(verdict "$DOP" "$p")"
+CLAIMD="$TMP/claimd.txt"; echo '📦 状态快照：docs/.pdlc-state/F20260901-100000.json' > "$CLAIMD"
+assert_verdict "什么都没动却声称已交接 → 契约破坏(1)" 1 "$(verdict "$DOP" "$p" "$CLAIMD")"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

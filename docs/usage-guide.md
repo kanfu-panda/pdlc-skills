@@ -150,7 +150,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 | 斜杠命令 | 用途 | 下一阶段 |
 |---|---|---|
 | `/pdlc-prd` | 创建 PRD | `/pdlc-design` |
-| `/pdlc-design` | 技术设计（API/DB/架构/UI 按需） | `/pdlc-tdd` |
+| `/pdlc-design` | 技术设计（API/DB/架构/UI 按需；有技术取舍时先比较 2～3 个方案再选） | `/pdlc-tdd` |
 | `/pdlc-tdd` | 测试先行（红灯） | `/pdlc-implement` |
 | `/pdlc-implement` | 按设计 + 测试实现代码（绿灯） | `/pdlc-review` |
 | `/pdlc-review` | 代码 + 文档评审 + 自动修复（与项目类型不符的检查项标「不适用」，不据此改代码） | `/pdlc-ship` |
