@@ -170,7 +170,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.12（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.13（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -274,7 +274,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 | `/pdlc-refactor` | 代码重构 |
 | `/pdlc-ship` | 发布评审通过的功能（测试 → VERSION → CHANGELOG → tag）；不主动生成或修改 CI 配置 |
 | `/pdlc-deploy` | 部署文档——按版本（`/pdlc-deploy v1.2.0`，覆盖该版本全部功能）或按单个功能 |
-| `/pdlc-retro` | 迭代复盘（趋势对比） |
+| `/pdlc-retro` | 迭代复盘（趋势对比；用过循环驱动的，另汇总各阶段被拦次数与卡点原因） |
 | `/pdlc-task` | 阶段内任务跟踪 |
 
 ### Layer 3 · 工具（24 个，专项叠加）

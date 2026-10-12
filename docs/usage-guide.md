@@ -158,7 +158,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 | `/pdlc-refactor` | 代码重构（外部行为不变） | `/pdlc-review` |
 | `/pdlc-ship` | 发布评审通过的功能（测试 → bump → CHANGELOG → tag；默认不动 CI 配置） | `/pdlc-deploy` |
 | `/pdlc-deploy` | 部署文档：按版本（覆盖该版本全部功能）或按单个功能 | — |
-| `/pdlc-retro` | 迭代复盘（趋势对比） | — |
+| `/pdlc-retro` | 迭代复盘（趋势对比；用过循环驱动的，另汇总各阶段被拦次数与卡点原因） | — |
 | `/pdlc-task` | 阶段内任务跟踪 | — |
 
 ### Layer 3 · 工具（24 个，专项叠加）
@@ -515,6 +515,7 @@ bin/pdlc-loop.sh --status
 - **依赖**：按状态机 `relations.depends_on` 排先后，依赖没收敛就不跑依赖方，成环的全部跳过。并行时依赖方在被依赖方的 worktree 里接着跑（看得到它的改动）
 - **并行的前提**：项目是 git 仓库，且状态文件已提交（worktree 从 `HEAD` 建）。驱动**不提交、不合并**，产物留在 worktree 里由你审阅合并；worktree 目录自动写进 `.git/info/exclude`，不出现在 `git status` 里
 - **运行记录**：git 项目在 `.git/pdlc-loop/`（不入库），非 git 项目在 `docs/.pdlc-state/_loop/`。每个功能一份进度记录和一份日志（模型的完整输出）
+- **复盘**：`--report [--since YYYY-MM-DD]` 汇总历次运行——各阶段步数、被拦次数、耗时中位数、卡点原因，`/pdlc-retro` 把它原样放进复盘报告
 - **进度**：`--status` / `/pdlc-status --loop` 显示功能数、各状态计数、每个功能在哪一步、本步已跑多久；驱动进程已不在或单步超过 45 分钟会给出提示。**不给预计完成时间**——各步耗时差异太大
 - **退出码**：`0` 全部收敛；`2` 有功能阻塞或被跳过；`3` 达步数上限；`4` 平台命令出错；`5` 状态没推进（多个功能取最大值）
 - Ctrl-C 会终止正在跑的步骤并记下「被中断」；重跑同样的命令从各功能当前阶段继续

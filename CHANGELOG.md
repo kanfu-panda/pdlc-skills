@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.13] - 2026-10-12
+
+本版让 `/pdlc-retro` 把循环驱动的运行记录也读进去，回答「哪个阶段最常被拦、为什么」。仍 38 个命令，升级不需要迁移。
+
+### Added
+
+- **循环驱动逐步记录**：`bin/pdlc-loop.sh` 在每个功能的运行记录里追加 `steps_log`，每步记阶段、从哪到哪、结果（推进 / 被拦 / checks 矛盾 / 卡住 / 出错）、耗时。
+- **`pdlc-loop.sh --report [--since YYYY-MM-DD]`**：只读汇总历次运行——结局计数、各阶段步数 / 推进 / 被拦 / 耗时中位数、卡点原因按次数。更早的运行没有逐步数据，只计入结局与原因，并点明有几个功能次。
+- **`/pdlc-retro` 新增「自动推进（循环驱动）」一节**：调用自带的 `scripts/pdlc-loop.sh --report`，输出原样放进报告，下面 1～3 句解读；没有运行记录时只写一句。
+- ADR 0006 增补 §7；usage-guide、README 同步。
+
+### Tests
+
+- `tests/loop-driver-check.sh` 新增 17 条（111 → 128）：每步记录的内容与耗时、`--report` 的各项汇总、旧记录兼容、`--since` 过滤与非法日期、没有记录时只说一句、不调用模型。驱动用 macOS 自带的 bash 3.2 跑。
+
 ## [1.7.12] - 2026-10-12
 
 本版让多功能循环驱动 `bin/pdlc-loop.sh` 可以用任意 CLI 推进，不再只限 claude / codex。仍 38 个命令，升级不需要迁移。

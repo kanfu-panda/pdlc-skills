@@ -132,3 +132,16 @@ stuck-stop（`current_stage` 没变）、收敛即停（`next_step` 为 `pdlc-sh
 - 状态推进已由 `pdlc-advance.sh` 执行（ADR 0008），换一个平台最常见的虚报方式——检查红了还推进——在脚本层已经拦住，
   这是现在敢开放自定义平台的前提
 - 验证：`tests/loop-driver-check.sh` 新增 18 条（用法守卫、占位符展开、在工作目录执行、未验证标记、非零退出 → 4、并行时 `{dir}` 是各自的 worktree）
+
+---
+
+## 7. 增补：逐步记录与 `--report`（v1.7.13）
+
+§5 留的「`/pdlc-retro` 统计循环跑的步数与阻塞原因」落地。
+
+- 每个功能的记录多一个 `steps_log`：每步 `{skill, from, to, result, secs}`，`result` 是 `advanced` / `blocked` / `contradiction` / `stuck` / `error`，
+  在驱动每个出口写一笔。只追加，不改原有字段，`--status` 不受影响
+- `--report [--since YYYY-MM-DD]`：只读，汇总运行记录目录下的所有运行——结局计数、各阶段步数 / 推进 / 被拦 / 耗时中位数、卡点原因按次数。
+  旧记录没有 `steps_log`，只计入结局与原因，并点明有几个功能次没有逐步数据
+- 汇总是确定性的，由脚本算，`/pdlc-retro` 原样抄进报告、只加 1～3 句解读——同 `checks` 交给脚本的思路：数字不经模型之手
+- 验证：`tests/loop-driver-check.sh` 新增 17 条（111 → 128）
