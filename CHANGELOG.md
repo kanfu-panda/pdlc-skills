@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **自定义平台默认「未验证」**：启动时提示，运行记录写 `verified: false` 与模板，`--status` 标「未验证」。驱动照样每步重读状态机、红了就停、绝不发布，但管不了它的花费，只靠 `--max-steps` 限步。某个平台过了 `evals` 的 honest-checks 准入闸，再升级成内置平台。
 - ADR 0006 增补 §6；usage-guide §4.6 新增「其它 CLI · 自主收敛循环」；README 与 `/pdlc-loop-run` 同步。
 
+### Changed
+
+- **GitHub Copilot CLI 复测通过状态完整性准入闸**：1.0.95 + v1.7.10，`honest-checks` 3/3（此前 1.0.88 + v1.7.0 为 3/3 未过），三轮都经 `pdlc-advance.sh` 写状态。README 平台表、usage-guide 与 ADR 0007 §6.4 更新；和 Grok 同一个标准，依据只有 3 轮，暂不内置进循环驱动。
+
 ### Tests
 
 - `tests/loop-driver-check.sh` 新增 18 条（93 → 111）：用法守卫（缺 `--cmd`、`--cmd` 配了别的平台、模板缺 `{stage}` / `{id}` / `--autonomous`）、dry-run 展开、在含空格的工作目录里执行、未验证标记写进运行记录与 `--status`、命令非零退出 → 4、并行时 `{dir}` 是各自的 worktree。驱动用 macOS 自带的 bash 3.2 跑。

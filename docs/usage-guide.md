@@ -270,7 +270,7 @@ curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/instal
 |---|---|
 | Claude Code | 一等公民（插件，不经投影） |
 | Codex | 已过状态完整性准入闸（ADR 0004）。验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
-| GitHub Copilot | CLI 1.0.88 能加载、能触发（`npx skills add` 与 `--target agents` 两种装法都实测过），但**未过**状态完整性准入闸（默认模型 3 轮全部契约破坏：失败仍推进阶段、漏记 lint、改测试后报全绿，见 ADR 0007 §6）。可跑单个阶段，不建议交给自主循环。VS Code 里的 Copilot agent 未跑 |
+| GitHub Copilot | CLI 1.0.88 能加载、能触发（`npx skills add` 与 `--target agents` 两种装法都实测过）。CLI 1.0.95 + v1.7.10 **通过**状态完整性准入闸（默认模型 3/3，见 ADR 0007 §6.4；此前 1.0.88 + v1.7.0 为 3/3 未过）。尚未内置进循环驱动，需要时用 `--platform custom`。VS Code 里的 Copilot agent 未跑 |
 | Grok CLI | 不用另装：它读 `~/.claude/plugins/installed_plugins.json`，自动加载已装的 Claude Code 插件。1.0.41 **已过**状态完整性准入闸（3/3 轮，见 ADR 0007 §6）。暂未加进循环驱动 |
 | Antigravity CLI（`agy`） | 用 `--dest ~/.gemini/config/skills` 装（1.2.9 实测不读工作区的 `.agents/skills/`）。能加载、能触发，但**未过**准入闸：声称「实现完成、状态已更新、测试全绿」，实际一个文件都没写（见 ADR 0007 §6） |
 | Gemini CLI、OpenCode、Amp、Goose、Cursor、Windsurf、Kiro、Roo Code | 按各自文档可加载，我们没跑过 |

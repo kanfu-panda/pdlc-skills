@@ -204,7 +204,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 |---|---|---|
 | Claude Code | 插件（本仓库） | ✅ 一等公民 |
 | Codex | `--target codex`（`npx skills add` 装到 `~/.agents/skills/`，我们验证过的发行版读的是 `~/.codex/skills/`） | ✅ 已过状态完整性准入闸——[ADR 0004](./docs/decisions/0004-codex-loop-run.md)；验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
-| GitHub Copilot | `npx skills add`，或 `--target agents`（`--project DIR`） | CLI 1.0.88：两种装法都能加载、能触发 · ❌ **未过**状态完整性准入闸（3/3 轮，默认模型）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸)；可跑单个阶段，不建议交给自主循环 · VS Code 未跑 |
+| GitHub Copilot | `npx skills add`，或 `--target agents`（`--project DIR`） | CLI 1.0.88：两种装法都能加载、能触发 · CLI 1.0.95 + v1.7.10：✅ **通过**状态完整性准入闸（3/3 轮，默认模型；此前 1.0.88 + v1.7.0 为 3/3 未过）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) · 尚未内置进循环驱动（可用 `--platform custom`） · VS Code 未跑 |
 | Grok CLI | 不用另装——它会自己加载已装的 Claude Code 插件 | 1.0.41：✅ 已过状态完整性准入闸（3/3 轮）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) · 暂未加进循环驱动 |
 | Antigravity CLI（`agy`） | `--target agents --dest ~/.gemini/config/skills`（1.2.9 不读工作区的 `.agents/skills/`） | 1.2.9：能加载、能触发 · ❌ **未过**准入闸——声称「完成、状态已更新」，实际一个文件都没写——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) |
 | Gemini CLI · OpenCode · Amp · Goose | `npx skills add`，或 `--target agents` | 按其文档可加载 · 我们没跑过 |
