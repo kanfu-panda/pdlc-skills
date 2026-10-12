@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`/pdlc-ship` 先推进状态机再提交**：以前先提交 `release: v<版本>`、再把功能推进到 `ship_done`，状态文件的改动留在发布提交之外，squash 合并时丢失，主干上这些功能一直显示「待发布」。现在推进放在提交之前，状态文件随发布提交一起进库（实测时模型自己发现并调整了顺序）。
 
+### Tests
+
+- 实测：Claude 两轮跑通 `/pdlc-ship`（停在测试门 → 回答「A、squash」），草稿纳入功能、`checks`（含 `coverage_pass=null`）、测试门与「待合并后打」都照实写，评审记录没有计数就写「未给出计数」，随发布提交、未推送。
+- 回归：`ship-human-gate` Claude 1/1、Codex 1/1，`ship-tag-after-merge` Claude 1/1。`tests/install-smoke.sh` 的模板数断言 12 → 13。
+
 ## [1.7.13] - 2026-10-12
 
 本版让 `/pdlc-retro` 把循环驱动的运行记录也读进去，回答「哪个阶段最常被拦、为什么」。仍 38 个命令，升级不需要迁移。
