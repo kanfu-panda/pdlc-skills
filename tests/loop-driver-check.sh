@@ -12,6 +12,8 @@
 #     状态文件没提交的功能不进 worktree；依赖链在依赖方的 worktree 里接着跑
 #   - 运行记录：git 项目记在 .git/pdlc-loop/，非 git 项目记在 docs/.pdlc-state/_loop/（体检不把它当状态机）
 #   - --status：计数、每个功能一行、驱动进程已不在 / 单步过久的提示，不给预计完成时间
+#   - 每步记录（steps_log）与 --report：按阶段汇总步数 / 推进 / 被拦、卡点原因、结局计数；旧记录无逐步数据也能汇总；
+#     --since 按运行日期过滤；没有记录时只说一句、退出 0
 #   - 自定义平台（--platform custom --cmd）：用法守卫、占位符展开（目录含空格）、在工作目录里执行、
 #     标为「未验证」并记进运行记录与 --status、命令非零退出 → 4、并行时 {dir} 是各自的 worktree
 # shellcheck disable=SC2015  # ok / bad 恒返回 0，`条件 && ok || bad` 只在条件不成立时走 bad
@@ -440,6 +442,44 @@ run_driver "$P" F20260924-181001 F20260924-181002 --platform custom --cmd "$TPL"
 expect_rc "custom 并行收敛" 0
 [[ "$(grep '	start	' "$STUB_LOG" | cut -f4 | sort -u | grep -c '/.worktrees/pdlc-loop/')" == 2 ]] \
     && ok "并行时 {dir} 是各自的 worktree" || bad "并行时 {dir} 不对" "$(cat "$STUB_LOG")"
+
+echo "Test: 每步记录与 --report（/pdlc-retro 读它）"
+P="$ROOT/report"
+mkstate "$P" F20260924-190001 tdd pdlc-implement
+mkstate "$P" F20260924-190002 tdd pdlc-implement
+run_driver "$P" --report
+expect_rc "没有运行记录 → 0" 0
+expect_out "没有运行记录时说一句" "没有循环运行记录"
+STUB_LOG="$ROOT/report.log"
+printf 'F20260924-190002 failstop\n' > "$ROOT/plan"
+STUB_PLAN="$ROOT/plan" run_driver "$P" F20260924-190001 F20260924-190002 --platform codex
+expect_rc "一个收敛、一个被拦 → 2" 2
+rd="$(dirname "$(find "$P/docs/.pdlc-state/_loop" -name run.json | head -1)")"
+[[ "$(jq -c '[.steps_log[] | [.skill, .from, .to, .result]]' "$rd/F20260924-190001.json")" == '[["implement","tdd","impl","advanced"],["review","impl","review","advanced"]]' ]] \
+    && ok "收敛的功能每步都有记录（阶段、从哪到哪、结果）" || bad "steps_log 不对" "$(jq -c .steps_log "$rd/F20260924-190001.json")"
+[[ "$(jq -c '[.steps_log[] | [.skill, .result]]' "$rd/F20260924-190002.json")" == '[["implement","blocked"]]' ]] \
+    && ok "被拦的那一步记为 blocked" || bad "被拦的 steps_log 不对" "$(jq -c .steps_log "$rd/F20260924-190002.json")"
+[[ "$(jq -r '.steps_log[0].secs | type' "$rd/F20260924-190001.json")" == number ]] && ok "每步记下耗时（秒）" || bad "没记耗时"
+# 一次旧版本留下的运行：记录里没有 steps_log
+O="$P/docs/.pdlc-state/_loop/20200101-080000"; mkdir -p "$O"
+jq -n '{run_id:"20200101-080000", started_ts:1577836800, finished_ts:1577837000, pid:1, host:"h", platform:"claude",
+    parallel:1, max_steps:4, features:["F20200101-080000"], exit_code:3}' > "$O/run.json"
+jq -n '{id:"F20200101-080000", status:"capped", stage:"impl", steps:4, started_ts:1577836800, step_started_ts:1577836900,
+    finished_ts:1577837000, note:"🛑 达步数上限（4）", workdir:".", rc:3}' > "$O/F20200101-080000.json"
+run_driver "$P" --report
+expect_rc "--report 退出 0" 0
+expect_out "统计运行次数与功能次" "2 次运行、3 个功能次"
+expect_out "按结局计数" "✅ 收敛 1 · ⛔ 阻塞 1 · 🛑 达上限 1"
+expect_out "implement 一行：2 步、推进 1、被拦 1" "| implement | 2 | 1 | 1 |"
+expect_out "review 一行：1 步、推进 1、被拦 0" "| review | 1 | 1 | 0 |"
+expect_out "卡点原因按次数列出" "1 × ⛔ fail-stop：stub failstop"
+expect_out "旧记录没有逐步数据也点明" "1 个功能次没有逐步记录"
+run_driver "$P" --report --since 2026-01-01
+expect_out "--since 过滤掉更早的运行" "1 次运行、2 个功能次"
+grep -qF "没有逐步记录" <<< "$OUT" && bad "--since 之后不该再提旧记录" "$OUT" || ok "--since 之后不再提旧记录"
+run_driver "$P" --report --since 2026-13-45
+expect_rc "--since 日期非法 → 64" 64
+[[ "$(calls)" == "3" ]] && ok "--report 不调用模型" || bad "--report 调用了模型（共 $(calls) 次）"
 
 echo ""
 echo "Final: $pass passed, $fail failed"

@@ -6,6 +6,7 @@
 #   pdlc-loop.sh --ready     --platform claude|codex|custom [选项]   # 挑出所有处于收敛段、未阻塞的功能
 #   pdlc-loop.sh --status [--project DIR]                     # 看最近一次运行的进度
 #   pdlc-loop.sh --next <功能ID> [--project DIR]               # 只打印该功能的下一步（只读，不调用模型）
+#   pdlc-loop.sh --report [--since YYYY-MM-DD] [--project DIR] # 汇总历次运行：各阶段步数 / 被拦次数 / 耗时、卡点原因（/pdlc-retro 读它）
 # 选项：
 #   --parallel N          同时跑几个功能（默认 1）。N>1 时每个功能在自己的 git worktree 里跑
 #   --max-steps N         每个功能至多跑几步（默认 4 = 3 段 + 1 步余量）
@@ -42,6 +43,8 @@ PROJECT="$PWD"
 DRY_RUN=0
 READY=0
 STATUS=0
+REPORT=0
+SINCE=""
 NEXT_ID=""
 IDS=""
 POLL="${PDLC_LOOP_POLL:-2}"
@@ -50,7 +53,7 @@ STALE_MIN="${PDLC_LOOP_STALE_MIN:-45}"
 CLAUDE_FLAGS="${PDLC_LOOP_CLAUDE_FLAGS:---allowedTools Bash Read Write Edit Glob Grep}"
 
 usage() {
-    sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 die() { echo "错误：$1" >&2; exit 64; }
@@ -66,6 +69,8 @@ while [[ $# -gt 0 ]]; do
         --dry-run)        DRY_RUN=1; shift ;;
         --ready)          READY=1; shift ;;
         --status)         STATUS=1; shift ;;
+        --report)         REPORT=1; shift ;;
+        --since)          SINCE="${2:-}"; shift 2 || die "--since 需要日期" ;;
         --next)           NEXT_ID="${2:-}"; shift 2 || die "--next 需要功能ID" ;;
         -h|--help)        usage 0 ;;
         -*)               echo "未知参数：$1" >&2; usage 64 ;;
@@ -196,6 +201,53 @@ if [[ "$STATUS" -eq 1 ]]; then
     [[ "$c_block" -gt 0 || "$c_skip" -gt 0 ]] && hints="$hints  · 阻塞 / 跳过的功能需要人处理，处理后重跑即可"$'\n'
     [[ "$c_done" -gt 0 ]] && hints="$hints  · 收敛的功能交人工 /pdlc-ship（循环永远不发布）"$'\n'
     [[ -n "$hints" ]] && printf '  提示：\n%s' "$hints"
+    exit 0
+fi
+
+# ════════════════════════════ --report ════════════════════════════
+# 只读：汇总运行记录里的每个功能次。每步数据来自记录里的 steps_log（v1.7.13 起才有），更早的运行只有结局与原因
+if [[ "$REPORT" -eq 1 ]]; then
+    if [[ -n "$SINCE" ]]; then
+        [[ "$SINCE" =~ ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]] || die "--since 需 YYYY-MM-DD（得到 '$SINCE'）"
+    fi
+    since="${SINCE//-/}" runs=0 recs=""
+    for rj in "$STORE"/*/run.json; do
+        [[ -f "$rj" ]] || continue
+        rd="$(dirname "$rj")"; rid="$(basename "$rd")"
+        [[ -n "$since" && "${rid%%-*}" < "$since" ]] && continue
+        runs=$((runs + 1))
+        for f in "$rd"/*.json; do
+            [[ "$(basename "$f")" == run.json ]] && continue
+            recs="$recs$(jq -c --arg run "$rid" '. + {run: $run}' "$f" 2>/dev/null)"$'\n'
+        done
+    done
+    if [[ "$runs" -eq 0 ]]; then
+        echo "没有循环运行记录${SINCE:+（${SINCE} 起）}。"
+        exit 0
+    fi
+    printf '%s' "$recs" | jq -rs --argjson runs "$runs" --arg since "$SINCE" '
+        def dur: if . == null then "—" elif . >= 3600 then "\(. / 3600 | floor)h\(. % 3600 / 60 | floor)m"
+                 elif . >= 60 then "\(. / 60 | floor)m" else "\(.)s" end;
+        def med: sort | if length == 0 then null else .[(length - 1) / 2 | floor] end;
+        [ ["done","✅ 收敛"], ["blocked","⛔ 阻塞"], ["capped","🛑 达上限"], ["stuck","🛑 卡住"], ["error","❌ 出错"],
+          ["skipped","⏭ 跳过"], ["stopped","⚠️ 中断"], ["running","🔄 未结束"], ["queued","🔄 未开始"] ] as $labels
+        | . as $all
+        | ([.[] | .steps_log // [] | .[]]) as $steps
+        | "循环运行记录：\($runs) 次运行、\(length) 个功能次（\(if $since == "" then "全部" else "\($since) 起" end)）",
+          "结局：" + ([$labels[] | . as [$k, $l] | ($all | map(select(.status == $k)) | length) as $n
+                      | select($n > 0) | "\($l) \($n)"] | join(" · ")),
+          "",
+          (if ($steps | length) == 0 then "各阶段：无逐步数据"
+           else "| 阶段 | 步数 | 推进 | 被拦 | 耗时中位数 |", "|---|---|---|---|---|",
+                ($steps | group_by(.skill) | map({skill: .[0].skill, n: length,
+                    adv: map(select(.result == "advanced")) | length, secs: map(.secs) | med})
+                 | sort_by({tdd: 0, implement: 1, review: 2}[.skill] // 9) | .[]
+                 | "| \(.skill) | \(.n) | \(.adv) | \(.n - .adv) | \(.secs | dur) |")
+           end),
+          ([.[] | select(.status != "done" and (.note // "") != "") | .note[0:120]] | group_by(.) | map({n: length, note: .[0]})
+           | sort_by(-.n) | if length == 0 then empty else "", "卡点原因（按次数）：", (.[] | "- \(.n) × \(.note)") end),
+          ([.[] | select((.steps_log == null) and (.status != "queued"))] | length
+           | if . > 0 then "", "（\(.) 个功能次没有逐步记录：v1.7.13 之前的运行只记了结局与原因）" else empty end)'
     exit 0
 fi
 
@@ -350,6 +402,10 @@ for id in $IDS; do
 done
 
 # 结束一个功能：写记录、打一行、以对应退出码退出（在 worker 子进程里调用）
+log_step() {  # log_step <ID> <阶段> <从> <到> <结果 advanced|blocked|contradiction|stuck|error> <开始时间>（--report 读它）
+    rec_upd "$1" --arg sk "$2" --arg fr "$3" --arg to "$4" --arg r "$5" --argjson s "$(( $(now) - $6 ))" \
+        '.steps_log = ((.steps_log // []) + [{skill: $sk, from: $fr, to: $to, result: $r, secs: $s}])'
+}
 finish() {  # finish <ID> <状态> <退出码> <说明> [当前阶段]
     rec_upd "$1" --arg st "$2" --argjson rc "$3" --arg note "$4" --arg stage "${5:-}" --argjson t "$(now)" \
         '.status=$st | .rc=$rc | .note=$note | .finished_ts=$t | (if $stage != "" then .stage=$stage else . end)'
@@ -360,7 +416,7 @@ finish() {  # finish <ID> <状态> <退出码> <说明> [当前阶段]
 run_feature() {  # run_feature <ID> <工作目录>（后台子进程）
     trap - EXIT INT TERM
     local id="$1" wd="$2" state="$2/docs/.pdlc-state/$1.json" log="$RUN_DIR/$1.log"
-    local step=0 next short before after okv reason m
+    local step=0 next short before after okv reason m t0
     rec_upd "$id" --argjson t "$(now)" '.started_ts=$t'
     while :; do
         next="$(compute_next "$state")"
@@ -378,6 +434,7 @@ run_feature() {  # run_feature <ID> <工作目录>（后台子进程）
         rec_upd "$id" --arg stage "$before" --argjson s "$step" --argjson t "$(now)" '.stage=$stage | .steps=$s | .step_started_ts=$t'
         echo "[$id] ▶ 第 $step 步：pdlc-${short}（当前 stage=${before}）"
         printf '\n===== 第 %s 步 pdlc-%s · %s =====\n' "$step" "$short" "$(date '+%F %T')" >> "$log"
+        t0="$(now)"
         if [[ "$PLATFORM" == custom ]]; then
             (cd "$wd" && bash -c "$(custom_cmd "$short" "$id" "$wd")" < /dev/null >> "$log" 2>&1)
         elif [[ "$PLATFORM" == codex ]]; then
@@ -389,19 +446,26 @@ run_feature() {  # run_feature <ID> <工作目录>（后台子进程）
             # shellcheck disable=SC2086  # CLAUDE_FLAGS 按空白拆成多个参数
             (cd "$wd" && claude -p "/pdlc-$short $id --autonomous" --max-budget-usd "$BUDGET" \
                 ${m:+--model "$m"} $CLAUDE_FLAGS < /dev/null >> "$log" 2>&1)
-        fi || finish "$id" error 4 "❌ $PLATFORM 命令非零退出（pdlc-${short}）——停机，见日志 $log" "$before"
+        fi || { log_step "$id" "$short" "$before" "$before" error "$t0"
+                finish "$id" error 4 "❌ $PLATFORM 命令非零退出（pdlc-${short}）——停机，见日志 $log" "$before"; }
         # 状态机是唯一真源，不信平台的输出
         okv="$(jq -r '.last_phase_result.ok // "null"' "$state" 2>/dev/null)"
         after="$(jq -r '.current_stage // ""' "$state" 2>/dev/null)"
         if [[ "$okv" != true ]]; then
+            log_step "$id" "$short" "$before" "$after" blocked "$t0"
             finish "$id" blocked 2 "⛔ fail-stop：$(jq -r '.last_phase_result.blocked_reason // "last_phase_result.ok 不是 true"' "$state" 2>/dev/null)" "$after"
         fi
         # ok=true 却有 check 为 false：状态自相矛盾，按 checks 为准停下，不往下一阶段推
         badck="$(jq -r '[.last_phase_result.checks // {} | objects | to_entries[] | select(.value == false) | "checks.\(.key)=false"] | join("、")' "$state" 2>/dev/null)"
         if [[ -n "$badck" ]]; then
+            log_step "$id" "$short" "$before" "$after" contradiction "$t0"
             finish "$id" blocked 2 "⛔ fail-stop：ok=true 但 ${badck}——状态与检查结果矛盾，以 checks 为准" "$after"
         fi
-        [[ "$after" == "$before" ]] && finish "$id" stuck 5 "🛑 stuck-stop：current_stage 没推进（仍是 ${after}，违反 IRON LAW 第 6 条）" "$after"
+        if [[ "$after" == "$before" ]]; then
+            log_step "$id" "$short" "$before" "$after" stuck "$t0"
+            finish "$id" stuck 5 "🛑 stuck-stop：current_stage 没推进（仍是 ${after}，违反 IRON LAW 第 6 条）" "$after"
+        fi
+        log_step "$id" "$short" "$before" "$after" advanced "$t0"
         echo "[$id]    ✓ $before → $after"
     done
 }

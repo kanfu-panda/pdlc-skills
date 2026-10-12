@@ -170,7 +170,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.12 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.13 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -276,7 +276,7 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-refactor` | Refactor code |
 | `/pdlc-ship` | Release the reviewed features (tests → VERSION → CHANGELOG → tag); leaves CI config alone unless asked |
 | `/pdlc-deploy` | Deployment doc — per release (`/pdlc-deploy v1.2.0`, all features in it) or per feature |
-| `/pdlc-retro` | Iteration retrospective with trend comparison |
+| `/pdlc-retro` | Iteration retrospective with trend comparison; if you use the loop driver, also which stage gets blocked most and why |
 | `/pdlc-task` | In-stage task tracking |
 
 ### Layer 3 · Tools (24)
