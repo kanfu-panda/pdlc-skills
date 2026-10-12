@@ -45,7 +45,8 @@ recommended_effort: medium
    ```json
    { "point": "<确认点描述>", "chose": "<所选默认>", "at": "<ISO 8601>" }
    ```
-2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖等无法安全默认的点）→ **不猜**：
+2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖、**测试与设计 / PRD 矛盾**等无法安全默认的点）→ **不猜**。
+   改测试、改检查命令让它变绿，永远不是「流程性默认」，不能记成 `--decision`：
    - `current_stage` 保持不变（不推进）
    - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`（写状态机的命令：给状态推进脚本传 `--blocked "<原因>"`）
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
@@ -247,8 +248,9 @@ bash scripts/pdlc-advance.sh <功能ID> --stage <本阶段短名> --next <下一
 | `3` | 未推进：检查没过 / 红灯没验证 / 主动 block / tdd 写的测试被改 | 把 stdout 里的 `blocked_reason` 原样写进报告，按阻塞收尾。**不要为了让它推进去改测试或改检查命令** |
 | `2` | 脚本跑不了（参数错、缺 jq、状态文件损坏） | 参数错就改正重跑；缺 jq 才按下面的格式手写，并在报告里写明「状态机未经脚本写入」 |
 
-> 退出码 `3` 且原因是「tdd 阶段写的测试被改动」：实现阶段不改测试。确实是测试本身写错了（与设计 / PRD 矛盾），
-> 先在报告里讲清楚，再带 `--tests-changed "<理由>"` 重跑——理由会记进 `auto_decisions`，人看得到。
+> 退出码 `3` 且原因是「tdd 阶段写的测试被改动」：实现阶段不改测试。测试是否真的写错了（与设计 / PRD 矛盾），**只有人能判断**：
+> - 交互模式：先把矛盾讲清楚、问人；人同意后再带 `--tests-changed "<理由>"` 重跑，理由记进 `auto_decisions`
+> - `--autonomous`：没有人可问，**不要改测试**，带 `--blocked "<矛盾在哪>"` 收尾。自主模式下带 `--tests-changed` 脚本也不推进
 >
 > 项目开了 PDLC 护栏（`docs/00_standards/pdlc-hooks.yml`）时，用 Write / Edit 直接写状态文件会被拦下。
 
@@ -370,7 +372,7 @@ bash scripts/pdlc-advance.sh <功能ID> --stage <本阶段短名> --next <下一
 - 脚本自己跑 unit、coverage、lint，**全部不为 `false` 才推进**到 `impl`；红了就写 `ok=false`、`current_stage` 保持原值，
   不要自己改写成 `impl`——那会让 `current_stage` 不再表示「最后一个真正完成的阶段」，外层循环的 stuck-stop 因此失效
 - 不得用自检结果冒充 `checks`；项目没有 `test-commands.yml` 时脚本写 `checks: {}`，报告里提示建立该文件
-- tdd 阶段写的测试被你改过，脚本会拒绝推进（退出码 `3`）。实现阶段不改测试；测试本身确实写错时按 `state-update` 的说明带 `--tests-changed`
+- tdd 阶段写的测试被你改过，脚本会拒绝推进（退出码 `3`）。实现阶段不改测试；测试像是写错了，交互模式下先问人、人同意才带 `--tests-changed`，`--autonomous` 下带 `--blocked` 交还
 
 <!-- @include templates/prompts/check-commands.md（已内联于下方，无需另读） -->
 ## 跑 check 命令：退出码的三态语义

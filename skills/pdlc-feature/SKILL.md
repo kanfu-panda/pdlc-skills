@@ -570,7 +570,7 @@ PDLC 用扁平 feature ID 空间。关系链在 5 个位置冗余表达，本文
 
 ### 表达位置 2：状态机关系块（state JSON）
 
-即状态机文件里的 `relations` 块（六键对象，每键一个 ID 数组）。存**出边**；入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`。
+即状态机文件里的 `relations` 块（六键对象，每键一个 ID 数组）。存**出边**；入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`。**只写本功能自己的状态文件**——不要为了「双向」去改对方功能的 `relations`，那是别的功能的状态，改了会让它看起来又被动过。
 
 ### 表达位置 3：反向索引 `_relations.json`（自动生成）
 
@@ -625,8 +625,9 @@ bash scripts/pdlc-advance.sh <功能ID> --stage <本阶段短名> --next <下一
 | `3` | 未推进：检查没过 / 红灯没验证 / 主动 block / tdd 写的测试被改 | 把 stdout 里的 `blocked_reason` 原样写进报告，按阻塞收尾。**不要为了让它推进去改测试或改检查命令** |
 | `2` | 脚本跑不了（参数错、缺 jq、状态文件损坏） | 参数错就改正重跑；缺 jq 才按下面的格式手写，并在报告里写明「状态机未经脚本写入」 |
 
-> 退出码 `3` 且原因是「tdd 阶段写的测试被改动」：实现阶段不改测试。确实是测试本身写错了（与设计 / PRD 矛盾），
-> 先在报告里讲清楚，再带 `--tests-changed "<理由>"` 重跑——理由会记进 `auto_decisions`，人看得到。
+> 退出码 `3` 且原因是「tdd 阶段写的测试被改动」：实现阶段不改测试。测试是否真的写错了（与设计 / PRD 矛盾），**只有人能判断**：
+> - 交互模式：先把矛盾讲清楚、问人；人同意后再带 `--tests-changed "<理由>"` 重跑，理由记进 `auto_decisions`
+> - `--autonomous`：没有人可问，**不要改测试**，带 `--blocked "<矛盾在哪>"` 收尾。自主模式下带 `--tests-changed` 脚本也不推进
 >
 > 项目开了 PDLC 护栏（`docs/00_standards/pdlc-hooks.yml`）时，用 Write / Edit 直接写状态文件会被拦下。
 
