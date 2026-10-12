@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
-- 实测：Claude 跑 `feature-lite` 1 轮通过，stream-json 里主会话派了 3 个子代理（阶段三、四、五，`--lite` 跳过阶段二），各自调用 12～16 次工具，状态 history 为 requirements → tdd → impl → review。
+- 实测：Claude 跑 `feature-lite` 3 轮通过；其中一轮看 stream-json，主会话派了 3 个子代理（阶段三、四、五，`--lite` 跳过阶段二），各自调用 12～16 次工具，状态 history 为 requirements → tdd → impl → review。
 - ADR 0009 记录为什么执行 `/pdlc-feature` 自己的章节而不是调单独的阶段命令。
 
 ## [1.7.10] - 2026-10-12
