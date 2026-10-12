@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
-- 实测：Claude `design-options` 3/3 通过；拿上一版（无方案比较）跑基线 1 轮，判契约破坏（「没有至少两个候选的方案比较表」）。抽查一轮：三个候选都落到 PRD 的非功能需求上，按推荐自动选定并列出三条请评审确认的假设。
+- 实测：Claude `design-options` 3/3 通过，Codex 1/1 通过；拿上一版（无方案比较）跑基线 1 轮，判契约破坏（「没有至少两个候选的方案比较表」）。抽查一轮：三个候选都落到 PRD 的非功能需求上，按推荐自动选定并列出三条请评审确认的假设。
 - `tests/evals-scenario-check.sh` 新增 8 条判定桩测（74 → 82）；`evals/EVALS.md` 场景表与成本账更新（14 / 42 / 84）。
 
 ## [1.7.14] - 2026-10-12
