@@ -294,6 +294,8 @@ EXPECT_N="$(printf '%s\n' "${SCENARIOS}" | grep -c .)"
 while IFS= read -r s <&3; do
   RAN_N=$((RAN_N + 1))
   sdir="${FIXTURES_DIR}/${s}"
+  # scenario_setup 是可选钩子，上一个场景定义过的不能漏到这一个
+  unset -f scenario_setup 2>/dev/null || true
   # shellcheck source=/dev/null
   . "${sdir}/scenario.sh"
   export EVAL_FIXTURE_DIR="${sdir}"
@@ -308,6 +310,12 @@ while IFS= read -r s <&3; do
     while :; do
       workdir="$(mktemp -d "${TMPDIR:-/tmp}/pdlc-eval-${s}-XXXXXX")"
       cp -R "${sdir}/project/." "${workdir}/"
+      # 可选钩子 scenario_setup <现场目录>：fixture 里放不进的现场（如 git 仓库与提交历史）在这里现搭。
+      # 搭不起来是 fixture 自己的毛病，不是模型抖动，直接停
+      if declare -F scenario_setup >/dev/null; then
+        ( scenario_setup "${workdir}" ) >"${workdir}/.eval-setup.log" 2>&1 \
+          || die "场景 ${s} 的 scenario_setup 失败，见 ${workdir}/.eval-setup.log"
+      fi
       out="${workdir}/.eval-agent-output.txt"
       export EVAL_AGENT_OUTPUT="${out}"
 

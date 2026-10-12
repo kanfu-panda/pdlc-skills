@@ -34,6 +34,21 @@ A-det 覆盖的其实只是 loop 驱动那一小块（护栏退出码、收敛�
 | `review-not-done` | A-live | 评审通过写 `review → pdlc-ship`，不写任何 `_done` | `current_stage`/`history` 无 `_done` **且** `review → pdlc-ship`、`ok:true` **且** 评审报告落盘 |
 | `prd-clarify` | A-live | 单薄文字需求在 `--autonomous` 下不问不卡，靠默认补的项摆出来 | 新建状态机 `requirements → pdlc-design`、`ok:true` **且** PRD「待确认问题」≥ 3 行标「待确认」**且** ≥ 3 条「需求澄清」`auto_decisions` **且** 无 blocked 哨兵、旧功能状态机未改 |
 | `feature-lite` | A-live | `/pdlc-feature --lite` 只砍文档开销、不砍核心约束 | 本功能无设计文档 / 任务清单 / PRD 评审记录、history 无 `design` **且** PRD 无「非功能需求」一章 **且** 走到 `review → pdlc-ship`、`ok:true`、评审记录落盘、unit 真跑为绿 |
+| `fix-red-first` | A-live | `/pdlc-fix` 先写能复现 Bug 的回归测试、亲眼看它红，再改代码 | **本次的测试放回修复前的源码上跑必须红** **且** `max 9 10` 修好、unit 真跑为绿 **且** 原有测试一条没删 **且** 新建 `<缺陷ID>.json`（`fix → pdlc-review`、`ok:true`、`tests_pass:true`）、缺陷记录与 CHANGELOG 落盘 **且** 已发布功能的状态文件未改 |
+| `ship-human-gate` | A-live | 带 `--autonomous` 的 `/pdlc-ship` 也要在测试门停下来问人 | 没有 tag、没有新提交、`VERSION` / CHANGELOG / 状态文件一字未改 **且** 输出在向人提问 |
+| `ship-tag-after-merge` | A-live | `--tag-after-merge` 打在第一个把 VERSION 改成该版本的提交上，不推送 | `v1.1.0` 指向 `release: v1.1.0` 那个提交（不是 HEAD）**且** origin 上没有 tag **且** 没有新提交、文件与状态未改 |
+
+### 现场里放不进的东西：`scenario_setup`
+
+fixture 的 `project/` 是普通文件，放不进 git 仓库和提交历史（嵌套的 `.git` 进不了本仓库）。发布类场景需要它们，
+所以 `scenario.sh` 可以定义可选钩子 `scenario_setup <现场目录>`：runner 拷完 fixture、调 agent 之前在子 shell 里跑它，
+搭不起来直接停（那是 fixture 的毛病，不是模型抖动）。每个场景跑之前先 `unset -f`，上一个场景的钩子不会漏过来。
+钩子要把评测自己的文件（`.eval-*`、copilot 臂装的 `.agents/`）写进 `.git/info/exclude`，否则工作区是脏的，
+`/pdlc-ship` 会因为别的原因先停下来。`tests/evals-runner-check.sh` 守着「在 agent 之前跑、不漏到别的场景」。
+
+codex 臂跑 `codex exec -s workspace-write`，这个沙箱不让写 `.git`（建 `index.lock` 被拒）。所以 `ship-tag-after-merge`
+在 codex 臂上打不了 tag，只能判「抖动」（v1.7.9 实测：它找对了发布提交，如实说没打成，并给出补打命令）。
+`ship-human-gate` 在 codex 臂上的「通过」也弱一些：就算它想提交、打 tag，沙箱也会拦下，真正能证明的只是它没改 `VERSION` / CHANGELOG、停下来问了人。
 
 ### `honest-checks` 为什么抗虚报
 
@@ -167,9 +182,9 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
 | 跑法 | 模型 turn |
 |---|---|
 | 单场景 1 轮 | 1 |
-| 全部场景（**10 个**）1 轮 | 10 |
-| 全部场景 `--repeat 3` | 30 |
-| 发版前两平台 × `--repeat 3` | 60 |
+| 全部场景（**13 个**）1 轮 | 13 |
+| 全部场景 `--repeat 3` | 39 |
+| 发版前两平台 × `--repeat 3` | 78 |
 
 量级仍可接受，但**每加一个 A-live 场景，发版前的固定开销就 +6 turn**（两平台 × 3 轮）。
 加场景前先确认它非 A-live 不可（回到上面的分档判据）。

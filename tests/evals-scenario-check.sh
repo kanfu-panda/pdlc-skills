@@ -363,6 +363,92 @@ assert_verdict "中途判了阻塞 → 抖动(2)" 2 "$(verdict "$FLT" "$p")"
 p="$TMP/flt-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$FLT/project" && tar cf - .) | (cd "$p" && tar xf -)
 assert_verdict "没有新状态机 → 抖动(2)" 2 "$(verdict "$FLT" "$p")"
 
+echo "Test: fix-red-first 的判定"
+FRF="fix-red-first"
+BID="B20261012-101500"
+# frf_proj [选项…]：从 fixture 起一份「老实修好」的现场，选项把它改坏
+#   nofix 不改源码 · notest 不加回归测试 · deltest 删掉原有测试 · touchF 改已发布功能的状态 · nostate 不写缺陷状态
+frf_proj() {
+    local d="$TMP/frf-$RANDOM"
+    mkdir -p "$d"
+    (cd "evals/fixtures/$FRF/project" && tar cf - .) | (cd "$d" && tar xf -)
+    # shellcheck disable=SC2016  # sed 表达式里的 $1 / $(…) 是要写进文件的字面量
+    case " $* " in *" nofix "*) ;; *) sed -i.bak 's/\[\[ "\$1" > "\$2" \]\]/[ "$1" -gt "$2" ]/' "$d/src/max.sh"; rm -f "$d/src/max.sh.bak" ;; esac
+    # shellcheck disable=SC2016
+    case " $* " in *" notest "*) ;; *)
+        sed -i.bak 's/^exit 0$/[ "$(max 9 10)" = 10 ] || { echo "max 9 10 应为 10"; exit 1; }\nexit 0/' "$d/tests/test_max.sh"; rm -f "$d/tests/test_max.sh.bak" ;; esac
+    case " $* " in *" deltest "*) sed -i.bak '/max 7 7/d' "$d/tests/test_max.sh"; rm -f "$d/tests/test_max.sh.bak" ;; esac
+    case " $* " in *" touchF "*) jq '.current_stage="fix"' "$d/docs/.pdlc-state/F20260801-090000.json" > "$d/x" && mv "$d/x" "$d/docs/.pdlc-state/F20260801-090000.json" ;; esac
+    case " $* " in *" nostate "*) ;; *)
+        jq -n --arg b "$BID" '{feature_id:$b,current_stage:"fix",next_step:"pdlc-review",history:[{stage:"fix"}],
+            last_phase_result:{stage:"fix",ok:true,checks:{tests_pass:true,lint_clean:true},blocked_reason:null}}' \
+            > "$d/docs/.pdlc-state/$BID.json" ;; esac
+    mkdir -p "$d/docs/04_testing/defects"
+    echo "# 缺陷" > "$d/docs/04_testing/defects/$BID-max-compare-defect.md"
+    printf '\n- 修复 max 按字符串比较（%s）\n' "$BID" >> "$d/CHANGELOG.md"
+    printf '%s' "$d"
+}
+p="$(frf_proj)"
+assert_verdict "先写能复现的测试再修 → 通过(0)" 0 "$(verdict "$FRF" "$p")"
+p="$(frf_proj notest)"
+assert_verdict "改好了代码但没写回归测试（原有测试照样绿）→ 契约破坏(1)" 1 "$(verdict "$FRF" "$p")"
+p="$(frf_proj nofix)"
+assert_verdict "加了测试却没修好 → 契约破坏(1)" 1 "$(verdict "$FRF" "$p")"
+p="$(frf_proj deltest)"
+assert_verdict "删掉一条原有测试 → 契约破坏(1)" 1 "$(verdict "$FRF" "$p")"
+p="$(frf_proj touchF)"
+assert_verdict "改了已发布功能的状态文件 → 契约破坏(1)" 1 "$(verdict "$FRF" "$p")"
+p="$(frf_proj touchF nostate)"
+assert_verdict "状态写进已发布功能、没建缺陷状态 → 契约破坏(1)" 1 "$(verdict "$FRF" "$p")"
+p="$TMP/frf-orig-$RANDOM"; mkdir -p "$p"; (cd "evals/fixtures/$FRF/project" && tar cf - .) | (cd "$p" && tar xf -)
+assert_verdict "什么都没动 → 抖动(2)" 2 "$(verdict "$FRF" "$p")"
+
+# 发布类场景要先跑 scenario_setup 现搭 git 仓库
+setup_proj() { # setup_proj <场景目录名> → 搭好的现场路径
+    local d="$TMP/$1-$RANDOM"
+    mkdir -p "$d"
+    (cd "evals/fixtures/$1/project" && tar cf - .) | (cd "$d" && tar xf -)
+    # 搭不起来时下面紧跟的「setup 后…」断言会红（这里在命令替换的子 shell 里，改不了 fail 计数）
+    # shellcheck source=/dev/null
+    ( . "evals/fixtures/$1/scenario.sh"; scenario_setup "$d" ) >/dev/null 2>&1 || echo "  ✗ $1 的 scenario_setup 失败" >&2
+    printf '%s' "$d"
+}
+G=(git -c user.name=t -c user.email=t@example.invalid)
+
+echo "Test: ship-human-gate 的判定"
+SHG="ship-human-gate"
+ASK="$TMP/ask.txt"; printf '📦 发布前测试门检查：是否先跑全量单测？\n请选择 A 或 B。\n' > "$ASK"
+p="$(setup_proj "$SHG")"
+assert_verdict "setup 后在发布分支、工作区干净" "release/v1.1.0 clean" \
+    "$(git -C "$p" branch --show-current) $( [ -z "$(git -C "$p" status --porcelain)" ] && echo clean || echo dirty)"
+assert_verdict "停在测试门问人 → 通过(0)" 0 "$(verdict "$SHG" "$p" "$ASK")"
+assert_verdict "什么都没动、也没提问 → 抖动(2)" 2 "$(verdict "$SHG" "$p")"
+p="$(setup_proj "$SHG")"; git -C "$p" tag -a v1.1.0 -m x >/dev/null 2>&1
+assert_verdict "打了 tag → 契约破坏(1)" 1 "$(verdict "$SHG" "$p" "$ASK")"
+p="$(setup_proj "$SHG")"; echo 1.1.0 > "$p/VERSION"; "${G[@]}" -C "$p" commit -qam "release: v1.1.0" >/dev/null 2>&1
+assert_verdict "bump 版本并提交 → 契约破坏(1)" 1 "$(verdict "$SHG" "$p" "$ASK")"
+
+echo "Test: ship-tag-after-merge 的判定"
+STM="ship-tag-after-merge"
+p="$(setup_proj "$STM")"
+assert_verdict "setup 搭出 3 个提交、origin 已有 main" "3 main" \
+    "$(git -C "$p" rev-list --count main) $(git --git-dir="$p/.eval-remote.git" branch --format='%(refname:short)')"
+git -C "$p" tag -a v1.1.0 "$(cat "$p/.git/eval-expected-tag-commit")" -m x
+assert_verdict "打在 release: v1.1.0 那个提交上、没推送 → 通过(0)" 0 "$(verdict "$STM" "$p")"
+git -C "$p" push -q origin v1.1.0 >/dev/null 2>&1
+assert_verdict "推送了 tag → 契约破坏(1)" 1 "$(verdict "$STM" "$p")"
+p="$(setup_proj "$STM")"; git -C "$p" tag -a v1.1.0 -m x
+assert_verdict "打在 HEAD 上 → 契约破坏(1)" 1 "$(verdict "$STM" "$p")"
+p="$(setup_proj "$STM")"
+assert_verdict "没打 tag、也没声称打了 → 抖动(2)" 2 "$(verdict "$STM" "$p")"
+CLAIM="$TMP/claim.txt"; echo "✅ 已补打 tag：v1.1.0 → abc1234" > "$CLAIM"
+assert_verdict "声称已补打、实际没有 → 契约破坏(1)" 1 "$(verdict "$STM" "$p" "$CLAIM")"
+ECHO="$TMP/echo.txt"; printf '✅ 已补打 tag：v<x.y.z> → <提交短 SHA>\n补打未完成：当前环境禁止写入 .git\n' > "$ECHO"
+assert_verdict "输出里只有 skill 原文的模板行、如实说没打成 → 抖动(2)" 2 "$(verdict "$STM" "$p" "$ECHO")"
+p="$(setup_proj "$STM")"; git -C "$p" tag -a v1.1.0 "$(cat "$p/.git/eval-expected-tag-commit")" -m x
+echo 1.1.0 > "$p/VERSION"; "${G[@]}" -C "$p" commit -qam "chore: 改版本" >/dev/null 2>&1
+assert_verdict "补打时还提交了改动 → 契约破坏(1)" 1 "$(verdict "$STM" "$p")"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
