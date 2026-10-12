@@ -28,7 +28,7 @@ pdlc-skills/
 │   ├── pdlc-checks.sh              ← runs test-commands.yml and prints the checks JSON (three-state); called by pdlc-advance.sh and by quality
 │   ├── pdlc-advance.sh             ← the only state-transition writer: runs the stage's checks itself, refuses to advance on red or when tdd's tests were changed, writes history + last_phase_result atomically (all 11 state-writing skills)
 │   ├── pdlc-guard.sh               ← opt-in Claude Code hooks (hooks/hooks.json): deny direct Write/Edit of state files; lint changed state files on Stop. No-op unless docs/00_standards/pdlc-hooks.yml turns them on
-│   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex, --parallel via worktrees, --status, --next = the one next-step mapping that /pdlc-loop-next and /pdlc-loop-run call)
+│   └── pdlc-loop.sh                ← multi-feature convergence driver (claude | codex | custom --cmd template, unverified; --parallel via worktrees, --status, --next = the one next-step mapping that /pdlc-loop-next and /pdlc-loop-run call)
 ├── hooks/
 │   └── hooks.json                  ← plugin hooks (PreToolUse Write|Edit, Stop) → bin/pdlc-guard.sh; registered whenever the plugin is enabled, so the opt-in lives in the script
 ├── adapters/
@@ -114,7 +114,7 @@ shellcheck install.sh tests/*.sh bin/*.sh adapters/*.sh evals/run.sh \
   evals/fixtures/*/scenario.sh .githooks/pre-commit
 ```
 
-**All thirteen count** — 907 assertions at the time of writing; run them for the current number rather
+**All thirteen count** — 925 assertions at the time of writing; run them for the current number rather
 than trusting this one. The list above once named only two, which quietly documented a 221/304 gate;
 if you add a script under `tests/`, add it here too.
 

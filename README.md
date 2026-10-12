@@ -170,7 +170,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.11 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.12 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -226,7 +226,7 @@ Every step runs in a **fresh process** (`claude -p` / `codex exec`, or a fresh s
 
 - **`/pdlc-loop-run <feature-id>`** — the convergence engine: auto-advances `tdd → implement → review` until reviewed and awaiting release (`next_step: pdlc-ship`), with an iteration cap, **fail-stop** (a stage reports `ok:false` → stop), and **stuck-stop** (state didn't advance → stop). **Release always stays human** — it never auto-ships.
 - **`/pdlc-loop-next <feature-id>`** — read-only helper that prints the next convergence command, for your own shell loops.
-- **`bin/pdlc-loop.sh`** — the external driver for several features at once: pass IDs or `--ready`, pick `--platform claude|codex`, and `--parallel N` runs each feature in its own git worktree. It orders features by `depends_on`, never ships, never commits or merges, and keeps a run record that `--status` and `/pdlc-status --loop` read back (per-feature step, time on the current step, stall hints; no ETA). A Claude run requires `--max-budget-usd`.
+- **`bin/pdlc-loop.sh`** — the external driver for several features at once: pass IDs or `--ready`, pick `--platform claude|codex` — or `--platform custom --cmd '<template>'` for any other CLI that takes a prompt (marked unverified; the driver still stops on red state but can't cap its spend) — and `--parallel N` runs each feature in its own git worktree. It orders features by `depends_on`, never ships, never commits or merges, and keeps a run record that `--status` and `/pdlc-status --loop` read back (per-feature step, time on the current step, stall hints; no ETA). A Claude run requires `--max-budget-usd`.
 - **On Codex** — `adapters/codex-loop-run.sh` is the same driver with `--platform codex` (Codex cleared a real-machine state-integrity gate — see [ADR 0004](./docs/decisions/0004-codex-loop-run.md)).
 
 Design: [ADR 0001](./docs/decisions/0001-loop-engineering-integration.md) · multi-feature driver: [ADR 0006](./docs/decisions/0006-multi-feature-loop-driver.md).

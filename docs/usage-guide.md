@@ -291,6 +291,17 @@ adapters/codex-loop-run.sh <功能ID>... --project <项目目录> [--max-steps 4
 
 它就是 `bin/pdlc-loop.sh --platform codex`：每轮读状态机 → 判下一跳 → `codex exec "按 pdlc <阶段> <id> --autonomous"` → 读回判护栏（上限停机 / fail-stop / stuck-stop）。**发布永远人工**——到「评审通过、等发布」（`next_step: pdlc-ship`）即停。多个功能、并行、依赖排序见 §7 场景 G。
 
+**4. 其它 CLI · 自主收敛循环（未验证）**
+
+```bash
+bin/pdlc-loop.sh <功能ID>... --platform custom \
+  --cmd 'copilot -p "按 pdlc {stage} {id} --autonomous" --allow-all-tools' [--max-steps 4] [--parallel N] [--dry-run]
+```
+
+只要一个 CLI 能接受一句提示词、并且装好了 PDLC 技能（§4.6），就能用它驱动循环：每一步把 `{stage}`（tdd / implement / review）、`{id}`、`{dir}`（工作目录，并行时是各自的 worktree）填进模板执行。模板必须带 `--autonomous`。
+
+自定义平台一律标为**未验证**（启动提示、运行记录 `verified: false`、`--status` 里都写明）：驱动照样每步重读状态机、红了就停、绝不发布，但管不了它的花费，只能靠 `--max-steps` 限步。无人值守地跑之前，先用 `evals/run.sh` 的 `honest-checks` 场景验一下这个平台（评测已内置 copilot / agy / grok 臂）。某个平台过了准入闸，再升级成内置的 `--platform <名字>`——这就是「转正」。
+
 > **哪些能力仅 Claude Code**：状态栏（§4.5）、`pdlc-loop-run` 的 Task 版、配置命令 `pdlc-settings`。
 
 ---

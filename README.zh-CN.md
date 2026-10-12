@@ -170,7 +170,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.11（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.12（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -226,7 +226,7 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 
 - **`/pdlc-loop-run <功能ID>`** —— 收敛引擎：自动推进 `tdd → implement → review` 到「评审通过、等发布」（`next_step: pdlc-ship`），带迭代上限、**fail-stop**（某阶段报 `ok:false` → 停）、**stuck-stop**（状态未推进 → 停）。**发布永远留人**——绝不自动 ship。
 - **`/pdlc-loop-next <功能ID>`** —— 只读 helper，打印下一条收敛命令，供你自写 shell 循环消费。
-- **`bin/pdlc-loop.sh`** —— 一次推多个功能的外部驱动：给功能ID 或 `--ready`，选 `--platform claude|codex`，`--parallel N` 让每个功能在自己的 git worktree 里跑。按 `depends_on` 排先后，绝不发布，也不提交、不合并；运行记录由 `--status` 和 `/pdlc-status --loop` 读出（每个功能在哪一步、本步已跑多久、卡住的提示，不给预计完成时间）。claude 平台真跑必须给 `--max-budget-usd`。
+- **`bin/pdlc-loop.sh`** —— 一次推多个功能的外部驱动：给功能ID 或 `--ready`，选 `--platform claude|codex`——其它接受一句提示词的 CLI 用 `--platform custom --cmd '<模板>'`（标为未验证：驱动照样按状态机判停，但管不了它的花费）——`--parallel N` 让每个功能在自己的 git worktree 里跑。按 `depends_on` 排先后，绝不发布，也不提交、不合并；运行记录由 `--status` 和 `/pdlc-status --loop` 读出（每个功能在哪一步、本步已跑多久、卡住的提示，不给预计完成时间）。claude 平台真跑必须给 `--max-budget-usd`。
 - **Codex 上** —— `adapters/codex-loop-run.sh` 就是固定 `--platform codex` 的同一个驱动（Codex 已过真机状态完整性准入闸——见 [ADR 0004](./docs/decisions/0004-codex-loop-run.md)）。
 
 设计：[ADR 0001](./docs/decisions/0001-loop-engineering-integration.md) · 多功能驱动：[ADR 0006](./docs/decisions/0006-multi-feature-loop-driver.md)。
