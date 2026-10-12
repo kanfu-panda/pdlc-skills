@@ -1,0 +1,20 @@
+{
+  "description": "PDLC 可选护栏：默认关闭，项目里有 docs/00_standards/pdlc-hooks.yml 且对应项为 on 时才生效（/pdlc-settings hooks on）",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/bin/pdlc-guard.sh\" pre", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/bin/pdlc-guard.sh\" stop", "timeout": 30 }
+        ]
+      }
+    ]
+  }
+}

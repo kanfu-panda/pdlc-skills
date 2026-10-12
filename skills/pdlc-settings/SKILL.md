@@ -1,7 +1,7 @@
 ---
 name: pdlc-settings
-description: 交互式配置 PDLC（当前：状态栏 statusline 的启用/停用/展示项）
-argument-hint: "[statusline | status]"
+description: 交互式配置 PDLC：状态栏 statusline 的启用/停用/展示项，以及项目级护栏 hooks 的开关
+argument-hint: "[statusline | status | hooks [on|off|status]]"
 allowed-tools: Read, Edit, Write, Bash, Glob
 layer: 3
 stage: ops
@@ -16,9 +16,10 @@ metadata:
 
 # PDLC 交互式设置
 
-以**交互菜单**方式配置 PDLC，让用户少敲命令行。**当前只含「状态栏（statusline）」一节**——
-把 PDLC 运行状态（当前功能 / 阶段 / 下一步 / 检查 / blocked）显示到 Claude Code 底部状态栏。
-未来若有更多设置**可能**并入本命令（非本版承诺）。
+以**交互菜单**方式配置 PDLC，让用户少敲命令行。包含两节：
+
+- **状态栏（statusline）**：把 PDLC 运行状态（当前功能 / 阶段 / 下一步 / 检查 / blocked）显示到 Claude Code 底部状态栏
+- **护栏（hooks）**：在当前项目开关插件自带的两个 Claude Code hooks——拦下直接写状态文件、收尾时体检本次改动的状态文件
 
 > ⚠️ **安全底线**：本命令会读写用户全局 `~/.claude/settings.json`（高影响）。**任何写入前必须**：
 > 先备份 → 展示 diff → 用户确认。**写全局配置可能被 Claude Code 安全层拦截**——届时**不谎报成功**，
@@ -35,10 +36,13 @@ metadata:
   2) 状态栏 · 停用      从状态栏移除本段（不动你其它配置）
   3) 状态栏 · 展示项    勾选显示哪些内容（进度条/检查/停留时长…）
   4) 状态栏 · 状态      查看当前是否已接线 + 生效配置 + 预览
+  5) 护栏 · 开关        在当前项目开启 / 关闭 PDLC hooks
+  6) 护栏 · 状态        查看当前项目的护栏开关
 
-  请选择（1-4）：
+  请选择（1-6）：
 ```
 
+- 参数以 `hooks` 开头 → `hooks on` / `hooks off` 直接走「护栏 · 开关」，`hooks status` 或只有 `hooks` 走「护栏 · 状态」
 - 参数含 `status` → 直接走「状态栏 · 状态」
 - 参数含 `statusline` → 进入状态栏子菜单
 - 否则显示上面主菜单，等用户选
@@ -113,6 +117,26 @@ metadata:
 3. 生效配置：合并 `~/.claude/pdlc-statusline.json` 与项目级 `docs/.pdlc-state/statusline.json`（后者覆盖），列出各项当前值（缺省即默认）。
 4. 预览：渲染当前项目一行。
 
+## 动作五：护栏 · 开关
+
+开关写在**当前项目**的 `docs/00_standards/pdlc-hooks.yml`（随仓库提交、团队共享），**不碰 `settings.json`**：
+插件的 hooks 随插件启用就已注册，脚本 `bin/pdlc-guard.sh` 每次先读这个文件，没有它或对应项不是 `on` 就直接放行。
+
+1. 确认当前目录是 PDLC 项目（有 `docs/`）；不是就说明并结束，不替用户建目录
+2. **开启**：
+   - 文件不存在 → 以 `assets/pdlc-hooks-template.yml` 为模板写入（两项默认都是 `on`）；用户只想开一项时把另一项改成 `off`
+   - 文件已存在 → 只改用户要动的那一项，其余内容与注释原样保留
+3. **关闭**：把两项改成 `off`（保留文件，方便以后再开）；用户明确要求时才删除文件
+4. 写之前把将要变更的内容展示给用户，确认后再写；重复执行幂等
+5. 告知两件事：
+   - 只在 Claude Code 里生效；Codex 等工具没有这套 hooks，状态推进仍靠 skill 里的 `scripts/pdlc-advance.sh`
+   - 这是护栏不是沙箱：在 Bash 里用重定向写状态文件拦不到，收尾体检会兜底
+
+## 动作六：护栏 · 状态
+
+只读：读 `docs/00_standards/pdlc-hooks.yml`，列出 `state_write_guard`、`lint_on_stop` 的当前值（文件不存在 = 两项都关）。
+项目是 git 仓库时顺带说明：收尾体检只看 `git status` 里有改动的状态文件；不是 git 仓库时这一项不起作用。
+
 ## 要求
 
 <!-- @include templates/prompts/output-language.md（已内联于下方，无需另读） -->
@@ -144,7 +168,7 @@ This policy applies to **content** (prose, comments, headings). It does
 git commit subjects, or English error codes when the project's conventions
 require them.
 <!-- @include-end templates/prompts/output-language.md -->
-- **只读脚本、不改状态机**：本命令不读写 `docs/.pdlc-state/<id>.json` 的业务字段，只读它们用于预览。
+- **只读脚本、不改状态机**：本命令不读写 `docs/.pdlc-state/<id>.json` 的业务字段，只读它们用于预览。护栏开关只写 `docs/00_standards/pdlc-hooks.yml`。
 - 写 `settings.json` **必须**备份 + diff + 确认；被 gate 时降级为「算好 + 用户粘贴」，**严禁**假装已写成功。
 - 幂等：重复启用不叠加；停用只摘本段。
 - 不安装依赖、不联网。jq 缺失时预览可能为空——如实告知，不阻断配置。

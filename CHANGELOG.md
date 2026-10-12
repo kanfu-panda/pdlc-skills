@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.10] - 2026-10-12
+
+本版把「推不推进阶段」从模型手里拿走，交给脚本；Claude Code 另有一套默认关闭的项目级护栏。仍 38 个命令，状态文件格式向后兼容，升级不需要迁移。
+
+> ⚠️ **行为变更（请留意）**：
+> - **11 个写状态的命令收尾时改为调用 `scripts/pdlc-advance.sh`**，不再手写状态 JSON。脚本自己跑本阶段的检查，红了就不推进；`/pdlc-fix`、`/pdlc-refactor` 以前没跑检查，现在也跑 unit、coverage、lint。
+> - **实现阶段改了 tdd 写的测试会被拦下**：确实要改，须带 `--tests-changed "<理由>"`，理由记进 `auto_decisions`。
+
+### Added
+
+- **`bin/pdlc-advance.sh`**（随 skill 同步为各自的 `scripts/pdlc-advance.sh`，其它平台的投影也带着）：状态推进的唯一写入口。按阶段决定跑哪些检查、判 `ok`、整段写入 history 与 `last_phase_result`，写完体检；退出码 `0` 已推进、`3` 未推进、`2` 无法执行。`--blocked` 主动交还人类（照跑检查如实记录，但不推进），`--done` 只给 ship / deploy 写 `_done`。
+- **测试指纹**：tdd 推进时记下它写的测试文件哈希（`history[].tests_fingerprint`），impl / refactor / review 推进时比对。
+- **Claude Code 护栏（默认关闭）**：插件带 `hooks/hooks.json`，经 `bin/pdlc-guard.sh` 拦下用 Write / Edit 直接写状态文件，并在收尾时体检本次改动的状态文件。开关是目标项目里的 `docs/00_standards/pdlc-hooks.yml`，由新增的 `/pdlc-settings hooks on|off|status` 写入；没有这个文件就什么都不做。已在无头模式 `claude -p` 下实测两项都生效。
+- ADR 0008：为什么交给脚本、为什么开关放在脚本里与项目里、既有项目怎么兼容。
+
+### Compatibility
+
+- 没有 `test-commands.yml` 的项目照常推进，`checks` 写 `{}`，与以前一致。
+- 旧格式状态文件（`-NN` ID、缺 `last_phase_result` / `relations`、只有日期的时间戳、表外字段）照常推进，原有字段原样保留。
+- 没有测试指纹的旧功能不比对；状态文件损坏时脚本不覆盖它；缺 jq 时退回手写，报告里写明「未经脚本」。
+
+### Fixed
+
+- `evals/fixtures/refresh-safety`：模型用英文作答时，「请求人工确认」的判定只认中文关键词，误判为契约破坏；补上英文同义说法。
+
+### Tests
+
+- 实测：Claude 全部 13 个场景各 1 轮回归，首轮 `stale-config` 暴露脚本缺陷（带 `--blocked` 收尾时没跑检查，`tests_pass=false` 丢了），修正后 `stale-config`、`honest-checks` 各 2/2 通过；其余 11 个首轮通过（`refresh-safety` 修正判定后重放通过）。
+- 新增第 13 个本地门禁脚本 `tests/advance-check.sh`（83 条）：各阶段推进与拒绝推进、三态、`--blocked` / `--done`、参数守卫、测试指纹、上述兼容情形、与映射表和体检合法阶段的一致性，以及护栏的开关、放行与拦截（含项目在仓库子目录里的情形）。`tests/install-smoke.sh` 相应更新。
+
 ## [1.7.9] - 2026-10-12
 
 本版给第一层入口 `/pdlc-fix` 和风险最高的 `/pdlc-ship` 补上行为评测（共 13 个场景），并把 `/pdlc-fix` 状态文件该用哪个 ID 写明。仍 38 个命令，升级不需要迁移。

@@ -614,7 +614,7 @@ ship_src="$(src_body skills/pdlc-ship/SKILL.md)"
 assert_contains "ship 按「评审通过」判可发布" '**可发布**：`next_step` 为 `pdlc-ship`' "$ship_src"
 refute_contains "ship 前置检查不再按 _done 判未完成" '不在 `[*_done]`' "$ship_src"
 refute_contains "ship 发布说明不再只收 _done 的功能" '在 `[*_done]` 的功能' "$ship_src"
-assert_contains "ship 发布后把纳入的功能写成 ship_done" '`current_stage` 写 `ship_done`' "$ship_src"
+assert_contains "ship 发布后把纳入的功能写成 ship_done" '`current_stage: ship_done`' "$ship_src"
 assert_contains "ship 对旧版 _done 写法请人确认" '旧版终态写法' "$ship_src"
 
 # ship 在发布分支上提交 release 并立刻打 tag。分支若以 squash / rebase 合进主干，主干上是一个
@@ -722,9 +722,13 @@ done
 {
 assert_contains "check 规则指向 pdlc-checks.sh" '`scripts/pdlc-checks.sh`' "$(cat references/templates/prompts/check-commands.md)"
 assert_contains "tdd 用 --red 验红灯" 'scripts/pdlc-checks.sh --red' "$(src_body skills/pdlc-tdd/SKILL.md)"
-assert_contains "implement 用脚本写 checks" 'scripts/pdlc-checks.sh --only unit,coverage,lint' "$(src_body skills/pdlc-implement/SKILL.md)"
-assert_contains "review 用脚本写 checks" 'scripts/pdlc-checks.sh --only unit,coverage,lint' "$(src_body skills/pdlc-review/SKILL.md)"
+assert_contains "implement 用推进脚本写状态与 checks" 'scripts/pdlc-advance.sh <功能ID> --stage impl --next pdlc-review' "$(src_body skills/pdlc-implement/SKILL.md)"
+assert_contains "review 用推进脚本写状态与 checks" 'pdlc-advance.sh <功能ID> --stage review --next pdlc-ship' "$(src_body skills/pdlc-review/SKILL.md)"
 assert_contains "状态机写完要体检" '`scripts/pdlc-state-lint.sh`' "$(cat references/templates/prompts/state-update.md)"
+assert_contains "状态机用推进脚本写，不手写 JSON" '用脚本推进，不要手写状态 JSON' "$(cat references/templates/prompts/state-update.md)"
+assert_contains "推进脚本随 skill 同步" '`scripts/pdlc-advance.sh`' "$(cat references/templates/prompts/state-update.md)"
+if [ -f hooks/hooks.json ]; then echo "  ✓ 插件带 hooks/hooks.json（默认关闭的护栏）"; pass=$((pass + 1))
+else echo "  ✗ 缺 hooks/hooks.json"; fail=$((fail + 1)); fi
 assert_contains "loop-run：ok 与 checks 矛盾即停" '`ok=true` 但 `checks` 里有 `false`' "$(src_body skills/pdlc-loop-run/SKILL.md)"
 }
 for sk in pdlc-tdd pdlc-implement pdlc-review pdlc-quality; do
@@ -753,7 +757,7 @@ assert_contains "e2e 有前置守卫" 'PDLC 守卫' "$e2e_src"
 refute_contains "e2e 不写死 spec.ts 路径" 'e2e/**/*.spec.ts' "$(cat skills/pdlc-e2e/SKILL.md)"
 refute_contains "评审通过等发布只认 review 阶段" '（或 `e2e` 等）' "$(cat references/templates/prompts/state-update.md)"
 rev_src3="$(src_body skills/pdlc-review/SKILL.md)"
-assert_contains "review 的 checks 含 e2e" 'scripts/pdlc-checks.sh --only unit,coverage,lint,e2e' "$rev_src3"
+assert_contains "review 的 checks 含 e2e" '跑 unit、coverage、lint、e2e' "$rev_src3"
 assert_contains "review 阻塞判定两种模式一致" '交互与 `--autonomous` 一致' "$rev_src3"
 assert_contains "review 文档评审不写状态机" '文档评审不写状态机' "$rev_src3"
 assert_contains "tdd 守卫：PRD 或设计任一即可" 'PRD 或设计文档任一' "$(src_body skills/pdlc-tdd/SKILL.md)"
@@ -864,7 +868,7 @@ refute_contains "feature 不再声称全程不询问用户" '直到产出可上�
 fea_src="$(src_body skills/pdlc-feature/SKILL.md)"
 assert_contains "feature 的 argument-hint 列出 --lite" '[--lite]' "$(sed -n '/^argument-hint:/p' skills/pdlc-feature/SKILL.md)"
 assert_contains "feature 有轻量模式一节" '## 轻量模式（`--lite`）' "$fea_src"
-assert_contains "轻量模式 PRD 之后下一跳是 pdlc-tdd" '`next_step: pdlc-tdd`（完整模式是 `pdlc-design`）' "$fea_src"
+assert_contains "轻量模式 PRD 之后下一跳是 pdlc-tdd" '`--stage requirements --next pdlc-tdd`（完整模式是 `pdlc-design`）' "$fea_src"
 assert_contains "轻量模式照常先红灯、checks 按退出码" '**照常**：先有红灯测试才写实现' "$fea_src"
 assert_contains "轻量模式只写四处 docs/" '不创建其它 `docs/` 子目录' "$fea_src"
 assert_contains "按功能ID续跑认得轻量模式" '但 `next_step` 是 `pdlc-tdd`（轻量模式）→ 阶段三' "$fea_src"

@@ -355,7 +355,8 @@ adapters/codex-loop-run.sh <功能ID>... --project <项目目录> [--max-steps 4
 
 ```
 docs/00_standards/coding/                                   # 编码规范（被 prd/implement/tdd/code-gen/onboard 读取，可选）
-docs/00_standards/test-commands.yml                        # check 命令唯一真源（unit/coverage/lint/e2e），被 tdd/implement/review 与循环驱动读取
+docs/00_standards/test-commands.yml                        # check 命令唯一真源（unit/coverage/lint/e2e），被各阶段的状态推进脚本与循环驱动读取
+docs/00_standards/pdlc-hooks.yml                           # Claude Code 护栏开关（/pdlc-settings hooks 写入；没有它 = 护栏关闭，可选）
 docs/01_requirements/prd/                                   # PRD
 docs/02_design/{api,database,architecture,ui-ux}/           # 技术设计
 docs/03_development/                                        # 开发者手册（onboard 产出）
@@ -539,6 +540,8 @@ PDLC 把 38 个阶段按使用频率分 3 层暴露：
 IRON LAW 写在 skill 正文里，执行者是模型——光写不查，等于相信模型自觉。所以另有三层去查：
 
 - **检查结果不让模型填**：`last_phase_result.checks` 由 skill 自带的 `scripts/pdlc-checks.sh` 按 `test-commands.yml` 的真实退出码生成；命令跑不起来记 `null`，不记 `false`，更不记 `true`
+- **推进阶段不让模型决定**：阶段收尾只能调 `scripts/pdlc-advance.sh`，它自己跑本阶段的检查，红了就不推进；tdd 写的测试在实现阶段被改，也不推进，除非带 `--tests-changed "<理由>"`（理由记进 `auto_decisions`）。没有 `test-commands.yml` 的旧项目照常推进，`checks` 写 `{}`；没有测试指纹的旧功能不比对
+- **Claude Code 护栏（可选）**：`/pdlc-settings hooks on` 在项目里写 `docs/00_standards/pdlc-hooks.yml`，之后用 Write / Edit 直接写状态文件会被拦下，收尾时还会体检本次改动的状态文件。默认关闭；Codex 等工具没有这套 hooks
 - **写完即体检**：每个写状态的阶段写完立刻跑 `scripts/pdlc-state-lint.sh`，缺字段、未知阶段名、非 ship / deploy 写 `_done` 都当场报出来
 - **拿真实模型跑**：仓库里的 `evals/` 在一次性样例项目里真跑 skill，每个样例都设计成「老实干」和「偷懒」结果不一样；发版前在 Claude Code 和 Codex 两边跑，场景见 `evals/EVALS.md`
 

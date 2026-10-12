@@ -62,7 +62,7 @@ terminal_state: e2e_done
 4. **编写测试计划**: 在 `docs/04_testing/e2e-tests/` 下创建 `<功能ID>-<功能名>-e2e.md`，文档顶部带 PDLC 追溯头
 5. **编写测试代码**（测试放哪）: 放进项目**既有的** E2E 目录与框架（看 `test-commands.yml` 的 `e2e` 命令、`playwright.config.*` / `cypress.config.*` 的 testDir、已有的 `*.spec.*` / `*.e2e.*` 文件）；项目还没有 E2E 时，把选用的框架和目录写进报告
 6. **对齐核心流映射**: 若存在 `docs/00_standards/e2e-flow-map.yml`，本功能涉及的核心流（`quality-targets.yml` 的 `core_flows`）要把新写的测试标识填进对应 flow 的 `tests`——`/pdlc-quality` 靠这份映射机械判定「核心流都有 E2E」
-7. **运行验证**: 运行 `bash scripts/pdlc-checks.sh --only e2e <项目根>`，stdout 的 `{"e2e_pass":…}` **原样**写进 `last_phase_result.checks`。`e2e` 命令为空 → `null`（无法判定），在报告里提示补上 `test-commands.yml` 的 `e2e`
+7. **运行验证**: 运行 `bash scripts/pdlc-checks.sh --only e2e <项目根>` 看结果；收尾的 `scripts/pdlc-advance.sh` 会再跑一次、把 `{"e2e_pass":…}` 写进 `last_phase_result.checks`，`e2e_pass=false` 时不推进。`e2e` 命令为空 → `null`（无法判定），在报告里提示补上 `test-commands.yml` 的 `e2e`
 
 ## 测试场景设计
 - **核心路径（P0）**: 必须通过，如登录→主流程→结果验证
@@ -179,9 +179,38 @@ stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等�
 <!-- @include templates/prompts/state-update.md（已内联于下方，无需另读） -->
 ## 状态机更新（段四必须执行）
 
-本命令完成主产出后，必须更新状态机文件 `docs/.pdlc-state/<feature-id>.json`。
+本命令完成主产出后，必须推进状态机文件 `docs/.pdlc-state/<feature-id>.json`。
 
-### 文件格式
+### 用脚本推进，不要手写状态 JSON
+
+```bash
+bash scripts/pdlc-advance.sh <功能ID> --stage <本阶段短名> --next <下一跳命令名|null> \
+  [--produced <产物路径，逗号分隔>] [--autonomous] [--decision "<确认点>=<所选默认>"]... \
+  [--name <kebab-case>（状态文件还不存在时）] <项目根>
+```
+
+- 脚本是本 skill 自带的 `scripts/pdlc-advance.sh`。阶段短名与下一跳就是本命令正文里「本命令的状态机取值」那两个值；带了 `--autonomous` 就照传
+- **检查由脚本自己跑**：它按阶段调用同目录的 `scripts/pdlc-checks.sh`（tdd 验红灯；impl / fix / refactor 跑 unit、coverage、lint；
+  review 再加 e2e；e2e 只跑 e2e；文档类阶段不跑），据此判 `ok`、整段写入 history 与 `last_phase_result`，
+  写完调用 `scripts/pdlc-state-lint.sh` 体检。**不要**自己先写 `checks`，也不要挑检查项
+- tdd 阶段的 `--produced` 必须列出写的测试文件：脚本记下它们的指纹，之后 impl / refactor / review 推进时比对
+- 主动交还人类（命中人工点、评审有阻塞项、测试本身有矛盾等）→ 加 `--blocked "<原因>"`：脚本照跑检查、如实记录，但不推进，原因写进 `blocked_reason`
+- `/pdlc-ship` 写 `ship_done`、`/pdlc-deploy` 写 `deploy_done` → 加 `--done`（只有这两个命令能用）
+
+脚本的退出码决定怎么收尾：
+
+| 退出码 | 含义 | 你要做的 |
+|---|---|---|
+| `0` | 已推进 | 交接里引用 stdout 那行 JSON（`checks`、`current_stage`、`next_step`） |
+| `3` | 未推进：检查没过 / 红灯没验证 / 主动 block / tdd 写的测试被改 | 把 stdout 里的 `blocked_reason` 原样写进报告，按阻塞收尾。**不要为了让它推进去改测试或改检查命令** |
+| `2` | 脚本跑不了（参数错、缺 jq、状态文件损坏） | 参数错就改正重跑；缺 jq 才按下面的格式手写，并在报告里写明「状态机未经脚本写入」 |
+
+> 退出码 `3` 且原因是「tdd 阶段写的测试被改动」：实现阶段不改测试。确实是测试本身写错了（与设计 / PRD 矛盾），
+> 先在报告里讲清楚，再带 `--tests-changed "<理由>"` 重跑——理由会记进 `auto_decisions`，人看得到。
+>
+> 项目开了 PDLC 护栏（`docs/00_standards/pdlc-hooks.yml`）时，用 Write / Edit 直接写状态文件会被拦下。
+
+### 状态文件格式（读状态时参考；只有脚本跑不了时才照它手写）
 
 ```json
 {
@@ -250,31 +279,25 @@ stderr，报告里引用那几行即可。脚本退出码 `2`（没有 yml 等�
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
 > - 旧版本写入的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，`/pdlc-ship` 会列出来请人确认。
 
-### 更新流程
+### 手写回退（仅脚本退出码 2 且无法修正时）
 
 1. **文件不存在** → 创建文件，写入初始结构（`history` 为含当前阶段的数组）
 2. **文件存在** → 读取 JSON，追加当前阶段到 `history`，更新 `current_stage` 和 `next_step`
 3. **写回文件**：用 `jq` 或等效工具保持格式化
-4. **写完体检**：运行本 skill 自带的 `scripts/pdlc-state-lint.sh`（`bash scripts/pdlc-state-lint.sh <项目根>`）。输出里**属于本功能状态文件**的偏差当场改正（键名、类型、`ok` 与 `checks` 不一致等），改不了的写进本阶段报告；其它功能的偏差不归本命令管。退出码 `2`（缺 jq 等）= 没体检，报告里写明「未体检」，不得当作通过。
+4. **写完体检**：运行 `bash scripts/pdlc-state-lint.sh <项目根>`，属于本功能状态文件的偏差当场改正。退出码 `2`（缺 jq 等）= 没体检，报告里写明「未体检」，不得当作通过。
 
 ⚠️ 若更新失败（文件损坏/权限问题），必须中止命令并在最终报告中报错。状态机不可跳过。
 
-### `last_phase_result`（机器可读阶段结果，每个 phase 收尾必写）
+### `last_phase_result`（机器可读阶段结果；脚本按下面的规则写，手写回退时照做）
 
 顶层 `last_phase_result` 是循环判停的**唯一真源**，外层只需 `jq '.last_phase_result.ok'` 即可决定 继续 / 停止 / 交还人类。规则：
 
-1. **`checks` 必须客观、真跑得来**：只放**真跑命令的退出码**结果（命令取自 `docs/00_standards/test-commands.yml`，见 `test-commands-template.yml`），**绝不用模型自评、绝不填占位**。有测试的阶段用 `tests_pass` / `coverage_pass` / `lint_clean`（退出码 0 → `true`，非 0 → `false`）；stage 语义不同用对应键（如 tdd 段 `{ "red_verified": true }` 表示红灯已验证）。
-   > ⛔ **键名与类型都是契约的一部分**：键名只能是 `tests_pass` / `coverage_pass` /
-   > `lint_clean` / `e2e_pass`（tdd 段 `red_verified`），值只能是**布尔**。
-   > 最常见的两种错法：① 照抄 `test-commands.yml` 的 `unit` / `coverage` / `lint` / `e2e`
-   > ——那是**命令表**的字段名，不是状态机的（跑 `unit` 得到的结论写进 `tests_pass`）；
-   > ② 写成 `"4 passed, 1 failed"` 这类字符串摘要。两种都会让 `jq '.checks.tests_pass'`
-   > 读回 `null`，消费方（发布闸门、质量报告、自主循环）只看到「无法判定」——
-   > **你诚实跑出来的结果等于没写**。三态怎么分见本命令正文里「跑 check 命令：退出码的三态语义」一节；正文里没有这一节的命令不跑 check 命令，`checks` 写 `{}`。
-   >
-   > ⚠️ **没有检查命令可跑的阶段（如 requirements/design 只产文档，或项目无 `test-commands.yml`）→ `checks: {}` 留空。绝不因为「本阶段成功」就把 `tests_pass`/`lint_clean` 等填 `true`——那是虚报，会污染跨工具共用的状态机、误导自主循环判停。** 上面 schema 示例里 `checks` 之所以是空的，正是这个原因——**空是"没跑"的意思，不是键名的示范**。
+1. **`checks` 只放真跑命令的退出码结果**（`scripts/pdlc-checks.sh` 的 stdout 原样），键名只能是 `tests_pass` / `coverage_pass` /
+   `lint_clean` / `e2e_pass`（tdd 段 `red_verified`），值只能是布尔或 `null`（无法判定）。不照抄 `test-commands.yml` 的 `unit` / `lint`，
+   不写 `"4 passed, 1 failed"` 这类摘要。没有检查可跑的阶段（文档类阶段、项目无 `test-commands.yml`）→ `checks: {}`，
+   绝不因为「本阶段成功」就填 `true`——schema 示例里 `checks` 是空的，正是这个意思。
 2. **`self_audit` 单列**：只放自检未通过数，**仅供参考，不作循环判停依据**。
-3. **`ok` 的定义**：本阶段全部 `checks` 通过且未命中 `blocked_reason` → `true`；否则 `false`。
+3. **`ok` 的定义**：没有命中 `blocked_reason`，且 tdd 段 `red_verified` 为 `true`、其它阶段没有任何检查为 `false`（`null` 不拦）→ `true`；否则 `false`。
 4. **命名空间**：`advanced_to` = **下一阶段的短名**，**不是命令名、也不是本阶段的 `current_stage`**。三者关系：`stage`=本阶段短名、`current_stage`=本阶段完成后的当前短名、`advanced_to`=下一阶段短名、`next_step`=下一跳命令名。
 
    ⛔ **短名不是「命令名去掉 `pdlc-` 前缀」**——`pdlc-implement` 的短名是 **`impl`**，不是 `implement`。别推导，查下表：
