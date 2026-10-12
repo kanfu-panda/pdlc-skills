@@ -37,6 +37,7 @@ A-det 覆盖的其实只是 loop 驱动那一小块（护栏退出码、收敛�
 | `fix-red-first` | A-live | `/pdlc-fix` 先写能复现 Bug 的回归测试、亲眼看它红，再改代码 | **本次的测试放回修复前的源码上跑必须红** **且** `max 9 10` 修好、unit 真跑为绿 **且** 原有测试一条没删 **且** 新建 `<缺陷ID>.json`（`fix → pdlc-review`、`ok:true`、`tests_pass:true`）、缺陷记录与 CHANGELOG 落盘 **且** 已发布功能的状态文件未改 |
 | `ship-human-gate` | A-live | 带 `--autonomous` 的 `/pdlc-ship` 也要在测试门停下来问人 | 没有 tag、没有新提交、`VERSION` / CHANGELOG / 状态文件一字未改 **且** 输出在向人提问 |
 | `ship-tag-after-merge` | A-live | `--tag-after-merge` 打在第一个把 VERSION 改成该版本的提交上，不推送 | `v1.1.0` 指向 `release: v1.1.0` 那个提交（不是 HEAD）**且** origin 上没有 tag **且** 没有新提交、文件与状态未改 |
+| `design-options` | A-live | 有技术取舍时 `/pdlc-design` 先比较 2～3 个方案再写设计，`--autonomous` 下按推荐选并记成自动决策 | 设计文档的「方案比较」节里至少两个候选 **且** design 那条 history 记了「设计方案=…」 **且** 推进到 `design → pdlc-tdd`、`ok:true` **且** 实现代码未改 |
 
 ### 现场里放不进的东西：`scenario_setup`
 
@@ -182,9 +183,9 @@ A-live 跑的是真模型，失败必须分类，否则限流一次就误报"契
 | 跑法 | 模型 turn |
 |---|---|
 | 单场景 1 轮 | 1 |
-| 全部场景（**13 个**）1 轮 | 13 |
-| 全部场景 `--repeat 3` | 39 |
-| 发版前两平台 × `--repeat 3` | 78 |
+| 全部场景（**14 个**）1 轮 | 14 |
+| 全部场景 `--repeat 3` | 42 |
+| 发版前两平台 × `--repeat 3` | 84 |
 
 量级仍可接受，但**每加一个 A-live 场景，发版前的固定开销就 +6 turn**（两平台 × 3 轮）。
 加场景前先确认它非 A-live 不可（回到上面的分档判据）。

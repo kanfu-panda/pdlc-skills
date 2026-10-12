@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.15] - 2026-10-12
+
+本版让技术设计在有取舍时先比较 2～3 个方案再选。仍 38 个命令，升级不需要迁移。
+
+### Added
+
+- **`/pdlc-design` 与 `/pdlc-feature` 阶段二先做方案比较**（共享片段 `design-options.md`）：有值得比较的技术取舍时列 2～3 个候选，一张表比较做法、改动面、风险、对 PRD 的满足与和现有代码的契合，给出落到 PRD 或规范上的推荐；没有取舍就写一句「沿用 <既有做法>」，不凑方案。交互模式问人选一次；问不了人（`--autonomous`，或在 `/pdlc-feature` 里）按推荐选，记 `--decision "设计方案=…"`。设计文档开头加「方案比较」节，正文按选定方案写。
+- **行为评测场景 `design-options`**（A-live，共 14 个）：PRD 要求历史跨进程保留、两个终端同时写不坏、尽量不加依赖。判别点是方案比较表里至少两个候选、design 那条 history 记了设计方案的决策。
+
+### Tests
+
+- 实测：Claude `design-options` 3/3 通过，Codex 1/1 通过；拿上一版（无方案比较）跑基线 1 轮，判契约破坏（「没有至少两个候选的方案比较表」）。抽查一轮：三个候选都落到 PRD 的非功能需求上，按推荐自动选定并列出三条请评审确认的假设。
+- `tests/evals-scenario-check.sh` 新增 8 条判定桩测（74 → 82）；`evals/EVALS.md` 场景表与成本账更新（14 / 42 / 84）。
+
 ## [1.7.14] - 2026-10-12
 
 本版让 `/pdlc-ship` 在发布时顺手写一份发布说明草稿，开 PR 时可以直接当描述用。仍 38 个命令，升级不需要迁移。

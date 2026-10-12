@@ -104,7 +104,7 @@ template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | w
 assert_eq "13 user-facing templates"                   "13"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
-assert_eq "18 shared prompt fragments"                 "18"  "$prompt_count"
+assert_eq "19 shared prompt fragments"                 "19"  "$prompt_count"
 
 for f in iron-law handoff feature-id defect-id pdlc-trace self-audit state-update state-read loop-prevention output-language relations noninteractive test-location check-commands layout-detect artifact-lookup iron-law-tool clarify; do
     assert_exists "references/templates/prompts/$f.md exists" "references/templates/prompts/$f.md"
