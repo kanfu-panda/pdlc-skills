@@ -61,7 +61,7 @@ PDLC 用扁平 feature ID 空间。关系链在 5 个位置冗余表达，本文
 
 ### 表达位置 2：状态机关系块（state JSON）
 
-即状态机文件里的 `relations` 块（六键对象，每键一个 ID 数组）。存**出边**；入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`。
+即状态机文件里的 `relations` 块（六键对象，每键一个 ID 数组）。存**出边**；入边由 `/pdlc-relate rebuild` 派生到 `_relations.json`。**只写本功能自己的状态文件**——不要为了「双向」去改对方功能的 `relations`，那是别的功能的状态，改了会让它看起来又被动过。
 
 ### 表达位置 3：反向索引 `_relations.json`（自动生成）
 

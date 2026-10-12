@@ -40,13 +40,15 @@ recommended_effort: medium
 
 若本命令的参数含 `--autonomous`，本命令进入**无人值守**模式，按以下规则处理原本需要人应答的交互点。**参数是唯一真源**：不带 `--autonomous` 即为交互模式，一切照旧正常询问用户；绝不回读状态机 `run_mode` 兜底（「掉出 autonomous」是安全的失败方向）。
 
-1. **流程性确认**（如「测试已绿是否继续」「是否覆盖已有文件」）→ **不询问**，按预设默认前进，并把决策追加到状态机 `history[].auto_decisions[]`：
+1. **流程性确认**（如「测试已绿是否继续」「是否覆盖已有文件」）→ **不询问**，按预设默认前进，并把决策追加到状态机 `history[].auto_decisions[]`
+   （写状态机的命令：推进时给状态推进脚本传 `--decision "<确认点描述>=<所选默认>"`，可重复；脚本写成下面的样子）：
    ```json
    { "point": "<确认点描述>", "chose": "<所选默认>", "at": "<ISO 8601>" }
    ```
-2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖等无法安全默认的点）→ **不猜**：
+2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖、**测试与设计 / PRD 矛盾**等无法安全默认的点）→ **不猜**。
+   改测试、改检查命令让它变绿，永远不是「流程性默认」，不能记成 `--decision`：
    - `current_stage` 保持不变（不推进）
-   - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`
+   - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`（写状态机的命令：给状态推进脚本传 `--blocked "<原因>"`）
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`
    - 立即结束命令，交还人类
    - **守卫拦截也走这一条**：前置守卫（缺设计文档、缺测试、测试没红等）在 `--autonomous` 下拦住本命令时，
@@ -220,9 +222,39 @@ recommended_effort: medium
 <!-- @include templates/prompts/state-update.md（已内联于下方，无需另读） -->
 ## 状态机更新（段四必须执行）
 
-本命令完成主产出后，必须更新状态机文件 `docs/.pdlc-state/<feature-id>.json`。
+本命令完成主产出后，必须推进状态机文件 `docs/.pdlc-state/<feature-id>.json`。
 
-### 文件格式
+### 用脚本推进，不要手写状态 JSON
+
+```bash
+bash scripts/pdlc-advance.sh <功能ID> --stage <本阶段短名> --next <下一跳命令名|null> \
+  [--produced <产物路径，逗号分隔>] [--autonomous] [--decision "<确认点>=<所选默认>"]... \
+  [--name <kebab-case>（状态文件还不存在时）] <项目根>
+```
+
+- 脚本是本 skill 自带的 `scripts/pdlc-advance.sh`。阶段短名与下一跳就是本命令正文里「本命令的状态机取值」那两个值；带了 `--autonomous` 就照传
+- **检查由脚本自己跑**：它按阶段调用同目录的 `scripts/pdlc-checks.sh`（tdd 验红灯；impl / fix / refactor 跑 unit、coverage、lint；
+  review 再加 e2e；e2e 只跑 e2e；文档类阶段不跑），据此判 `ok`、整段写入 history 与 `last_phase_result`，
+  写完调用 `scripts/pdlc-state-lint.sh` 体检。**不要**自己先写 `checks`，也不要挑检查项
+- tdd 阶段的 `--produced` 必须列出写的测试文件：脚本记下它们的指纹，之后 impl / refactor / review 推进时比对
+- 主动交还人类（命中人工点、评审有阻塞项、测试本身有矛盾等）→ 加 `--blocked "<原因>"`：脚本照跑检查、如实记录，但不推进，原因写进 `blocked_reason`
+- `/pdlc-ship` 写 `ship_done`、`/pdlc-deploy` 写 `deploy_done` → 加 `--done`（只有这两个命令能用）
+
+脚本的退出码决定怎么收尾：
+
+| 退出码 | 含义 | 你要做的 |
+|---|---|---|
+| `0` | 已推进 | 交接里引用 stdout 那行 JSON（`checks`、`current_stage`、`next_step`） |
+| `3` | 未推进：检查没过 / 红灯没验证 / 主动 block / tdd 写的测试被改 | 把 stdout 里的 `blocked_reason` 原样写进报告，按阻塞收尾。**不要为了让它推进去改测试或改检查命令** |
+| `2` | 脚本跑不了（参数错、缺 jq、状态文件损坏） | 参数错就改正重跑；缺 jq 才按下面的格式手写，并在报告里写明「状态机未经脚本写入」 |
+
+> 退出码 `3` 且原因是「tdd 阶段写的测试被改动」：实现阶段不改测试。测试是否真的写错了（与设计 / PRD 矛盾），**只有人能判断**：
+> - 交互模式：先把矛盾讲清楚、问人；人同意后再带 `--tests-changed "<理由>"` 重跑，理由记进 `auto_decisions`
+> - `--autonomous`：没有人可问，**不要改测试**，带 `--blocked "<矛盾在哪>"` 收尾。自主模式下带 `--tests-changed` 脚本也不推进
+>
+> 项目开了 PDLC 护栏（`docs/00_standards/pdlc-hooks.yml`）时，用 Write / Edit 直接写状态文件会被拦下。
+
+### 状态文件格式（读状态时参考；只有脚本跑不了时才照它手写）
 
 ```json
 {
@@ -291,31 +323,25 @@ recommended_effort: medium
 >   `/pdlc-ship` 就分不清哪些功能已经发布过，发布说明会重复或漏收。
 > - 旧版本写入的 `feature_done` / `fix_done` / `review_done` 分不清是否已发布，`/pdlc-ship` 会列出来请人确认。
 
-### 更新流程
+### 手写回退（仅脚本退出码 2 且无法修正时）
 
 1. **文件不存在** → 创建文件，写入初始结构（`history` 为含当前阶段的数组）
 2. **文件存在** → 读取 JSON，追加当前阶段到 `history`，更新 `current_stage` 和 `next_step`
 3. **写回文件**：用 `jq` 或等效工具保持格式化
-4. **写完体检**：运行本 skill 自带的 `scripts/pdlc-state-lint.sh`（`bash scripts/pdlc-state-lint.sh <项目根>`）。输出里**属于本功能状态文件**的偏差当场改正（键名、类型、`ok` 与 `checks` 不一致等），改不了的写进本阶段报告；其它功能的偏差不归本命令管。退出码 `2`（缺 jq 等）= 没体检，报告里写明「未体检」，不得当作通过。
+4. **写完体检**：运行 `bash scripts/pdlc-state-lint.sh <项目根>`，属于本功能状态文件的偏差当场改正。退出码 `2`（缺 jq 等）= 没体检，报告里写明「未体检」，不得当作通过。
 
 ⚠️ 若更新失败（文件损坏/权限问题），必须中止命令并在最终报告中报错。状态机不可跳过。
 
-### `last_phase_result`（机器可读阶段结果，每个 phase 收尾必写）
+### `last_phase_result`（机器可读阶段结果；脚本按下面的规则写，手写回退时照做）
 
 顶层 `last_phase_result` 是循环判停的**唯一真源**，外层只需 `jq '.last_phase_result.ok'` 即可决定 继续 / 停止 / 交还人类。规则：
 
-1. **`checks` 必须客观、真跑得来**：只放**真跑命令的退出码**结果（命令取自 `docs/00_standards/test-commands.yml`，见 `test-commands-template.yml`），**绝不用模型自评、绝不填占位**。有测试的阶段用 `tests_pass` / `coverage_pass` / `lint_clean`（退出码 0 → `true`，非 0 → `false`）；stage 语义不同用对应键（如 tdd 段 `{ "red_verified": true }` 表示红灯已验证）。
-   > ⛔ **键名与类型都是契约的一部分**：键名只能是 `tests_pass` / `coverage_pass` /
-   > `lint_clean` / `e2e_pass`（tdd 段 `red_verified`），值只能是**布尔**。
-   > 最常见的两种错法：① 照抄 `test-commands.yml` 的 `unit` / `coverage` / `lint` / `e2e`
-   > ——那是**命令表**的字段名，不是状态机的（跑 `unit` 得到的结论写进 `tests_pass`）；
-   > ② 写成 `"4 passed, 1 failed"` 这类字符串摘要。两种都会让 `jq '.checks.tests_pass'`
-   > 读回 `null`，消费方（发布闸门、质量报告、自主循环）只看到「无法判定」——
-   > **你诚实跑出来的结果等于没写**。三态怎么分见本命令正文里「跑 check 命令：退出码的三态语义」一节；正文里没有这一节的命令不跑 check 命令，`checks` 写 `{}`。
-   >
-   > ⚠️ **没有检查命令可跑的阶段（如 requirements/design 只产文档，或项目无 `test-commands.yml`）→ `checks: {}` 留空。绝不因为「本阶段成功」就把 `tests_pass`/`lint_clean` 等填 `true`——那是虚报，会污染跨工具共用的状态机、误导自主循环判停。** 上面 schema 示例里 `checks` 之所以是空的，正是这个原因——**空是"没跑"的意思，不是键名的示范**。
+1. **`checks` 只放真跑命令的退出码结果**（`scripts/pdlc-checks.sh` 的 stdout 原样），键名只能是 `tests_pass` / `coverage_pass` /
+   `lint_clean` / `e2e_pass`（tdd 段 `red_verified`），值只能是布尔或 `null`（无法判定）。不照抄 `test-commands.yml` 的 `unit` / `lint`，
+   不写 `"4 passed, 1 failed"` 这类摘要。没有检查可跑的阶段（文档类阶段、项目无 `test-commands.yml`）→ `checks: {}`，
+   绝不因为「本阶段成功」就填 `true`——schema 示例里 `checks` 是空的，正是这个意思。
 2. **`self_audit` 单列**：只放自检未通过数，**仅供参考，不作循环判停依据**。
-3. **`ok` 的定义**：本阶段全部 `checks` 通过且未命中 `blocked_reason` → `true`；否则 `false`。
+3. **`ok` 的定义**：没有命中 `blocked_reason`，且 tdd 段 `red_verified` 为 `true`、其它阶段没有任何检查为 `false`（`null` 不拦）→ `true`；否则 `false`。
 4. **命名空间**：`advanced_to` = **下一阶段的短名**，**不是命令名、也不是本阶段的 `current_stage`**。三者关系：`stage`=本阶段短名、`current_stage`=本阶段完成后的当前短名、`advanced_to`=下一阶段短名、`next_step`=下一跳命令名。
 
    ⛔ **短名不是「命令名去掉 `pdlc-` 前缀」**——`pdlc-implement` 的短名是 **`impl`**，不是 `implement`。别推导，查下表：
@@ -342,14 +368,11 @@ recommended_effort: medium
 6. **`run_mode`**：镜像本次调用是否带 `--autonomous`（带了写 `autonomous`，没带写 `interactive`）。
 <!-- @include-end templates/prompts/state-update.md -->
 
-**本阶段状态机更新**：
-- `current_stage`: `impl`、`next_step`: `pdlc-review` —— **仅当本阶段成功时才这样写**
-  （所有 `checks` 通过且未命中 `blocked_reason`）。
-- **失败/受阻时不得推进**：`ok=false`（含 blocked）→ 按 `state-update.md` 规则 5，
-  `current_stage` **保持原值不变**、`advanced_to=null`、`blocked_reason` 写明原因。
-  > ⚠️ 失败也照写 `current_stage: impl` 是常见错误：那会让 `current_stage` 不再表示
-  > 「最后一个真正完成的阶段」，外层循环的 stuck-stop 因此失效。
-- **写 `last_phase_result`**：`checks` 是 `bash scripts/pdlc-checks.sh --only unit,coverage,lint <项目根>` 的 stdout，**原样**写入（`tests_pass` / `coverage_pass` / `lint_clean` 来自真跑退出码），**不得用自检结果冒充**。退出码语义与"跑不了"的处理见下（该文件不存在则回退项目既有约定，并提示 `consider 建立 docs/00_standards/test-commands.yml`）。
+**本阶段状态机更新**：收尾运行 `bash scripts/pdlc-advance.sh <功能ID> --stage impl --next pdlc-review --produced <改动的源码，逗号分隔> <项目根>`（带了 `--autonomous` 就照传）。
+- 脚本自己跑 unit、coverage、lint，**全部不为 `false` 才推进**到 `impl`；红了就写 `ok=false`、`current_stage` 保持原值，
+  不要自己改写成 `impl`——那会让 `current_stage` 不再表示「最后一个真正完成的阶段」，外层循环的 stuck-stop 因此失效
+- 不得用自检结果冒充 `checks`；项目没有 `test-commands.yml` 时脚本写 `checks: {}`，报告里提示建立该文件
+- tdd 阶段写的测试被你改过，脚本会拒绝推进（退出码 `3`）。实现阶段不改测试；测试像是写错了，交互模式下先问人、人同意才带 `--tests-changed`，`--autonomous` 下带 `--blocked` 交还
 
 <!-- @include templates/prompts/check-commands.md（已内联于下方，无需另读） -->
 ## 跑 check 命令：退出码的三态语义

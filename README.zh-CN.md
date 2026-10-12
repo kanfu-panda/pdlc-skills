@@ -53,6 +53,7 @@
 | 层 | 谁说了算 | 抓什么 |
 |---|---|---|
 | **状态机里的检查结果** | `pdlc-checks.sh` 跑你 `docs/00_standards/test-commands.yml` 里的命令，按退出码生成 `tests_pass` / `coverage_pass` / `lint_clean`。三态：命令跑不起来记 `null`——既不记 `false`，更不记 `true` | 模型谎报「测试全过」 |
+| **状态推进** | 阶段收尾只能经 `pdlc-advance.sh`：它自己跑本阶段的检查，红了就不推进；tdd 写的测试在实现阶段被改，也不推进（除非写明理由，记进 `auto_decisions`）。Claude Code 里还可以开项目级护栏，拦下直接写状态文件 | 检查没过却推进阶段、改测试来过关 |
 | **状态契约体检** | 每个阶段写完状态文件立刻跑 `pdlc-state-lint.sh`（读状态的命令读之前也跑） | 缺字段、未知阶段名、ship / deploy 以外的阶段写了 `_done` |
 | **行为评测** | `evals/` 在一次性的样例项目里拿真实模型（Claude Code 和 Codex）跑真 skill；每个样例都设计成「老实干」和「偷懒」结果不一样 | 模型不守 skill 的规矩——比如照抄 schema 示例把检查全填绿，或者没有红灯测试就写实现 |
 
@@ -169,7 +170,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.9（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.10（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -307,7 +308,8 @@ skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句�
 
 ```
 docs/00_standards/coding/            ← 编码规范（被 prd/implement/tdd/code-gen/onboard 读取，可选）
-docs/00_standards/test-commands.yml  ← check 命令唯一真源（unit/coverage/lint/e2e），被 tdd/implement/review 与循环驱动读取
+docs/00_standards/test-commands.yml  ← check 命令唯一真源（unit/coverage/lint/e2e），被各阶段的状态推进脚本与循环驱动读取
+docs/00_standards/pdlc-hooks.yml     ← Claude Code 护栏开关（/pdlc-settings hooks 写入；没有它 = 护栏关闭，可选）
 docs/01_requirements/prd/            ← PRD
 docs/02_design/{api,database,architecture,ui-ux}/   ← 技术设计
 docs/03_development/                 ← 开发者手册（onboard 命令产出）

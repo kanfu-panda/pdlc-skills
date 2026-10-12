@@ -1,0 +1,10 @@
+# docs/00_standards/pdlc-hooks.yml — PDLC 护栏开关（只对 Claude Code 生效，由 /pdlc-settings hooks 写入）
+#
+# 插件的 hooks 随插件启用就会注册，但只在本文件里对应项为 on 时才真正干预；没有本文件 = 全部关闭。
+# 提交进仓库，团队里用 Claude Code 的人共享同一份设置。
+
+# 用 Write / Edit 直接写 docs/.pdlc-state/F*.json、B*.json 时拦下，提示改用 scripts/pdlc-advance.sh
+state_write_guard: on
+
+# 收尾时对本次有改动的状态文件跑一次契约体检，有偏差就拦一次、把体检结果交给模型去改
+lint_on_stop: on

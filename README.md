@@ -53,6 +53,7 @@ A typical AI workflow kit is prompts plus templates: it *asks* the model to writ
 | Layer | Who decides | What it catches |
 |---|---|---|
 | **Checks in the state machine** | `pdlc-checks.sh` runs the commands in your `docs/00_standards/test-commands.yml` and maps their exit codes to `tests_pass` / `coverage_pass` / `lint_clean`. Three-state: a command that couldn't run is `null` — never `false`, never `true` | The model reporting "all tests pass" when they don't |
+| **State transitions** | A stage can only close through `pdlc-advance.sh`: it runs that stage's checks itself and refuses to advance when they're red; it also refuses when the tests written in tdd were changed during implementation (unless a reason is given, which lands in `auto_decisions`). In Claude Code an opt-in project guard also blocks writing state files directly | Advancing a stage whose checks failed; editing the tests to get green |
 | **State contract check** | `pdlc-state-lint.sh` runs right after every stage writes its state file (and before any command reads one) | Missing fields, unknown stage names, a stage other than ship / deploy writing `_done` |
 | **Behavioural evals** | `evals/` runs real skills against real models (Claude Code and Codex) in throwaway fixtures, each built so the honest outcome and the lazy one look different | The model ignoring the skill's instructions — e.g. copying the schema example and claiming every check green, or writing code before a red test |
 
@@ -169,7 +170,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.9 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.10 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -314,6 +315,7 @@ docs/ARCHITECTURE.md                                        # surface · whole-s
 docs/GLOSSARY.md                                            # surface · project vocabulary
 docs/00_standards/                                          # surface · team conventions (pdlc-standard; read by prd / implement / tdd / code-gen / onboard)
 docs/00_standards/test-commands.yml                        # surface · single source of check commands (unit/coverage/lint/e2e) for tdd / implement / review + loop drivers
+docs/00_standards/pdlc-hooks.yml                           # optional · Claude Code guard switches (written by /pdlc-settings hooks; absent = guards off)
 ```
 
 > The `check` commands in `test-commands.yml` are the objective source of truth for `last_phase_result.checks` (real exit codes, never model self-audit) — the foundation that lets `/pdlc-loop-*` drive PDLC autonomously. See `docs/decisions/0001-loop-engineering-integration.md`.
