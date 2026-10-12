@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.16] - 2026-10-12
+
+本版让大功能在实现阶段按任务分批做，每批做完就评审一次，问题不用攒到最后。仍 38 个命令，升级不需要迁移。
+
+### Added
+
+- **`/pdlc-implement` 与 `/pdlc-feature` 阶段四按任务分批**（共享片段 `batch-review.md`）：任务清单里有 4 个及以上 `feat` 任务时，每 2～3 个一批；每批实现完跑单测、只看这一批的改动做一次小评审（对照设计、命名与错误处理、安全快查），能修的当场修一轮，修不了的标「待最终评审」，追加到 `docs/07_reviews/code/<功能ID>-<功能名>-batch-review.md`，再把这批任务标 ✅。不改 tdd 写的测试。少于 4 个 `feat` 任务或没有任务清单时照旧一次做完。
+- **`/pdlc-review` 读分批评审记录**：已修过的不重复报，「待最终评审」的每一项都要在最终评审里处理掉。
+- **行为评测场景 `batch-review`**（A-live，共 15 个）：加减乘除四个 `feat` 任务、测试全红。判别点是分批评审记录里至少两批。
+
+### Tests
+
+- 实测：Claude `batch-review` 3/3 通过；拿上一版（不分批）跑基线 1 轮，判契约破坏（「没有分批评审记录」）。抽查一轮：第 1 批当场修掉了带前导 0 的入参被当成八进制的问题，整数溢出与校验逻辑重复两项标「待最终评审」交给人。Codex 1/1 通过。
+- 回归：Claude `honest-checks`、`review-not-done` 各 1/1（没有任务清单的功能不分批，行为不变）。
+- `tests/evals-scenario-check.sh` 新增 7 条判定桩测（82 → 89）；`tests/install-smoke.sh` 的片段数断言 19 → 20；`evals/EVALS.md` 场景表与成本账更新（15 / 45 / 90）。
+
 ## [1.7.15] - 2026-10-12
 
 本版让技术设计在有取舍时先比较 2～3 个方案再选。仍 38 个命令，升级不需要迁移。

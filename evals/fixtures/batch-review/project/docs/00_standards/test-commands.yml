@@ -1,0 +1,4 @@
+unit: "bash scripts/unit.sh"
+coverage: ""
+lint: "bash scripts/lint.sh"
+e2e: ""

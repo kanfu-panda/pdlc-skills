@@ -170,7 +170,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.15 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.16 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -270,7 +270,7 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-prd` | Author a PRD |
 | `/pdlc-design` | Technical design; weighs 2–3 options first when there's a real trade-off |
 | `/pdlc-tdd` | Write failing tests first |
-| `/pdlc-implement` | Implement code against the design |
+| `/pdlc-implement` | Implement code against the design; with 4+ feature tasks, works in batches with a quick review after each |
 | `/pdlc-review` | Code + doc review; checklist items that don't fit the project type are marked not-applicable instead of "fixed" |
 | `/pdlc-e2e` | End-to-end tests |
 | `/pdlc-refactor` | Refactor code |
