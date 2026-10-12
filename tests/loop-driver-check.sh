@@ -12,6 +12,8 @@
 #     状态文件没提交的功能不进 worktree；依赖链在依赖方的 worktree 里接着跑
 #   - 运行记录：git 项目记在 .git/pdlc-loop/，非 git 项目记在 docs/.pdlc-state/_loop/（体检不把它当状态机）
 #   - --status：计数、每个功能一行、驱动进程已不在 / 单步过久的提示，不给预计完成时间
+#   - 自定义平台（--platform custom --cmd）：用法守卫、占位符展开（目录含空格）、在工作目录里执行、
+#     标为「未验证」并记进运行记录与 --status、命令非零退出 → 4、并行时 {dir} 是各自的 worktree
 # shellcheck disable=SC2015  # ok / bad 恒返回 0，`条件 && ok || bad` 只在条件不成立时走 bad
 set -uo pipefail
 
@@ -82,6 +84,19 @@ for a in "$@"; do
 done
 set -- $cmd; stage="$3"; id="$4"
 exec "$(dirname "$0")/stub-core" codex "$wd" "$stage" "$id" "$*"
+STUB
+cat > "$BIN/anyagent" <<'STUB'
+#!/usr/bin/env bash
+# 任意一个「接受一句提示词」的 CLI：anyagent -p "按 pdlc <阶段> <ID> --autonomous" --dir <目录>
+wd="$PWD"; prev=""
+for a in "$@"; do
+  [ "$prev" = "--dir" ] && wd="$a"
+  case "$a" in "按 pdlc "*) cmd="$a" ;; esac
+  prev="$a"
+done
+[ "$wd" = "$PWD" ] || { echo "anyagent：--dir 与当前目录不一致（${wd} ≠ ${PWD}）" >&2; exit 9; }
+set -- ${cmd#按 pdlc }; stage="$1"; id="$2"
+exec "$(dirname "$0")/stub-core" anyagent "$wd" "$stage" "$id" "$*"
 STUB
 chmod +x "$BIN"/*
 # claude 桩要看到完整参数（预算、模型）：用一层包装把 "$@" 记进 ALL_ARGS
@@ -380,6 +395,51 @@ STUB_PLAN="$ROOT/plan" run_driver "$P" F20260924-150001 --platform codex
 expect_rc "ok=true 但 tests_pass=false → 按阻塞停（不往 review 推）" 2
 expect_out "说明是哪一项矛盾" "checks.tests_pass=false"
 [[ "$(calls)" == "1" ]] && ok "矛盾后不再调用下一步" || bad "矛盾后仍继续调用（共 $(calls) 次）"
+
+echo "Test: 自定义平台（--platform custom --cmd）"
+P="$ROOT/custom proj"   # 目录含空格：{dir} 必须按 shell 引号展开
+mkstate "$P" F20260924-180001 tdd pdlc-implement
+TPL='anyagent -p "按 pdlc {stage} {id} --autonomous" --dir {dir}'
+run_driver "$P" F20260924-180001 --platform custom;                         expect_rc "custom 缺 --cmd" 64
+run_driver "$P" F20260924-180001 --platform codex --cmd "$TPL";              expect_rc "--cmd 只给 custom 用" 64
+run_driver "$P" F20260924-180001 --platform custom --cmd 'anyagent -p "按 pdlc {stage} --autonomous"'
+expect_rc "模板缺 {id}" 64
+run_driver "$P" F20260924-180001 --platform custom --cmd 'anyagent -p "按 pdlc {id} --autonomous"'
+expect_rc "模板缺 {stage}" 64
+run_driver "$P" F20260924-180001 --platform custom --cmd 'anyagent -p "按 pdlc {stage} {id}"'
+expect_rc "模板缺 --autonomous（无人值守时不能停下来问人）" 64
+run_driver "$P" F20260924-180001 --platform custom --cmd "$TPL" --dry-run
+expect_rc "custom dry-run" 0
+expect_out "dry-run 打印展开后的命令" "anyagent -p \"按 pdlc implement F20260924-180001 --autonomous\" --dir "
+STUB_LOG="$ROOT/custom.log"
+run_driver "$P" F20260924-180001 --platform custom --cmd "$TPL"
+expect_rc "custom 平台收敛" 0
+[[ "$(stage_of "$P" F20260924-180001)" == review ]] && ok "推到 review" || bad "没推到 review：$(stage_of "$P" F20260924-180001)"
+[[ "$(cut -f3 <<< "$(grep '	start	' "$STUB_LOG")" | tr '\n' ' ')" == "implement review " ]] \
+    && ok "按 implement → review 逐步调用" || bad "调用顺序不对" "$(cat "$STUB_LOG")"
+[[ "$(cut -f4 <<< "$(grep '	start	' "$STUB_LOG" | head -1)")" == "$P" ]] \
+    && ok "{dir} 展开为含空格的项目目录，命令在那里执行" || bad "{dir} 展开不对" "$(cat "$STUB_LOG")"
+expect_out "启动时标明未验证" "未验证"
+expect_out "提示驱动管不了它的花费" "--max-steps"
+rj="$(find "$P/docs/.pdlc-state/_loop" -name run.json | head -1)"
+[[ "$(jq -r '.platform + " " + (.verified|tostring) + " " + .cmd' "$rj")" == "custom false $TPL" ]] \
+    && ok "运行记录写下 platform=custom、verified=false 与模板" || bad "运行记录不对" "$(cat "$rj")"
+run_driver "$P" --status
+expect_out "--status 标明未验证" "custom · 未验证"
+P="$ROOT/custom-err"
+mkstate "$P" F20260924-180002 tdd pdlc-implement
+printf 'F20260924-180002 error\n' > "$ROOT/plan"
+STUB_PLAN="$ROOT/plan" run_driver "$P" F20260924-180002 --platform custom --cmd "$TPL"
+expect_rc "自定义命令非零退出 → 4" 4
+P="$ROOT/custom-par"
+mkstate "$P" F20260924-181001 tdd pdlc-implement
+mkstate "$P" F20260924-181002 tdd pdlc-implement
+mkgit "$P"
+STUB_LOG="$ROOT/custom-par.log"
+run_driver "$P" F20260924-181001 F20260924-181002 --platform custom --cmd "$TPL" --parallel 2
+expect_rc "custom 并行收敛" 0
+[[ "$(grep '	start	' "$STUB_LOG" | cut -f4 | sort -u | grep -c '/.worktrees/pdlc-loop/')" == 2 ]] \
+    && ok "并行时 {dir} 是各自的 worktree" || bad "并行时 {dir} 不对" "$(cat "$STUB_LOG")"
 
 echo ""
 echo "Final: $pass passed, $fail failed"

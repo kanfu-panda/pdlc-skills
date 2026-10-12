@@ -2,21 +2,24 @@
 # PDLC 多功能收敛循环驱动：把一个或多个功能各自推过机械收敛段 tdd → implement → review。
 #
 # 用法：
-#   pdlc-loop.sh <功能ID>... --platform claude|codex [选项]
-#   pdlc-loop.sh --ready     --platform claude|codex [选项]   # 挑出所有处于收敛段、未阻塞的功能
+#   pdlc-loop.sh <功能ID>... --platform claude|codex|custom [选项]
+#   pdlc-loop.sh --ready     --platform claude|codex|custom [选项]   # 挑出所有处于收敛段、未阻塞的功能
 #   pdlc-loop.sh --status [--project DIR]                     # 看最近一次运行的进度
 #   pdlc-loop.sh --next <功能ID> [--project DIR]               # 只打印该功能的下一步（只读，不调用模型）
 # 选项：
 #   --parallel N          同时跑几个功能（默认 1）。N>1 时每个功能在自己的 git worktree 里跑
 #   --max-steps N         每个功能至多跑几步（默认 4 = 3 段 + 1 步余量）
 #   --max-budget-usd X    claude 平台每次调用的预算上限（claude 真跑时必填）
+#   --cmd '<模板>'         custom 平台每一步执行的命令，占位符 {stage}（tdd / implement / review）、{id}、{dir}（工作目录），
+#                         必须带 --autonomous。例：--cmd 'copilot -p "按 pdlc {stage} {id} --autonomous" --allow-all-tools'
+#                         自定义平台一律标为「未验证」：驱动照样按状态机判停，但管不了它的花费，只能靠 --max-steps 限步
 #   --project DIR, -C DIR 项目根目录（默认当前目录）
 #   --dry-run             只打印每个功能的下一步决策，不调用模型、不写任何东西
 # 退出码：0=全部收敛  2=有功能阻塞 / 被跳过  3=达步数上限  4=平台命令出错  5=状态没推进  64=用法错
 #        （多个功能时取最大的那个）
 #
 # 每一步都是一个全新进程：claude -p "/pdlc-<阶段> <ID> --autonomous" 或
-# codex exec "按 pdlc <阶段> <ID> --autonomous"。每步之后重读状态机判定：ok=false 即停（fail-stop），
+# codex exec "按 pdlc <阶段> <ID> --autonomous"（custom 平台是 --cmd 展开后的命令）。每步之后重读状态机判定：ok=false 即停（fail-stop），
 # current_stage 没变即停（stuck-stop）。收敛 = next_step 为 pdlc-ship；**绝不调用 ship / deploy**，发布永远留人。
 #
 # depends_on：依赖先跑；依赖没收敛，依赖方就不跑。并行时依赖方在被依赖方的 worktree 里接着跑
@@ -34,6 +37,7 @@ PLATFORM=""
 PARALLEL=1
 MAX_STEPS=4
 BUDGET=""
+CMD_TPL=""
 PROJECT="$PWD"
 DRY_RUN=0
 READY=0
@@ -46,7 +50,7 @@ STALE_MIN="${PDLC_LOOP_STALE_MIN:-45}"
 CLAUDE_FLAGS="${PDLC_LOOP_CLAUDE_FLAGS:---allowedTools Bash Read Write Edit Glob Grep}"
 
 usage() {
-    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 die() { echo "错误：$1" >&2; exit 64; }
@@ -57,6 +61,7 @@ while [[ $# -gt 0 ]]; do
         --parallel)       PARALLEL="${2:-}"; shift 2 || die "--parallel 需要取值" ;;
         --max-steps)      MAX_STEPS="${2:-}"; shift 2 || die "--max-steps 需要取值" ;;
         --max-budget-usd) BUDGET="${2:-}"; shift 2 || die "--max-budget-usd 需要取值" ;;
+        --cmd)            CMD_TPL="${2:-}"; shift 2 || die "--cmd 需要命令模板" ;;
         --project|-C)     PROJECT="${2:-}"; shift 2 || die "--project 需要目录" ;;
         --dry-run)        DRY_RUN=1; shift ;;
         --ready)          READY=1; shift ;;
@@ -128,7 +133,7 @@ if [[ "$STATUS" -eq 1 ]]; then
     RD="$STORE/$RUN_ID"
     [[ -f "$RD/run.json" ]] || exit 0
     t="$(now)"
-    IFS="$US" read -r r_start r_fin r_pid r_host r_plat r_par r_max <<< "$(jq -r '[.started_ts, (.finished_ts // ""), .pid, .host, .platform, .parallel, .max_steps] | map(tostring) | join("\u001f")' "$RD/run.json")"
+    IFS="$US" read -r r_start r_fin r_pid r_host r_plat r_par r_max <<< "$(jq -r '[.started_ts, (.finished_ts // ""), .pid, .host, (.platform + (if .verified == false then " · 未验证" else "" end)), .parallel, .max_steps] | map(tostring) | join("\u001f")' "$RD/run.json")"
     alive=unknown
     if [[ "$r_host" == "$(hostname)" ]]; then
         if kill -0 "$r_pid" 2>/dev/null; then alive=yes; else alive=no; fi
@@ -196,9 +201,14 @@ fi
 
 # ════════════════════════════ 参数校验 ════════════════════════════
 case "$PLATFORM" in
-    claude|codex) ;;
-    "") die "缺 --platform（claude 或 codex）" ;;
-    *)  die "未知平台 '$PLATFORM'（只支持 claude / codex）" ;;
+    claude|codex) [[ -z "$CMD_TPL" ]] || die "--cmd 只给 --platform custom 用" ;;
+    custom)
+        [[ -n "$CMD_TPL" ]] || die "custom 平台要用 --cmd 给出每一步执行的命令模板"
+        case "$CMD_TPL" in *"{stage}"*) ;; *) die "--cmd 模板缺 {stage}（tdd / implement / review）" ;; esac
+        case "$CMD_TPL" in *"{id}"*) ;; *) die "--cmd 模板缺 {id}（功能ID）" ;; esac
+        case "$CMD_TPL" in *--autonomous*) ;; *) die "--cmd 模板要带 --autonomous：无人值守时模型不能停下来问人" ;; esac ;;
+    "") die "缺 --platform（claude / codex / custom）" ;;
+    *)  die "未知平台 '$PLATFORM'（只支持 claude / codex / custom）" ;;
 esac
 [[ "$PARALLEL" =~ ^[1-9][0-9]*$ ]]  || die "--parallel 需正整数（得到 '$PARALLEL'）"
 [[ "$MAX_STEPS" =~ ^[1-9][0-9]*$ ]] || die "--max-steps 需正整数（得到 '$MAX_STEPS'）"
@@ -210,7 +220,11 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
         [[ -n "$BUDGET" ]] || die "claude 平台真跑必须给 --max-budget-usd（每次调用的预算上限）——自主循环持续花钱，预算是硬护栏"
         [[ "$BUDGET" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "--max-budget-usd 需数字（得到 '$BUDGET'）"
     fi
-    command -v "$PLATFORM" >/dev/null 2>&1 || die "需要 $PLATFORM CLI（或用 --dry-run 看决策）"
+    if [[ "$PLATFORM" == custom ]]; then
+        command -v "${CMD_TPL%% *}" >/dev/null 2>&1 || die "找不到 --cmd 里的命令 ${CMD_TPL%% *}（或用 --dry-run 看决策）"
+    else
+        command -v "$PLATFORM" >/dev/null 2>&1 || die "需要 $PLATFORM CLI（或用 --dry-run 看决策）"
+    fi
     [[ "$PARALLEL" -gt 1 && "$IS_GIT" -eq 0 ]] && die "--parallel 大于 1 需要 git 仓库（每个功能在自己的 worktree 里跑）"
 fi
 
@@ -242,9 +256,17 @@ skill_model() {  # skill frontmatter 的 recommended_model（驱动从 bin/ 或�
         [[ -f "$f" ]] && { sed -n 's/^recommended_model: *//p' "$f" | head -1; return 0; }
     done
 }
+custom_cmd() {  # custom_cmd <阶段短名> <ID> <工作目录> → 展开 --cmd 模板；{dir} 按 shell 引号展开（路径可能含空格）
+    local t="$CMD_TPL" q
+    q="$(printf '%q' "$3")"
+    t="${t//"{stage}"/$1}"; t="${t//"{id}"/$2}"; t="${t//"{dir}"/$q}"
+    printf '%s\n' "$t"
+}
 platform_cmd() {  # platform_cmd <阶段短名> <ID> <工作目录> → 打印将执行的命令
     local short="$1" id="$2" wd="$3" m=""
-    if [[ "$PLATFORM" == codex ]]; then
+    if [[ "$PLATFORM" == custom ]]; then
+        printf '(cd %q && %s)\n' "$wd" "$(custom_cmd "$short" "$id" "$wd")"
+    elif [[ "$PLATFORM" == codex ]]; then
         printf 'codex exec -C "%s" -s workspace-write --skip-git-repo-check "按 pdlc %s %s --autonomous"\n' "$wd" "$short" "$id"
     else
         case "$CLAUDE_FLAGS" in *--model*) ;; *) m="$(skill_model "$short")" ;; esac
@@ -310,8 +332,9 @@ mkdir -p "$RUN_DIR"
 printf '%s\n' "$RUN_ID" > "$STORE/latest"
 jq -n --arg run "$RUN_ID" --argjson t "$(now)" --argjson pid $$ --arg host "$(hostname)" \
     --arg plat "$PLATFORM" --argjson par "$PARALLEL" --argjson max "$MAX_STEPS" \
-    --arg ids "${IDS# }" \
+    --arg ids "${IDS# }" --arg cmd "$CMD_TPL" \
     '{run_id:$run, started_ts:$t, finished_ts:null, pid:$pid, host:$host, platform:$plat,
+      verified:($plat != "custom"), cmd:(if $cmd == "" then null else $cmd end),
       parallel:$par, max_steps:$max, features:($ids | split(" ")), exit_code:null}' > "$RUN_DIR/run.json"
 
 rec() { printf '%s/%s.json' "$RUN_DIR" "$1"; }
@@ -355,7 +378,9 @@ run_feature() {  # run_feature <ID> <工作目录>（后台子进程）
         rec_upd "$id" --arg stage "$before" --argjson s "$step" --argjson t "$(now)" '.stage=$stage | .steps=$s | .step_started_ts=$t'
         echo "[$id] ▶ 第 $step 步：pdlc-${short}（当前 stage=${before}）"
         printf '\n===== 第 %s 步 pdlc-%s · %s =====\n' "$step" "$short" "$(date '+%F %T')" >> "$log"
-        if [[ "$PLATFORM" == codex ]]; then
+        if [[ "$PLATFORM" == custom ]]; then
+            (cd "$wd" && bash -c "$(custom_cmd "$short" "$id" "$wd")" < /dev/null >> "$log" 2>&1)
+        elif [[ "$PLATFORM" == codex ]]; then
             codex exec -C "$wd" -s workspace-write --skip-git-repo-check "按 pdlc $short $id --autonomous" \
                 < /dev/null >> "$log" 2>&1
         else
@@ -427,6 +452,10 @@ trap 'rm -rf "$LOCK"' EXIT
 
 echo "🔁 PDLC loop：平台=$PLATFORM  并行=$PARALLEL  每个功能至多 $MAX_STEPS 步  功能：$(echo "$IDS" | wc -w | tr -d ' ') 个"
 echo "   运行记录：${RUN_DIR}（看进度：$0 --status --project $(rel "$PROJECT")）"
+if [[ "$PLATFORM" == custom ]]; then
+    echo "⚠️ 自定义平台未验证：它是否照 PDLC 规则做事（不虚报检查、不改测试）没有经过评测。驱动照样每步重读状态机、红了就停，"
+    echo "   但管不了它的花费——只靠 --max-steps（本次 ${MAX_STEPS} 步）限步。先用 evals 的 honest-checks 场景验一下这个平台再无人值守地跑。"
+fi
 
 # 调度：按给出的顺序扫描排队的功能，依赖满足且有空位就启动
 while :; do

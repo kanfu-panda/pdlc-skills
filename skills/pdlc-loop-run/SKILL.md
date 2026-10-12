@@ -68,6 +68,8 @@ bash <本 skill 目录>/scripts/pdlc-loop.sh --status
 ```
 
 - `--platform claude|codex`：每一步用 `claude -p` 或 `codex exec` 起一个全新进程
+- `--platform custom --cmd '<模板>'`：其它 CLI，每一步执行展开后的模板，占位符 `{stage}` / `{id}` / `{dir}`，必须带 `--autonomous`，
+  例 `--cmd 'copilot -p "按 pdlc {stage} {id} --autonomous" --allow-all-tools'`。标为「未验证」，驱动管不了它的花费，只靠 `--max-steps` 限步——跑之前把这一点告诉用户
 - 并行参数 `--parallel N`（默认 1）：N>1 时每个功能在 `.worktrees/pdlc-loop/<ID>`（分支 `pdlc-loop/<ID>`）里跑，互不干扰；
   产物留在 worktree 里，由人审阅、合并，驱动不提交、不合并。状态文件要先提交，worktree 里才看得到
 - 按状态机里的 `depends_on` 排先后：依赖没收敛，依赖方就不跑；成环的全部跳过

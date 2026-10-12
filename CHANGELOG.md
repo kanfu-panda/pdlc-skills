@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.12] - 2026-10-12
+
+本版让多功能循环驱动 `bin/pdlc-loop.sh` 可以用任意 CLI 推进，不再只限 claude / codex。仍 38 个命令，升级不需要迁移。
+
+### Added
+
+- **`--platform custom --cmd '<模板>'`**：任何接受一句提示词、装好了 PDLC 技能的 CLI 都能驱动 `tdd → implement → review` 收敛。模板占位符 `{stage}` / `{id}` / `{dir}`（工作目录，并行时是各自的 worktree，路径含空格也安全），必须带 `--autonomous`。例：`--cmd 'copilot -p "按 pdlc {stage} {id} --autonomous" --allow-all-tools'`。
+- **自定义平台默认「未验证」**：启动时提示，运行记录写 `verified: false` 与模板，`--status` 标「未验证」。驱动照样每步重读状态机、红了就停、绝不发布，但管不了它的花费，只靠 `--max-steps` 限步。某个平台过了 `evals` 的 honest-checks 准入闸，再升级成内置平台。
+- ADR 0006 增补 §6；usage-guide §4.6 新增「其它 CLI · 自主收敛循环」；README 与 `/pdlc-loop-run` 同步。
+
+### Changed
+
+- **GitHub Copilot CLI 复测通过状态完整性准入闸**：1.0.95 + v1.7.10，`honest-checks` 3/3（此前 1.0.88 + v1.7.0 为 3/3 未过），三轮都经 `pdlc-advance.sh` 写状态。README 平台表、usage-guide 与 ADR 0007 §6.4 更新；和 Grok 同一个标准，依据只有 3 轮，暂不内置进循环驱动。
+
+### Tests
+
+- `tests/loop-driver-check.sh` 新增 18 条（93 → 111）：用法守卫（缺 `--cmd`、`--cmd` 配了别的平台、模板缺 `{stage}` / `{id}` / `--autonomous`）、dry-run 展开、在含空格的工作目录里执行、未验证标记写进运行记录与 `--status`、命令非零退出 → 4、并行时 `{dir}` 是各自的 worktree。驱动用 macOS 自带的 bash 3.2 跑。
+
 ## [1.7.11] - 2026-10-12
 
 本版让 `/pdlc-feature` 的设计、测试、实现、评审各阶段在 Claude Code 里各用一个全新的子代理执行。仍 38 个命令，状态文件没有新字段，升级不需要迁移。

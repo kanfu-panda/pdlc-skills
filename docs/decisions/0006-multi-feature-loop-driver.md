@@ -115,4 +115,20 @@ stuck-stop（`current_stage` 没变）、收敛即停（`next_step` 为 `pdlc-sh
 ## 5. 后续
 
 - 状态栏可以加一个循环进度徽标（如 `🔁 2/5`），`/pdlc-retro` 可以统计循环跑的步数与阻塞原因——等有实际使用数据再做
-- 多平台支持按 Agent Skills 开放标准重新梳理，另立 ADR
+- 多平台支持按 Agent Skills 开放标准重新梳理，另立 ADR（已落地为 ADR 0007）
+
+---
+
+## 6. 增补：自定义平台（v1.7.12）
+
+`--platform custom --cmd '<模板>'` 让任何接受一句提示词的 CLI 驱动循环，不必等我们逐个适配。
+
+- 模板占位符 `{stage}`（tdd / implement / review）、`{id}`、`{dir}`（工作目录，按 shell 引号展开，路径含空格也安全）；
+  缺 `{stage}` / `{id}` 或不带 `--autonomous` 都拒跑（退出 64）
+- 每一步 `(cd <工作目录> && bash -c <展开后的命令>)`，stdin 接 `/dev/null`；判停逻辑与 claude / codex 完全相同
+- **默认未验证**：启动时提示、`run.json` 写 `verified: false` 与模板、`--status` 标「未验证」。驱动管不了任意 CLI 的花费，
+  只能靠 `--max-steps`。一个平台过了 `evals` 的 honest-checks 准入闸，再升级成内置平台——而不是给 custom 加一个「已验证」开关，
+  因为准入结论属于具体的平台和版本，不属于用户随手写的一条模板
+- 状态推进已由 `pdlc-advance.sh` 执行（ADR 0008），换一个平台最常见的虚报方式——检查红了还推进——在脚本层已经拦住，
+  这是现在敢开放自定义平台的前提
+- 验证：`tests/loop-driver-check.sh` 新增 18 条（用法守卫、占位符展开、在工作目录执行、未验证标记、非零退出 → 4、并行时 `{dir}` 是各自的 worktree）
