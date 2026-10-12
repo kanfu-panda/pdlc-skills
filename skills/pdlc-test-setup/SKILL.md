@@ -40,7 +40,8 @@ recommended_effort: medium
    ```json
    { "point": "<确认点描述>", "chose": "<所选默认>", "at": "<ISO 8601>" }
    ```
-2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖等无法安全默认的点）→ **不猜**：
+2. **真需人判断**（PRD 关键取舍、评审「需人工确认」项、真实循环依赖、**测试与设计 / PRD 矛盾**等无法安全默认的点）→ **不猜**。
+   改测试、改检查命令让它变绿，永远不是「流程性默认」，不能记成 `--decision`：
    - `current_stage` 保持不变（不推进）
    - 写 `last_phase_result.ok = false` 且 `blocked_reason = "<原因>"`（写状态机的命令：给状态推进脚本传 `--blocked "<原因>"`）
    - 末行输出哨兵：`<<<PDLC blocked reason="<原因>">>>`

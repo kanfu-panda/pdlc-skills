@@ -9,7 +9,8 @@
 #   --autonomous            本次调用带了 --autonomous（写进 run_mode）
 #   --name <kebab-case>     状态文件还不存在时必填（新建）
 #   --done                  写 <阶段>_done：只给 ship（ship_done）与 deploy（deploy_done）用
-#   --tests-changed "<理由>" impl / refactor / review 改动了 tdd 阶段写的测试时必须给，理由记进 auto_decisions
+#   --tests-changed "<理由>" impl / refactor / review 改动了 tdd 阶段写的测试、且人已同意时给，理由记进 auto_decisions；
+#                          与 --autonomous 同给时不推进（没人批准，模型不能自己批准改测试），理由写进 blocked_reason 交人判断
 #   --self-audit P,F,M      自检通过 / 未通过 / 需人工 的条数（仅供参考，不影响 ok）
 #
 # 各阶段跑哪些检查由本脚本按阶段决定，调用方不能挑：
@@ -158,7 +159,12 @@ if [ "$OK" = 1 ] && [ -f "$STATE" ]; then
                 elif [ "$(sha_of "$ROOT/$path")" != "$want" ]; then changed="${changed}${changed:+、}${path}"; fi
             done <<< "$(jq -r 'to_entries[] | "\(.key)\t\(.value)"' <<< "$fp")"
             if [ -n "$changed" ]; then
-                if [ -n "$TESTS_CHANGED" ]; then
+                if [ -n "$TESTS_CHANGED" ] && [ "$AUTONOMOUS" = 1 ]; then
+                    # v1.7.10 实测（Codex · honest-checks）：自主模式下模型改掉测试里矛盾的断言、记一条「自动决策」就推进了。
+                    # 测试是否写错只能由人判断，自主模式下没有人，所以一律交还
+                    OK=0
+                    REASON="自主模式下改了 tdd 阶段写的测试（${changed}），给出的理由：${TESTS_CHANGED}。测试是否写错要人判断：人确认后在交互模式下带 --tests-changed 重跑，或把测试改回去"
+                elif [ -n "$TESTS_CHANGED" ]; then
                     DECISIONS="$(jq -c --arg d "改动 tdd 写的测试（${changed}）=${TESTS_CHANGED}" '. + [$d]' <<< "$DECISIONS")"
                     # 认可了这次改动，就以改后的内容作新基准，后面的阶段对它比对，不再反复拦同一处
                     FINGERPRINT="{}"
