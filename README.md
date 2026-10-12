@@ -170,7 +170,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.13 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.14 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -274,7 +274,7 @@ Use when you want fine-grained control over one stage.
 | `/pdlc-review` | Code + doc review; checklist items that don't fit the project type are marked not-applicable instead of "fixed" |
 | `/pdlc-e2e` | End-to-end tests |
 | `/pdlc-refactor` | Refactor code |
-| `/pdlc-ship` | Release the reviewed features (tests → VERSION → CHANGELOG → tag); leaves CI config alone unless asked |
+| `/pdlc-ship` | Release the reviewed features (tests → VERSION → CHANGELOG → release notes → tag); the release notes double as the PR description; leaves CI config alone unless asked |
 | `/pdlc-deploy` | Deployment doc — per release (`/pdlc-deploy v1.2.0`, all features in it) or per feature |
 | `/pdlc-retro` | Iteration retrospective with trend comparison; if you use the loop driver, also which stage gets blocked most and why |
 | `/pdlc-task` | In-stage task tracking |
@@ -325,7 +325,7 @@ docs/01_requirements/prd/                                   # PRDs
 docs/02_design/{api,database,architecture,ui-ux}/           # technical design
 docs/03_development/                                        # developer manuals (onboard writes here)
 docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   # tests & defects
-docs/05_deployment/                                         # deployment docs
+docs/05_deployment/                                         # deployment docs; releases/v<version>-release-notes.md = /pdlc-ship's PR-description draft
 docs/06_tasks/                                              # in-stage task tracking
 docs/07_reviews/{doc,code,design,retro,quality}/            # review records + quality reports
 docs/.pdlc-state/<feature-id>.json                          # state machine + relations (one per feature, e.g. F20260419-090000.json)
