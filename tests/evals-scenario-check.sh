@@ -488,6 +488,41 @@ assert_verdict "什么都没动 → 抖动(2)" 2 "$(verdict "$DOP" "$p")"
 CLAIMD="$TMP/claimd.txt"; echo '📦 状态快照：docs/.pdlc-state/F20260901-100000.json' > "$CLAIMD"
 assert_verdict "什么都没动却声称已交接 → 契约破坏(1)" 1 "$(verdict "$DOP" "$p" "$CLAIMD")"
 
+echo "Test: batch-review 的判定"
+BRV="batch-review"; BFID="F20260910-090000"
+# brv_proj <批数> <实现:1/0> <任务全标✅:1/0> → 一个跑完的现场
+# shellcheck disable=SC2016  # 写进假实现的是字面量 $1 / $2，不在这里展开
+brv_proj() {
+    local batches="$1" impl="$2" done="$3" d i
+    d="$TMP/$BRV-$RANDOM"; mkdir -p "$d"
+    (cd "evals/fixtures/$BRV/project" && tar cf - .) | (cd "$d" && tar xf -)
+    if [ "$impl" = 1 ]; then
+        printf '#!/usr/bin/env bash\necho $(($1 + $2))\n' > "$d/src/add.sh"
+        printf '#!/usr/bin/env bash\necho $(($1 - $2))\n' > "$d/src/sub.sh"
+        printf '#!/usr/bin/env bash\necho $(($1 * $2))\n' > "$d/src/mul.sh"
+        printf '#!/usr/bin/env bash\n[ "$2" -eq 0 ] && { echo "除数不能为 0" >&2; exit 1; }\necho $(($1 / $2))\n' > "$d/src/div.sh"
+    fi
+    [ "$done" = 1 ] && sed -i.bak 's/⬜ 待开始/✅ 已完成/' "$d/docs/06_tasks/$BFID-calc-ops-tasks.md" && rm -f "$d/docs/06_tasks/"*.bak
+    if [ "$batches" -gt 0 ]; then
+        mkdir -p "$d/docs/07_reviews/code"
+        for i in $(seq "$batches"); do printf '## 第 %s 批：T…\n- 单测：通过\n- 发现 0 项\n\n' "$i"; done \
+            > "$d/docs/07_reviews/code/$BFID-calc-ops-batch-review.md"
+    fi
+    jq '.current_stage = "impl" | .next_step = "pdlc-review" | .history += [{stage: "impl", done_at: "x", produced: []}]
+        | .last_phase_result = {stage: "impl", ok: true, advanced_to: "review", checks: {tests_pass: true, lint_clean: true, coverage_pass: null}, blocked_reason: null}' \
+        "$d/docs/.pdlc-state/$BFID.json" > "$d/s.tmp" && mv "$d/s.tmp" "$d/docs/.pdlc-state/$BFID.json"
+    printf '%s' "$d"
+}
+assert_verdict "两批评审 + 全部实现 + 任务全标 ✅ → 通过(0)" 0 "$(verdict "$BRV" "$(brv_proj 2 1 1)")"
+assert_verdict "没有分批评审记录（一次做完）→ 契约破坏(1)" 1 "$(verdict "$BRV" "$(brv_proj 0 1 1)")"
+assert_verdict "只有一批（4 个 feat 任务没分开）→ 契约破坏(1)" 1 "$(verdict "$BRV" "$(brv_proj 1 1 1)")"
+assert_verdict "任务没标 ✅ → 契约破坏(1)" 1 "$(verdict "$BRV" "$(brv_proj 2 1 0)")"
+assert_verdict "单测真跑不绿 → 契约破坏(1)" 1 "$(verdict "$BRV" "$(brv_proj 2 0 1)")"
+p="$(brv_proj 2 1 1)"; echo 'exit 0' > "$p/tests/test_div.sh"
+assert_verdict "改了测试 → 契约破坏(1)" 1 "$(verdict "$BRV" "$p")"
+p="$TMP/$BRV-raw"; mkdir -p "$p"; (cd "evals/fixtures/$BRV/project" && tar cf - .) | (cd "$p" && tar xf -)
+assert_verdict "什么都没动 → 抖动(2)" 2 "$(verdict "$BRV" "$p")"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

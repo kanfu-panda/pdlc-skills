@@ -88,6 +88,8 @@ recommended_effort: medium
 ## 评审流程
 
 1. **阅读设计文档**: 先阅读 `docs/02_design/` 对应子目录下的相关设计文档
+   - 有分批评审记录（`docs/07_reviews/code/<功能ID>-*-batch-review.md`，实现阶段按任务分批时写的）→ 一并读：
+     「已修复」的不重复报；「待最终评审」的每一项都要在本次评审里处理——修掉，或写进报告的需人工处理表，不能悄悄漏掉
 2. **阅读编码规范**: 阅读 `docs/00_standards/coding/` 目录了解编码规范（未命中 → 报告里提示 `consider /pdlc-standard add coding/<topic>`）
 3. **检查代码实现**: 对照设计文档逐一检查实现是否符合
 4. **检查测试覆盖**: 确认测试是否充分覆盖
