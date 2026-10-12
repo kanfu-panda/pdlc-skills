@@ -1,7 +1,7 @@
 ---
 name: pdlc-bootstrap
 description: 空目录从一句话描述初始化新项目（服务 / 应用拆分、技术栈、目录骨架与 PDLC 文档目录）；已有代码的项目用 /pdlc-adopt
-argument-hint: [项目目录]
+argument-hint: "[项目目录]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: lifecycle

@@ -1,7 +1,7 @@
 ---
 name: pdlc-task
 description: 阶段内任务跟踪（创建/更新任务列表，附在工作流上）
-argument-hint: <功能ID | 任务描述>
+argument-hint: "<功能ID | 任务描述>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: task

@@ -1,7 +1,7 @@
 ---
 name: pdlc-arch
 description: 架构分析（生成/更新 docs/ARCHITECTURE.md 系统架构总览 · surface 型）
-argument-hint: <项目 | 模块范围>
+argument-hint: "<项目 | 模块范围>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: design

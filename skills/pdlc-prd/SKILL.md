@@ -1,7 +1,7 @@
 ---
 name: pdlc-prd
 description: 创建 PRD 文档（自动化生成 + 自检 + handoff）
-argument-hint: <功能描述 | 已有需求文档路径> [--autonomous]
+argument-hint: "<功能描述 | 已有需求文档路径> [--autonomous]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: requirements

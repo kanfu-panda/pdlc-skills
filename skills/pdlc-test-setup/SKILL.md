@@ -1,7 +1,7 @@
 ---
 name: pdlc-test-setup
 description: 立测试地基（探测技术栈 → 验证并生成 test-commands.yml → 脚手架测试目录 → 接本地钩子）
-argument-hint: [项目目录] [--refresh] [--autonomous]
+argument-hint: "[项目目录] [--refresh] [--autonomous]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering

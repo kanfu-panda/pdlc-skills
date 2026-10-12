@@ -1,7 +1,7 @@
 ---
 name: pdlc-tdd
 description: TDD 测试先行（按设计文档生成失败的测试用例）
-argument-hint: <功能ID | 功能描述>
+argument-hint: "<功能ID | 功能描述>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: tdd

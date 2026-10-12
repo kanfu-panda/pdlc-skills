@@ -1,7 +1,7 @@
 ---
 name: pdlc-code-gen
 description: 在已有服务 / 应用里按设计文档生成模块代码骨架（分层、接口、模型）；加新服务用 /pdlc-add-service
-argument-hint: <模板类型 | 目标目录>
+argument-hint: "<模板类型 | 目标目录>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering

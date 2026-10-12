@@ -221,3 +221,18 @@ grok 自动加载已装的 Claude Code 插件（1.7.0，源码形态），不需
 现在输出里有交接行、状态机却没变，就判契约破坏（`evals/EVALS.md`）。第二次运行用的就是新判定，3 轮都判为「虚报完成」。
 
 加载与触发没有问题：放进全局目录的测试 skill 用自然语言能触发，三轮也都走进了 `pdlc-implement` 的流程（输出用的是它的交接格式）。
+
+---
+
+## 7. 更正纪要（2026-10-12，v1.7.8）
+
+第 5 节第 2 条「给通用安装器的分发暂不做」已改变：多平台支持要尽快跟上，而通用安装器是覆盖面最大、成本最低的入口。
+
+- **没有另开分支，也没有把投影放进仓库**：用户只从 main 装。实测 `npx skills add`（`skills` 1.7.2）直接读 main 的 `skills/`，
+  卡住它的只有 frontmatter——11 个 `argument-hint` 以方括号开头又没加引号，4 个解析报错被跳过、7 个被读成列表。
+  全部改成双引号字符串后找到 38 个；两个 Claude Code 专属的 skill 标了 `metadata.internal`（该安装器的约定字段），默认不列出，对外 36 个，与标准投影一致
+- **装的是源码形态**：参数行仍是 `$ARGUMENTS`、frontmatter 多 `argument-hint`。GitHub Copilot CLI 1.0.88 上实测：
+  经 `npx skills add -a github-copilot` 装进项目的 `.agents/skills/`，自然语言触发了 `pdlc-status`，跑了自带的体检脚本，按参数里的功能ID查到了对应状态。所以不改写源码的参数行
+- **`install.sh --target agents | codex` 不再要求克隆**：没有克隆时下载 main 的源码包构建投影。第 3.3 节「首版只支持 `install.sh`」的前提随之放宽
+- 准入闸两档不变：通用安装器解决的是「装得上」，「状态可信」仍按第 6 节
+

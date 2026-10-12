@@ -226,17 +226,31 @@ Claude Code **集成最全**（本手册前面全部内容）。但 PDLC 的方�
 
 **1. 支持 Agent Skills 标准的工具 · 原生 skill**
 
-多数 AI 编程工具已按 [Agent Skills 开放标准](https://agentskills.io/specification) 加载 skill（文件夹 + `SKILL.md`，按描述触发）。pdlc 把 skill 构建成符合标准的投影，装到工具读取的目录：
+多数 AI 编程工具已按 [Agent Skills 开放标准](https://agentskills.io/specification) 加载 skill（文件夹 + `SKILL.md`，按描述触发）。两种装法，都不用克隆：
+
+**① 通用安装器 `npx skills`**（最省事）：
 
 ```bash
-git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
-bash install.sh --target agents                  # ~/.agents/skills/：GitHub Copilot、Gemini CLI、OpenCode、Amp、Goose
-bash install.sh --target agents --project DIR    # DIR/.agents/skills/（只对这个项目生效）
-bash install.sh --target agents --dest DIR       # 用自己目录的工具：Cursor（.cursor/skills）、Windsurf（.windsurf/skills）、
-                                                 # Kiro（.kiro/skills）、Roo Code（.roo/skills）、
-                                                 # Antigravity CLI（~/.gemini/config/skills，1.2.9 不读工作区 .agents/skills/）
-bash install.sh --target codex                   # ~/.codex/skills/
-# 加 --uninstall 移除。只写入、只删除 pdlc-* 目录，不碰同目录下的其它 skill
+npx skills add kanfu-panda/pdlc-skills            # 交互选择装进哪些工具；-g 装到用户级，-a <工具> 指定工具，-y 跳过确认
+```
+
+它直接读本仓库 main 上的 `skills/`，装的是 skill 原样：36 个（`pdlc-settings`、`pdlc-loop-run` 只对 Claude Code 有用，标了
+`metadata.internal`，默认不装）。和投影的差别是参数行仍是 `$ARGUMENTS` 占位符、frontmatter 多一个 `argument-hint`；
+GitHub Copilot CLI 1.0.88 上实测能触发、能正确理解参数。**Claude Code 用户不要用它**，装插件即可，否则会多出一份同名 skill。
+
+**② 本仓库的安装脚本**：把 skill 构建成符合标准的投影（通过官方校验器），装到工具读取的目录。需要 python3；
+没有本地克隆时，脚本先下载 main 的源码包到临时目录，构建完即删：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh | bash -s -- --target agents
+# 其它落点（在克隆里就直接 bash install.sh …）：
+#   --target agents                  ~/.agents/skills/：GitHub Copilot、Gemini CLI、OpenCode、Amp、Goose
+#   --target agents --project DIR    DIR/.agents/skills/（只对这个项目生效）
+#   --target agents --dest DIR       用自己目录的工具：Cursor（.cursor/skills）、Windsurf（.windsurf/skills）、
+#                                    Kiro（.kiro/skills）、Roo Code（.roo/skills）、
+#                                    Antigravity CLI（~/.gemini/config/skills，1.2.9 不读工作区 .agents/skills/）
+#   --target codex                   ~/.codex/skills/（我们验证过的 Codex 发行版读这里，不读 ~/.agents/skills/）
+#   加 --uninstall 移除。只写入、只删除 pdlc-* 目录，不碰同目录下的其它 skill
 ```
 
 装好后重启工具，用自然语言驱动：
@@ -256,7 +270,7 @@ bash install.sh --target codex                   # ~/.codex/skills/
 |---|---|
 | Claude Code | 一等公民（插件，不经投影） |
 | Codex | 已过状态完整性准入闸（ADR 0004）。验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
-| GitHub Copilot | CLI 1.0.88 能加载、能触发，但**未过**状态完整性准入闸（默认模型 3 轮全部契约破坏：失败仍推进阶段、漏记 lint、改测试后报全绿，见 ADR 0007 §6）。可跑单个阶段，不建议交给自主循环。VS Code 里的 Copilot agent 未跑 |
+| GitHub Copilot | CLI 1.0.88 能加载、能触发（`npx skills add` 与 `--target agents` 两种装法都实测过），但**未过**状态完整性准入闸（默认模型 3 轮全部契约破坏：失败仍推进阶段、漏记 lint、改测试后报全绿，见 ADR 0007 §6）。可跑单个阶段，不建议交给自主循环。VS Code 里的 Copilot agent 未跑 |
 | Grok CLI | 不用另装：它读 `~/.claude/plugins/installed_plugins.json`，自动加载已装的 Claude Code 插件。1.0.41 **已过**状态完整性准入闸（3/3 轮，见 ADR 0007 §6）。暂未加进循环驱动 |
 | Antigravity CLI（`agy`） | 用 `--dest ~/.gemini/config/skills` 装（1.2.9 实测不读工作区的 `.agents/skills/`）。能加载、能触发，但**未过**准入闸：声称「实现完成、状态已更新、测试全绿」，实际一个文件都没写（见 ADR 0007 §6） |
 | Gemini CLI、OpenCode、Amp、Goose、Cursor、Windsurf、Kiro、Roo Code | 按各自文档可加载，我们没跑过 |

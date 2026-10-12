@@ -1,7 +1,7 @@
 ---
 name: pdlc-loop-run
 description: 收敛循环引擎——自动推进 tdd → implement → review，直到评审通过、待发布（next_step 为 pdlc-ship）或阻塞；发布永远由人做
-argument-hint: <功能ID> [--max-steps N]
+argument-hint: "<功能ID> [--max-steps N]"
 allowed-tools: Read, Glob, Bash, Task
 layer: 3
 stage: ops
@@ -10,6 +10,9 @@ requires:
   - docs/.pdlc-state/
 next_step: null
 terminal_state: null
+# 只对 Claude Code 有用：通用安装器 npx skills 见到 internal 默认不列出、不安装
+metadata:
+  internal: true
 ---
 
 # 收敛循环引擎（loop-run）

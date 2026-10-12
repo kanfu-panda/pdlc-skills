@@ -7,19 +7,20 @@
 [![Version](https://img.shields.io/github/v/release/kanfu-panda/pdlc-skills?label=version&color=blue)](./CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/kanfu-panda/pdlc-skills?style=social)](https://github.com/kanfu-panda/pdlc-skills/stargazers)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
+[![Agent Skills](https://img.shields.io/badge/Agent%20Skills-Codex%20%C2%B7%20Copilot%20%C2%B7%20Cursor%20%C2%B7%20Gemini%20CLI-green)](https://agentskills.io/specification)
 
 > 作者：**kanfu-panda**
 > 仓库：[github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**pdlc-skills** 只认一条规矩：**AI 说「做好了」不算，命令的退出码说了算。** 它是一个 [Claude Code plugin](https://docs.anthropic.com/)，提供分阶段的 PDLC（产品开发生命周期）工作流——PRD → 设计 → TDD → 实现 → 评审 → 发布 → 部署 → 复盘——底下是一台**可审计、落盘的状态机**：每个阶段都把产物落到 `docs/`、更新每功能状态文件、实现前必须有红灯测试、交接前自检、自动修复仅一轮。
+**pdlc-skills** 只认一条规矩：**AI 说「做好了」不算，命令的退出码说了算。** 它是一套 skill，在 [Claude Code](https://docs.anthropic.com/) 里是插件，在 Codex、GitHub Copilot、Cursor、Gemini CLI 等支持 [Agent Skills 标准](https://agentskills.io/specification)的工具里也能一条命令装上。它提供分阶段的 PDLC（产品开发生命周期）工作流——PRD → 设计 → TDD → 实现 → 评审 → 发布 → 部署 → 复盘——底下是一台**可审计、落盘的状态机**：每个阶段都把产物落到 `docs/`、更新每功能状态文件、实现前必须有红灯测试、交接前自检、自动修复仅一轮。
 
 由此得到四样东西：
 
 - **可验证**——状态机里的测试 / lint / 覆盖率结果由脚本按**真实命令退出码**生成，模型无权填写；每次写状态文件后立刻做契约体检；行为评测拿真实模型跑 skill，抓模型悄悄不守规矩。见[怎么验证](#怎么验证)。
 - **可审计**——每份产物都落盘，`git diff` 就能看 AI 到底做了什么。
 - **自主**——检查是客观的，所以自主循环能把 `tdd → implement → review` 无人值守推到收敛，每一步都是全新进程，带 fail-stop、stuck-stop 和预算护栏。
-- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（38 个斜杠命令 + 状态栏 + 插件内循环引擎）；**Codex**（兼容 Claude Code 生态的发行版）等通过适配器驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
+- **平台中立**——状态机长在你的仓库里，因而与工具无关。**Claude Code** 集成最全（38 个斜杠命令 + 状态栏 + 插件内循环引擎）；其它工具用 `npx skills add kanfu-panda/pdlc-skills` 装上 36 个 skill，驱动同一套方法论。见[多平台](#多平台其它-ai-编程工具)。
 
 ---
 
@@ -120,6 +121,8 @@ curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/instal
 
 就这一条。安装器是 `claude plugin marketplace add` + `claude plugin install` 的薄封装：注册 marketplace 源，把 plugin 装进你的 `.claude/plugins/pdlc/` 目录。
 
+用的不是 Claude Code？跳到[多平台](#多平台其它-ai-编程工具)，同样一条命令。
+
 ### 升级
 
 ```bash
@@ -166,7 +169,7 @@ bash install.sh --global   # 从你本地的 clone 安装
 
 ```bash
 claude plugin list | grep pdlc
-# 应该输出： pdlc@pdlc-skills  Version: 1.7.7（或更新）  Status: ✔ enabled
+# 应该输出： pdlc@pdlc-skills  Version: 1.7.8（或更新）  Status: ✔ enabled
 ```
 
 在 Claude Code 里（重启会话后），输入 `/` 然后开始打 `pdlc-`——下拉里应该出现全部 38 个子命令（`/pdlc-feature`、`/pdlc-prd`、`/pdlc-tdd` ...）。
@@ -177,28 +180,34 @@ claude plugin list | grep pdlc
 
 Claude Code **集成最全**——38 个斜杠命令 + 状态栏 + 插件内自主收敛循环。但 PDLC 的方法论、状态机、模板都是**平台中立**的：同一份 `docs/.pdlc-state/` 不管谁驱动都能延续，所以你可以换工具（或团队里不同人用不同工具推同一个仓库）而不丢 PDLC 状态。
 
-多数 AI 编程工具已支持 [Agent Skills 开放标准](https://agentskills.io/specification)。pdlc 把 skill 构建成一份符合标准的投影（36 个——除去 2 个 Claude Code 专属；全部通过官方校验器 `skills-ref`），装到你的工具读取的目录：
+多数 AI 编程工具已支持 [Agent Skills 开放标准](https://agentskills.io/specification)。pdlc 把 skill 构建成一份符合标准的投影（36 个——除去 2 个 Claude Code 专属；全部通过官方校验器 `skills-ref`），装到你的工具读取的目录。两种装法，都不用克隆：
 
 ```bash
-git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
-bash install.sh --target agents                  # ~/.agents/skills/（Copilot、Gemini CLI、OpenCode、Amp、Goose）
-bash install.sh --target agents --project DIR    # DIR/.agents/skills/
-bash install.sh --target agents --dest DIR       # 工具自己的目录，如 .cursor/skills、~/.gemini/config/skills（Antigravity CLI）
-bash install.sh --target codex                   # ~/.codex/skills/
-# 加 --uninstall 移除；只写入、只删除 pdlc-* 目录
+# ① 通用安装器：交互选择要装进哪些工具（Codex、Copilot、Cursor、Gemini CLI、OpenCode……几十种）
+npx skills add kanfu-panda/pdlc-skills
+
+# ② 本仓库的安装脚本：装的是上面那份标准投影（需 python3）
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --target agents                   # ~/.agents/skills/（Copilot、Gemini CLI、OpenCode、Amp、Goose）
+#   --target agents --project DIR                # DIR/.agents/skills/
+#   --target agents --dest DIR                   # 工具自己的目录，如 .cursor/skills、~/.gemini/config/skills（Antigravity CLI）
+#   --target codex                               # ~/.codex/skills/
+#   加 --uninstall 移除；只写入、只删除 pdlc-* 目录
 ```
 
-skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句话需求>`、「按 pdlc review 执行 F…」）。需本地克隆 + python3。
+两者的区别：① 装的是仓库里的 skill 原样（frontmatter 多了 Claude Code 用的参数提示，正文的参数行是 `$ARGUMENTS` 占位符），GitHub Copilot CLI 1.0.88 上实测能触发、能正确理解参数；② 装的是改写过参数行、补了触发提示的标准投影，通过官方校验器。拿不准就用 ①。**Claude Code 用户请装插件**，不要再用 ①，否则会多出一份同名 skill。
+
+skill 按描述触发：用自然语言驱动（`用 pdlc 写个 PRD：<一句话需求>`、「按 pdlc review 执行 F…」）。
 
 | 工具 | 安装 | 状态 |
 |---|---|---|
 | Claude Code | 插件（本仓库） | ✅ 一等公民 |
-| Codex | `--target codex` | ✅ 已过状态完整性准入闸——[ADR 0004](./docs/decisions/0004-codex-loop-run.md)；验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
-| GitHub Copilot | `--target agents`（或 `--project DIR`） | CLI 1.0.88：能加载、能触发 · ❌ **未过**状态完整性准入闸（3/3 轮，默认模型）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸)；可跑单个阶段，不建议交给自主循环 · VS Code 未跑 |
+| Codex | `--target codex`（`npx skills add` 装到 `~/.agents/skills/`，我们验证过的发行版读的是 `~/.codex/skills/`） | ✅ 已过状态完整性准入闸——[ADR 0004](./docs/decisions/0004-codex-loop-run.md)；验证的是读 `~/.codex/skills/` 的 Codex 发行版，原版 OpenAI Codex 未验证 |
+| GitHub Copilot | `npx skills add`，或 `--target agents`（`--project DIR`） | CLI 1.0.88：两种装法都能加载、能触发 · ❌ **未过**状态完整性准入闸（3/3 轮，默认模型）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸)；可跑单个阶段，不建议交给自主循环 · VS Code 未跑 |
 | Grok CLI | 不用另装——它会自己加载已装的 Claude Code 插件 | 1.0.41：✅ 已过状态完整性准入闸（3/3 轮）——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) · 暂未加进循环驱动 |
 | Antigravity CLI（`agy`） | `--target agents --dest ~/.gemini/config/skills`（1.2.9 不读工作区的 `.agents/skills/`） | 1.2.9：能加载、能触发 · ❌ **未过**准入闸——声称「完成、状态已更新」，实际一个文件都没写——[ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) |
-| Gemini CLI · OpenCode · Amp · Goose | `--target agents` | 按其文档可加载 · 我们没跑过 |
-| Cursor · Windsurf · Kiro · Roo Code | `--target agents --dest <它的 skills 目录>` | 按其文档可加载 · 我们没跑过 |
+| Gemini CLI · OpenCode · Amp · Goose | `npx skills add`，或 `--target agents` | 按其文档可加载 · 我们没跑过 |
+| Cursor · Windsurf · Kiro · Roo Code | `npx skills add`，或 `--target agents --dest <它的 skills 目录>` | 按其文档可加载 · 我们没跑过 |
 
 「能加载」不等于「状态可信」：一个工具要先过**状态完整性准入闸**（`evals/` 的 `honest-checks`——故意造一个红灯测试，看 `checks` 是否来自真实退出码），我们才推荐把它交给自主循环。**其它工具**：把 [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) 放进项目规则（`AGENTS.md` 等），用自然语言驱动。
 

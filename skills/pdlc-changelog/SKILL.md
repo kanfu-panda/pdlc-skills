@@ -1,7 +1,7 @@
 ---
 name: pdlc-changelog
 description: 未发版时按 git 记录手动刷新 CHANGELOG 的 [未发布] 段；正式发版由 /pdlc-ship 一并处理
-argument-hint: [版本号]
+argument-hint: "[版本号]"
 allowed-tools: Read, Write, Edit, Bash
 layer: 3
 stage: engineering

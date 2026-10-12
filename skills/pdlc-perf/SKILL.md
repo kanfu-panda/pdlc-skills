@@ -1,7 +1,7 @@
 ---
 name: pdlc-perf
 description: 性能优化——先测基线，再逐项改、同一命令复测，报告写优化前后的实测数字；测不了就只出分析
-argument-hint: <功能ID | 优化目标>
+argument-hint: "<功能ID | 优化目标>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: quality

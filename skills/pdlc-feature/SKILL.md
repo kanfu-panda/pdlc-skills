@@ -1,7 +1,7 @@
 ---
 name: pdlc-feature
 description: 全自动 PDLC 新功能开发（串联 PRD→设计→TDD→实现→评审→发布）
-argument-hint: <功能描述 | 已有 PRD 路径> [--lite] [--autonomous]
+argument-hint: "<功能描述 | 已有 PRD 路径> [--lite] [--autonomous]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 layer: 1
 stage: feature

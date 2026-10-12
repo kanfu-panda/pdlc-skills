@@ -1,7 +1,7 @@
 ---
 name: pdlc-i18n
 description: 国际化——抽取硬编码文案为 key、生成多语言资源文件并替换引用
-argument-hint: <目标语言 | 模块名>
+argument-hint: "<目标语言 | 模块名>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering

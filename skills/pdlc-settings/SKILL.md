@@ -1,7 +1,7 @@
 ---
 name: pdlc-settings
 description: 交互式配置 PDLC（当前：状态栏 statusline 的启用/停用/展示项）
-argument-hint: [statusline | status]
+argument-hint: "[statusline | status]"
 allowed-tools: Read, Edit, Write, Bash, Glob
 layer: 3
 stage: ops
@@ -9,6 +9,9 @@ produces: []
 requires: []
 next_step: null
 terminal_state: null
+# 只对 Claude Code 有用：通用安装器 npx skills 见到 internal 默认不列出、不安装
+metadata:
+  internal: true
 ---
 
 # PDLC 交互式设置

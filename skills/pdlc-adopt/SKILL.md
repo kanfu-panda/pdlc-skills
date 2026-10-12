@@ -1,7 +1,7 @@
 ---
 name: pdlc-adopt
 description: 已有代码、还没有 PDLC 文档的老项目接入——只读扫描后逆向生成基线文档并做健康检查，不改代码；空目录新项目用 /pdlc-bootstrap
-argument-hint: [项目目录]
+argument-hint: "[项目目录]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: lifecycle

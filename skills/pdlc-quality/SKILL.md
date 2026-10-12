@@ -1,7 +1,7 @@
 ---
 name: pdlc-quality
 description: 质量闸门——跑真实 check、对照质量目标、出可核对报告，由人签字放行
-argument-hint: [--init] [--autonomous]
+argument-hint: "[--init] [--autonomous]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: quality

@@ -1,7 +1,7 @@
 ---
 name: pdlc-onboard
 description: 为新加入的开发者生成项目上手文档（docs/03_development/onboard-guide.md）；老项目首次接入 PDLC 用 /pdlc-adopt
-argument-hint: [项目目录 | 模块]
+argument-hint: "[项目目录 | 模块]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: lifecycle

@@ -1,7 +1,7 @@
 ---
 name: pdlc-api-mock
 description: 按 API 设计文档生成 Mock 数据与 Mock 服务配置，供前端联调
-argument-hint: <接口路径 | OpenAPI 文件>
+argument-hint: "<接口路径 | OpenAPI 文件>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering

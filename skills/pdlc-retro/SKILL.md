@@ -1,7 +1,7 @@
 ---
 name: pdlc-retro
 description: 迭代复盘——读状态机历史出趋势报告
-argument-hint: [--range 7d|30d|all] [--feature <feature-id>]
+argument-hint: "[--range 7d|30d|all] [--feature <feature-id>]"
 allowed-tools: Read, Glob, Bash
 layer: 2
 stage: retro
