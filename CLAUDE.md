@@ -189,7 +189,7 @@ When the user invokes a `/pdlc-*` slash command in their project, the skill read
 - `docs/02_design/{api,database,architecture,ui-ux}/`
 - `docs/03_development/` — developer manuals (`pdlc-onboard` writes here)
 - `docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/`
-- `docs/05_deployment/` — a release-level deploy doc is `guides/v<version>-deploy.md`
+- `docs/05_deployment/` — a release-level deploy doc is `guides/v<version>-deploy.md`; `pdlc-ship` writes `releases/v<version>-release-notes.md`, a release summary drafted from the PRDs, review records and checks, ready to use as the PR description (template: `references/templates/release-notes-template.md`; it never opens or merges the PR)
 - `docs/06_tasks/`
 - `docs/00_standards/quality-targets.yml` — declared quality targets (coverage line, `core_flows`, lint policy) read by `pdlc-quality`; template at `references/templates/quality-targets-template.yml`; optional
 - `docs/00_standards/e2e-flow-map.yml` — explicit `core_flow → E2E test` map so "all core flows covered" is a mechanical check rather than a model opinion; required once `core_flows` is declared; template at `references/templates/e2e-flow-map-template.yml`

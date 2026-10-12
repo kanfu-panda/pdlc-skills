@@ -101,7 +101,7 @@ echo "Test: shared resources"
 assert_exists "references/templates/ directory exists" "references/templates"
 
 template_count=$(find references/templates -maxdepth 1 -name '*-template.md' | wc -l | tr -d ' ')
-assert_eq "12 user-facing templates"                   "12"  "$template_count"
+assert_eq "13 user-facing templates"                   "13"  "$template_count"
 
 prompt_count=$(find references/templates/prompts -name '*.md' | wc -l | tr -d ' ')
 assert_eq "18 shared prompt fragments"                 "18"  "$prompt_count"

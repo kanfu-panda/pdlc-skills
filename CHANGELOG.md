@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.14] - 2026-10-12
+
+本版让 `/pdlc-ship` 在发布时顺手写一份发布说明草稿，开 PR 时可以直接当描述用。仍 38 个命令，升级不需要迁移。
+
+### Added
+
+- **发布说明草稿 `docs/05_deployment/releases/v<版本>-release-notes.md`**：`/pdlc-ship` 在更新 CHANGELOG 之后、提交之前，把本次纳入的功能、各自 PRD 的一句话目标、评审结论（问题 / 自动修复 / 需人工）、`checks`、质量报告证据、测试门选择、tag 去向和「需要人跟进」的事汇到一页，随 `release: v<版本>` 一起提交。数字从产物照抄，产物不存在就写「无」；只写文件，不开 PR、不合 PR、不推送，草稿里不加工具署名。开 PR 时 `gh pr create --body-file <这个文件>`。
+- 模板 `references/templates/release-notes-template.md`（同步为 `/pdlc-ship` 的 `assets/`）；目标项目契约新增这一路径，README、usage-guide 同步。
+
+### Fixed
+
+- **`/pdlc-ship` 先推进状态机再提交**：以前先提交 `release: v<版本>`、再把功能推进到 `ship_done`，状态文件的改动留在发布提交之外，squash 合并时丢失，主干上这些功能一直显示「待发布」。现在推进放在提交之前，状态文件随发布提交一起进库（实测时模型自己发现并调整了顺序）。
+
 ## [1.7.13] - 2026-10-12
 
 本版让 `/pdlc-retro` 把循环驱动的运行记录也读进去，回答「哪个阶段最常被拦、为什么」。仍 38 个命令，升级不需要迁移。

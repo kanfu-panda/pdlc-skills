@@ -156,7 +156,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 | `/pdlc-review` | 代码 + 文档评审 + 自动修复（与项目类型不符的检查项标「不适用」，不据此改代码） | `/pdlc-ship` |
 | `/pdlc-e2e` | 端到端测试 | `/pdlc-review` |
 | `/pdlc-refactor` | 代码重构（外部行为不变） | `/pdlc-review` |
-| `/pdlc-ship` | 发布评审通过的功能（测试 → bump → CHANGELOG → tag；默认不动 CI 配置） | `/pdlc-deploy` |
+| `/pdlc-ship` | 发布评审通过的功能（测试 → bump → CHANGELOG → 发布说明草稿 → tag；草稿可直接作 PR 描述；默认不动 CI 配置） | `/pdlc-deploy` |
 | `/pdlc-deploy` | 部署文档：按版本（覆盖该版本全部功能）或按单个功能 | — |
 | `/pdlc-retro` | 迭代复盘（趋势对比；用过循环驱动的，另汇总各阶段被拦次数与卡点原因） | — |
 | `/pdlc-task` | 阶段内任务跟踪 | — |
@@ -372,7 +372,7 @@ docs/01_requirements/prd/                                   # PRD
 docs/02_design/{api,database,architecture,ui-ux}/           # 技术设计
 docs/03_development/                                        # 开发者手册（onboard 产出）
 docs/04_testing/{unit-tests,e2e-tests,defects,security,perf}/   # 测试与缺陷
-docs/05_deployment/                                         # 部署（按版本发布时为 guides/v<版本>-deploy.md）
+docs/05_deployment/                                         # 部署（按版本发布时为 guides/v<版本>-deploy.md；/pdlc-ship 写 releases/v<版本>-release-notes.md 作 PR 描述草稿）
 docs/06_tasks/                                              # 任务跟踪
 docs/07_reviews/{doc,code,design,retro,quality}/            # 评审 + 复盘 + 质量报告
 docs/.pdlc-state/<feature-id>.json                          # 状态机（每功能一份）

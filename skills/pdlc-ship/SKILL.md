@@ -8,6 +8,7 @@ stage: ship
 produces:
   - VERSION
   - CHANGELOG.md
+  - docs/05_deployment/releases/v<version>-release-notes.md
   - .git/refs/tags/v<version>
 requires:
   - docs/.pdlc-state/
@@ -17,7 +18,7 @@ terminal_state: ship_done
 
 # 发布工作流
 
-串联发布一个版本所需的所有步骤：收评审通过的功能 → 跑测试 → 升级 VERSION → 更新 CHANGELOG → 创建 tag。CI 配置默认不动（见 §1.6）。
+串联发布一个版本所需的所有步骤：收评审通过的功能 → 跑测试 → 升级 VERSION → 更新 CHANGELOG → 写发布说明草稿 → 创建 tag。CI 配置默认不动（见 §1.6）。
 
 <!-- @include templates/prompts/iron-law.md（已内联于下方，无需另读） -->
 ⛔ **IRON LAW · 不可违反的硬门禁**
@@ -126,10 +127,25 @@ terminal_state: ship_done
 3. 每条用"- <简要描述>（<feature-id>）"格式写入 CHANGELOG 的 `[未发布]` 段（开发各阶段可能已按同一格式为该功能追加过条目——`[未发布]` 段里已有同一 ID 的，不重复写）
 4. 把 `[未发布]` 改为 `[<new-version>] - <今日日期>`
 
+### 1.4.1 发布说明草稿（可直接作 PR 描述）
+
+按 `assets/release-notes-template.md` 写 `docs/05_deployment/releases/v<new-version>-release-notes.md`，把这次发布散在各处的结论汇到一页，
+开 PR 时直接 `gh pr create --body-file <这个文件>`，发 Release 时也能用。**只写这个文件，不开 PR、不合 PR、不推送。**
+
+- **来源**：本次纳入的功能（§1.1 的可发布清单）各自的 PRD「背景与目标」、`docs/07_reviews/code/<ID>-*-review.md` 的评审总结与「需人工处理」项、
+  状态文件里 `last_phase_result.checks`（读的是推进到 `ship_done` **之前**的那份，即评审阶段的结果），以及 §1.1 的质量报告结论、§1.2 测试门的选择、§1.5 的 tag 去向
+- **数字照抄**：问题数、`checks` 的值原样搬，不重算、不美化；`null` 照写 `null`。某项产物不存在就写「无」，不要补写一份
+- **「需要人跟进」不能省**：评审里的需人工项、质量闸门 override、过期提示，本次发布交给人的事都列在这里；真的一项都没有才写「无」
+- **不加工具署名**：草稿是给人发出去的文字，不写「由某某工具生成」之类的署名或链接
+- tag 去向此时还没定（§1.5 才判断）：先写「待定」，§1.5 判断完回来改成「已打 v<new-version>」或「待合并后打」，再一起提交
+
 ### 1.5 提交，按合并方式决定何时打 Tag
 
+**先推进状态机，再提交**：对每个纳入的功能按段四的规则运行状态推进脚本（`--stage ship --next pdlc-deploy --done`），让 `ship_done`
+随发布提交一起进库。先提交后推进的话，状态文件的改动留在发布提交之外——squash 合并时就丢了，主干上这些功能会一直显示「待发布」。
+
 ```bash
-git add VERSION CHANGELOG.md
+git add VERSION CHANGELOG.md docs/05_deployment/releases/v<new-version>-release-notes.md docs/.pdlc-state/<纳入的功能ID>.json
 git commit -m "release: v<new-version>"
 ```
 
@@ -235,6 +251,7 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 **发布自检清单：**
 - [ ] VERSION 已更新到新版本号
 - [ ] CHANGELOG 有本次发布条目
+- [ ] 发布说明草稿已写入并随发布提交：纳入的每个功能都有一行，数字与评审记录 / 状态文件一致，tag 去向不是「待定」，没有工具署名
 - [ ] 合并方式已判明（或已问人），tag 与之相符：当场打的，`git tag -l v<new-version>` 返回非空；待合并后打的，没有在分支上建 tag，交接里给了补打命令
 - [ ] 若选 A，测试已全绿
 - [ ] 若选 B，commit 消息含 `[skip-tests]` 标记
@@ -264,6 +281,8 @@ git tag -a "v<new-version>" -m "Release v<new-version>"
 - 分支错误 → 立即中止（不可自动修复）
 
 ## 段四：更新状态机 + 交接
+
+> 状态推进已在 §1.5 提交之前做过（下面是它要遵守的规则）。这里只核对：纳入的每个功能 `current_stage` 都是 `ship_done`，且状态文件已在发布提交里（`git show --stat HEAD` 能看到）。
 
 <!-- pdlc:meta 由 frontmatter 生成（adapters/sync_skills.py），勿手改 -->
 > **本命令的状态机取值**：阶段短名 `ship`（写进 `history[].stage` 与 `last_phase_result.stage`）；下一跳 `pdlc-deploy`（写进 `next_step`，交接时提示）。
@@ -446,6 +465,7 @@ bash scripts/pdlc-advance.sh <功能ID> --stage <本阶段短名> --next <下一
 ✅ 发布准备完成：v<new-version>
   - VERSION：已更新
   - CHANGELOG：已追加
+  - 发布说明草稿：docs/05_deployment/releases/v<new-version>-release-notes.md（开 PR 时 gh pr create --body-file 这个文件）
   - Tag：<v<new-version> 已创建 / 待合并后打（合并方式：squash 或 rebase）>
   - 测试：<通过 / [skip-tests: 理由]>
 📦 状态机：<N> 个功能已推进到 ship_done（<ID 列表>）
