@@ -38,6 +38,11 @@ one="$(basename "$(find evals/fixtures -mindepth 1 -maxdepth 1 -type d | sort | 
 cat > "$BIN/codex" <<'STUB'
 #!/usr/bin/env bash
 cat >/dev/null 2>&1
+# 记下被调用时现场是不是 git 仓库：只有定义了 scenario_setup 的场景应当是
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-C" ]; then [ -d "$2/.git" ] && echo "$2" >> "$(dirname "$0")/seen-git"; shift; fi
+  shift
+done
 exit 0
 STUB
 chmod +x "$BIN/codex"
@@ -65,6 +70,21 @@ if [[ "$rc" -eq 2 ]]; then
 else
     echo "  ✗ 桩无产出时退出码为 ${rc}，期望 2（无结论）"
     fail=$((fail + 1))
+fi
+
+# scenario_setup 钩子：在调 agent 之前跑完，且不会漏到下一个场景（漏了的话后面的场景也会是 git 仓库）
+setup_n="$(grep -l '^scenario_setup()' evals/fixtures/*/scenario.sh 2>/dev/null | wc -l | tr -d ' ')"
+# 现场目录名是 pdlc-eval-<场景>-XXXXXX；抖动会重跑，同一场景可能出现多次，按场景去重
+seen_n="$(sed -E 's|.*/pdlc-eval-(.*)-[^-]+$|\1|' "$BIN/seen-git" 2>/dev/null | sort -u | grep -c . || true)"
+if [[ "$setup_n" -gt 0 && "$seen_n" -eq "$setup_n" ]]; then
+    echo "  ✓ scenario_setup 在调 agent 前跑完，${setup_n} 个场景各自生效、没有漏到别的场景"; pass=$((pass + 1))
+else
+    echo "  ✗ 调 agent 时是 git 仓库的现场有 ${seen_n} 个，定义了 scenario_setup 的场景有 ${setup_n} 个"; fail=$((fail + 1))
+fi
+if grep -qF 'scenario_setup 失败' <<< "$out"; then
+    echo "  ✗ 有场景的 scenario_setup 失败了"; fail=$((fail + 1))
+else
+    echo "  ✓ 所有 scenario_setup 都搭起来了"; pass=$((pass + 1))
 fi
 
 # codex 臂只能测已安装的投影（~/.codex），汇总必须照实说，不能只盖一个仓库 commit 了事

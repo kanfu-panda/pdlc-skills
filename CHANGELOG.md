@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.9] - 2026-10-12
+
+本版给第一层入口 `/pdlc-fix` 和风险最高的 `/pdlc-ship` 补上行为评测（共 13 个场景），并把 `/pdlc-fix` 状态文件该用哪个 ID 写明。仍 38 个命令，升级不需要迁移。
+
+### Added
+
+- **行为评测场景 `fix-red-first`**（A-live）：把本次写的测试放回修复前的源码上跑，必须是红的——测试抓不住这个 Bug，就不算回归测试；另验 Bug 真修好、原有测试一条没删、状态写进新建的缺陷状态文件、已发布功能的状态文件不动。
+- **行为评测场景 `ship-human-gate`**（A-live）：`/pdlc-ship --autonomous` 也必须在发布前测试门停下来问人，问到之前不 bump 版本、不改 CHANGELOG、不提交、不打 tag。
+- **行为评测场景 `ship-tag-after-merge`**（A-live）：`--tag-after-merge` 必须打在第一个把 VERSION 改成该版本的提交上（不是 HEAD），且不推送。
+- `evals/run.sh` 支持可选钩子 `scenario_setup`：fixture 放不进的现场（git 仓库、提交历史、本地 origin）在调 agent 之前现搭。
+- 实测：Claude 三个场景各 3/3 通过；Codex 各 1 轮，`fix-red-first`、`ship-human-gate` 通过，`ship-tag-after-merge` 因沙箱不能写 `.git` 判为抖动（见 `evals/EVALS.md`）。
+
+### Fixed
+
+- **`/pdlc-fix` 写明状态文件用缺陷ID**：新建 `docs/.pdlc-state/<缺陷ID>.json`，Bug 出在已有功能里也不改那个功能的状态文件。以前正文只写 `<feature-id>.json`，没说修 Bug 时该填哪个 ID；改了已发布功能的状态文件，`/pdlc-ship` 会把它当成又一个待发布的功能。
+
+### Tests
+
+- `tests/evals-scenario-check.sh` 为三个新场景各补判定桩测（共 20 条）；`tests/evals-runner-check.sh` 新增 2 条，守「`scenario_setup` 在调 agent 之前跑完、不漏到别的场景」。
+
 ## [1.7.8] - 2026-10-12
 
 本版让 Claude Code 以外的工具也能一条命令装上 pdlc：通用安装器 `npx skills add kanfu-panda/pdlc-skills` 从 main 直接装到 36 个 skill，`install.sh --target agents | codex` 不再要求本地克隆。仍 38 个命令，Claude Code 用户升级不需要迁移。

@@ -1,0 +1,28 @@
+{
+  "feature_id": "F20260801-090000",
+  "feature_name": "calc-max",
+  "created_at": "2026-08-01T09:00:00+08:00",
+  "current_stage": "ship_done",
+  "run_mode": "autonomous",
+  "history": [
+    { "stage": "requirements", "done_at": "2026-08-01T09:05:00+08:00",
+      "produced": ["docs/01_requirements/prd/F20260801-090000-calc-max-prd.md"] },
+    { "stage": "design", "done_at": "2026-08-01T09:15:00+08:00",
+      "produced": ["docs/02_design/api/F20260801-090000-calc-max-design.md"] },
+    { "stage": "tdd", "done_at": "2026-08-01T09:25:00+08:00",
+      "produced": ["tests/test_max.sh"] },
+    { "stage": "impl", "done_at": "2026-08-01T09:40:00+08:00",
+      "produced": ["src/max.sh", "CHANGELOG.md"] },
+    { "stage": "review", "done_at": "2026-08-01T09:55:00+08:00",
+      "produced": [] },
+    { "stage": "ship", "done_at": "2026-08-02T10:00:00+08:00",
+      "produced": ["CHANGELOG.md"] }
+  ],
+  "last_phase_result": {
+    "stage": "ship", "ok": true, "advanced_to": null,
+    "checks": { "tests_pass": true, "lint_clean": true },
+    "blocked_reason": null, "run_mode": "interactive", "at": "2026-08-02T10:00:00+08:00"
+  },
+  "relations": { "extends": [], "depends_on": [], "supersedes": [], "resolves": [], "conflicts_with": [], "relates_to": [] },
+  "next_step": "pdlc-deploy"
+}
