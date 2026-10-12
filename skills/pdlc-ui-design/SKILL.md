@@ -1,7 +1,7 @@
 ---
 name: pdlc-ui-design
 description: 按 PRD 出 UI/UX 设计文档（页面线框、交互流程、四种状态）；要配色 / 字体 / 设计系统用 /pdlc-ui-design-pro
-argument-hint: <功能描述 | 页面名>
+argument-hint: "<功能描述 | 页面名>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: design

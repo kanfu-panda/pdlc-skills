@@ -1,7 +1,7 @@
 ---
 name: pdlc-lint
 description: 跑项目 lint 并自动修复（check / fix），或为项目配置 lint 规则（setup）
-argument-hint: [目录 | 文件]
+argument-hint: "[目录 | 文件]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: quality

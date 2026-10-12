@@ -1,7 +1,7 @@
 ---
 name: pdlc-implement
 description: 按设计文档和已有测试用例实现代码（带前置守卫、自检、handoff）
-argument-hint: <功能描述或功能ID>
+argument-hint: "<功能描述或功能ID>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: impl

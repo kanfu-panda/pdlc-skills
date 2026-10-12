@@ -1,7 +1,7 @@
 ---
 name: pdlc-refactor
 description: 代码重构（保持外部行为不变，改善内部结构）
-argument-hint: <重构目标 | 文件路径>
+argument-hint: "<重构目标 | 文件路径>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: refactor

@@ -1,7 +1,7 @@
 ---
 name: pdlc-db-migrate
 description: 按数据库设计生成与管理迁移脚本（先沿用项目已有的迁移工具），不直接连库执行 SQL
-argument-hint: <迁移描述 | 版本号>
+argument-hint: "<迁移描述 | 版本号>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering

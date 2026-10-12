@@ -1,7 +1,7 @@
 ---
 name: pdlc-ship
 description: 发布工作流（收评审通过的功能 → 跑测试 → bump VERSION → 更 CHANGELOG → tag）
-argument-hint: [--version <x.y.z>] [--skip-tests (仅 hotfix)] | --tag-after-merge [v<x.y.z>]
+argument-hint: "[--version <x.y.z>] [--skip-tests (仅 hotfix)] | --tag-after-merge [v<x.y.z>]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 layer: 2
 stage: ship

@@ -1,7 +1,7 @@
 ---
 name: pdlc-security
 description: 安全审计——先跑依赖漏洞与密钥扫描工具并记录退出码，再人工审阅鉴权、注入、敏感数据等
-argument-hint: <模块 | 服务名>
+argument-hint: "<模块 | 服务名>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: quality

@@ -1,7 +1,7 @@
 ---
 name: pdlc-fix
 description: 全自动 Bug 修复（定位→复现→修复→测试→文档）
-argument-hint: <Bug 描述>
+argument-hint: "<Bug 描述>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 1
 stage: fix

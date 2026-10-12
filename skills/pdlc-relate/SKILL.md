@@ -1,7 +1,7 @@
 ---
 name: pdlc-relate
 description: 管理 feature 关系链（set/query/impact/orphans/rebuild/validate）
-argument-hint: <set|query|impact|orphans|rebuild|validate> [args]
+argument-hint: "<set|query|impact|orphans|rebuild|validate> [args]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: ops

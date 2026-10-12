@@ -1,7 +1,7 @@
 ---
 name: pdlc-e2e
 description: 端到端测试（生成或执行 E2E 用例）
-argument-hint: <功能ID | 业务流程描述>
+argument-hint: "<功能ID | 业务流程描述>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: e2e

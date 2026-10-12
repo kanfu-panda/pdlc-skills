@@ -71,7 +71,8 @@ sub-commands like /pdlc-feature, /pdlc-prd, /pdlc-tdd, ...
 docs/decisions/0003-multi-platform-adapters.md) and installs the pdlc skills
 into ~/.codex/skills/ (all but the 2 Claude Code-only ones). Codex skills
 are description-triggered — after restarting Codex, drive PDLC in natural
-language ("用 pdlc 写个 PRD"), not slash commands. Requires a local clone + python3.
+language ("用 pdlc 写个 PRD"), not slash commands. Requires python3; without a
+local clone the installer downloads the main source archive first.
 
 --target agents builds the same Agent Skills standard projection (see
 docs/decisions/0007-agent-skills-standard.md). ~/.agents/skills/ and
@@ -79,8 +80,12 @@ docs/decisions/0007-agent-skills-standard.md). ~/.agents/skills/ and
 Amp and Goose; use --dest for tools with their own directory (Cursor,
 Windsurf, Kiro, Roo Code). Only pdlc-* directories are ever written or removed.
 
-Remote (no clone) install one-liner:
+Remote (no clone) install one-liners:
   curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/install.sh | bash -s -- --global
+  curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/install.sh | bash -s -- --target agents
+
+Or with the generic Agent Skills installer (36 skills, any supported tool):
+  npx skills add ${GITHUB_OWNER}/${GITHUB_REPO}
 
 Equivalent native commands:
   claude plugin marketplace add ${GITHUB_OWNER}/${GITHUB_REPO}
@@ -175,14 +180,55 @@ install_projection() {
   rm -rf "${dest:?}"/pdlc-*/
   for d in "$stage"/pdlc-*; do mv "$d" "$dest"/; done
   rmdir "$stage"
-  if [[ "$IS_LOCAL_CLONE" -eq 1 ]]; then head -1 "$SCRIPT_DIR/VERSION" > "$dest/.pdlc-version"; fi
+  if [[ -f "$SRC_DIR/VERSION" ]]; then head -1 "$SRC_DIR/VERSION" > "$dest/.pdlc-version"; fi
 }
 
 require_python3() {
   if ! command -v python3 >/dev/null 2>&1; then
-    echo "Error: python3 not found — required to build the Codex adapter." >&2
+    echo "Error: python3 not found — required to build the pdlc skills for this tool." >&2
     exit 1
   fi
+}
+
+# 构建投影用的源码目录：在克隆里跑就用克隆；curl 管道跑（没有克隆）就下载 main 的源码包到临时目录。
+# 用 main 而不是最新 tag，与 Claude Code 插件市场装的版本一致。
+# PDLC_SOURCE_TARBALL 可覆盖下载地址（测试用 file://，也可以指向某个 tag 的源码包）
+SRC_DIR=""
+SRC_TMP=""
+PDLC_SOURCE_TARBALL="${PDLC_SOURCE_TARBALL:-https://codeload.github.com/${GITHUB_OWNER}/${GITHUB_REPO}/tar.gz/refs/heads/main}"
+
+cleanup_src_tmp() {
+  if [[ -n "$SRC_TMP" ]]; then rm -rf "$SRC_TMP"; fi
+}
+
+ensure_source() {
+  if [[ "$IS_LOCAL_CLONE" -eq 1 ]]; then
+    SRC_DIR="$SCRIPT_DIR"
+    return
+  fi
+  if ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
+    echo "Error: curl and tar are required to fetch pdlc-skills (or run install.sh from a local clone)." >&2
+    exit 1
+  fi
+  SRC_TMP="$(mktemp -d "${TMPDIR:-/tmp}/pdlc-src.XXXXXX")"
+  trap cleanup_src_tmp EXIT
+  echo "Fetching pdlc-skills source (${PDLC_SOURCE_TARBALL}) ..."
+  if ! curl -fsSL "$PDLC_SOURCE_TARBALL" | tar -xz -C "$SRC_TMP"; then
+    echo "Error: could not download or unpack ${PDLC_SOURCE_TARBALL}" >&2
+    exit 1
+  fi
+  # 源码包解开是一层 <仓库名>-<分支或 tag>/ 目录
+  SRC_DIR="$(find "$SRC_TMP" -mindepth 2 -maxdepth 2 -path '*/.claude-plugin' -type d | head -1)"
+  SRC_DIR="${SRC_DIR%/.claude-plugin}"
+  if [[ -z "$SRC_DIR" || ! -f "$SRC_DIR/adapters/build_agent_skills.py" ]]; then
+    echo "Error: ${PDLC_SOURCE_TARBALL} does not look like a pdlc-skills source archive." >&2
+    exit 1
+  fi
+}
+
+# projection_dir <产物子目录名> —— 克隆里构建到 dist/ 下（方便贡献者查看），远程安装构建到临时目录
+projection_dir() {
+  if [[ "$IS_LOCAL_CLONE" -eq 1 ]]; then echo "$SRC_DIR/dist/$1"; else echo "$SRC_TMP/dist/$1"; fi
 }
 
 # Remove the v1.5.0 mistaken prompts install so upgraders don't keep dead files.
@@ -194,19 +240,13 @@ clean_legacy_codex_prompts() {
 }
 
 do_codex_install() {
-  if [[ "$IS_LOCAL_CLONE" -ne 1 ]]; then
-    cat >&2 <<EOF
-Error: --target codex must run from a local clone of pdlc-skills.
-  git clone https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git
-  cd ${GITHUB_REPO} && bash install.sh --target codex
-EOF
-    exit 1
-  fi
   require_python3
+  ensure_source
 
-  local build_dir="$SCRIPT_DIR/dist/codex"
+  local build_dir
+  build_dir="$(projection_dir codex)"
   echo "Building Codex adapter from skills/ ..."
-  python3 "$SCRIPT_DIR/adapters/build_codex.py" "$build_dir"
+  python3 "$SRC_DIR/adapters/build_codex.py" "$build_dir"
 
   clean_legacy_codex_prompts
 
@@ -263,19 +303,13 @@ agents_dest() {
 }
 
 do_agents_install() {
-  if [[ "$IS_LOCAL_CLONE" -ne 1 ]]; then
-    cat >&2 <<EOF
-Error: --target agents must run from a local clone of pdlc-skills.
-  git clone https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git
-  cd ${GITHUB_REPO} && bash install.sh --target agents
-EOF
-    exit 1
-  fi
   require_python3
-  local dest build_dir="$SCRIPT_DIR/dist/agent-skills" n
+  ensure_source
+  local dest build_dir n
   dest="$(agents_dest)"
+  build_dir="$(projection_dir agent-skills)"
   echo "Building the Agent Skills projection from skills/ ..."
-  python3 "$SCRIPT_DIR/adapters/build_agent_skills.py" "$build_dir"
+  python3 "$SRC_DIR/adapters/build_agent_skills.py" "$build_dir"
   echo ""
   echo "Installing Agent Skills → ${dest}"
   mkdir -p "$dest"

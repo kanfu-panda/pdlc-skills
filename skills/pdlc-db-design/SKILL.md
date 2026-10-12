@@ -1,7 +1,7 @@
 ---
 name: pdlc-db-design
 description: 按 PRD 设计数据库表结构、索引与 ER 图，产出 docs/02_design/database/ 设计文档；生成迁移脚本用 /pdlc-db-migrate
-argument-hint: <功能ID | 数据模型描述>
+argument-hint: "<功能ID | 数据模型描述>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: design

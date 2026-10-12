@@ -1,7 +1,7 @@
 ---
 name: pdlc-status
 description: 查看项目 PDLC 状态总览（读 docs/.pdlc-state/ 输出进度）
-argument-hint: [feature-id | --all]
+argument-hint: "[feature-id | --all]"
 allowed-tools: Read, Glob, Bash
 layer: 1
 stage: ops

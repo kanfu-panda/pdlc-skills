@@ -7,19 +7,20 @@
 [![Version](https://img.shields.io/github/v/release/kanfu-panda/pdlc-skills?label=version&color=blue)](./CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/kanfu-panda/pdlc-skills?style=social)](https://github.com/kanfu-panda/pdlc-skills/stargazers)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-orange)](https://docs.anthropic.com/)
+[![Agent Skills](https://img.shields.io/badge/Agent%20Skills-Codex%20%C2%B7%20Copilot%20%C2%B7%20Cursor%20%C2%B7%20Gemini%20CLI-green)](https://agentskills.io/specification)
 
 > Author: **kanfu-panda**
 > Repo: [github.com/kanfu-panda/pdlc-skills](https://github.com/kanfu-panda/pdlc-skills)
 > License: [MIT](./LICENSE)
 
-**pdlc-skills** is built on one rule: **an AI saying "done" doesn't count — exit codes do.** It's a [Claude Code plugin](https://docs.anthropic.com/) shipping a staged PDLC (Product Development Life Cycle) workflow — PRD → design → TDD → implement → review → ship → deploy → retro — on top of an **auditable, on-disk state machine**: every stage persists its artifacts to `docs/`, updates a per-feature state file, demands red tests before code, self-checks before handing off, and auto-repairs at most once.
+**pdlc-skills** is built on one rule: **an AI saying "done" doesn't count — exit codes do.** It's a set of skills — a plugin in [Claude Code](https://docs.anthropic.com/), and a one-command install in Codex, GitHub Copilot, Cursor, Gemini CLI and any other tool that loads the [Agent Skills standard](https://agentskills.io/specification) — shipping a staged PDLC (Product Development Life Cycle) workflow — PRD → design → TDD → implement → review → ship → deploy → retro — on top of an **auditable, on-disk state machine**: every stage persists its artifacts to `docs/`, updates a per-feature state file, demands red tests before code, self-checks before handing off, and auto-repairs at most once.
 
 Four things fall out of that:
 
 - **Verified** — the test / lint / coverage results in the state machine are produced by a script from **real command exit codes**, never typed in by the model; every state write is followed by a contract check; and behavioural evals run the skills against real models to catch the model quietly ignoring the rules. See [How it's verified](#how-its-verified).
 - **Auditable** — every artifact lands on disk; you `git diff` exactly what the AI did.
 - **Autonomous** — because the checks are objective, a loop can drive `tdd → implement → review` to convergence unattended, each step in a fresh process, with fail-stop, stuck-stop, and budget guards.
-- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (38 slash commands + statusline + in-plugin loop engine); **Codex** (Claude-Code-compatible distributions) and others drive the same methodology via adapters. See [Multi-platform](#multi-platform-other-ai-coding-tools).
+- **Portable** — the state machine lives in your repo, so it's tool-agnostic. **Claude Code** has the richest integration (38 slash commands + statusline + in-plugin loop engine); other tools install 36 skills with `npx skills add kanfu-panda/pdlc-skills` and drive the same methodology. See [Multi-platform](#multi-platform-other-ai-coding-tools).
 
 ---
 
@@ -120,6 +121,8 @@ curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/instal
 
 That's it. The installer is a thin wrapper around `claude plugin marketplace add` + `claude plugin install`: it registers the marketplace source and installs the plugin into your `.claude/plugins/pdlc/` directory.
 
+Not on Claude Code? Jump to [Multi-platform](#multi-platform-other-ai-coding-tools) — it's one command there too.
+
 ### Upgrade
 
 ```bash
@@ -166,7 +169,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.7 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.8 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -177,28 +180,34 @@ In Claude Code (after restarting the session), type `/` and start typing `pdlc-`
 
 Claude Code has the **richest integration** — 38 slash commands + statusline + in-plugin autonomous loop. But the PDLC methodology, state machine and templates are **platform-neutral**: the same `docs/.pdlc-state/` carries over no matter which tool drives it, so you can switch tools (or share a repo across a team on different tools) without losing PDLC state.
 
-Most AI coding tools now load the [Agent Skills open standard](https://agentskills.io/specification). pdlc builds one standard-conformant projection of its skills (36 of them — all but the 2 Claude Code-only ones; every one passes the official `skills-ref` validator) and installs it wherever your tool looks:
+Most AI coding tools now load the [Agent Skills open standard](https://agentskills.io/specification). pdlc builds one standard-conformant projection of its skills (36 of them — all but the 2 Claude Code-only ones; every one passes the official `skills-ref` validator) and installs it wherever your tool looks. Two ways, neither needs a clone:
 
 ```bash
-git clone https://github.com/kanfu-panda/pdlc-skills.git && cd pdlc-skills
-bash install.sh --target agents                  # ~/.agents/skills/  (Copilot, Gemini CLI, OpenCode, Amp, Goose)
-bash install.sh --target agents --project DIR    # DIR/.agents/skills/
-bash install.sh --target agents --dest DIR       # any tool's own directory, e.g. .cursor/skills, ~/.gemini/config/skills (Antigravity CLI)
-bash install.sh --target codex                   # ~/.codex/skills/
-# add --uninstall to remove; only pdlc-* directories are ever written or removed
+# ① the generic installer: pick which tools to install into (Codex, Copilot, Cursor, Gemini CLI, OpenCode, … dozens)
+npx skills add kanfu-panda/pdlc-skills
+
+# ② this repo's installer: installs the standard projection above (needs python3)
+curl -fsSL https://raw.githubusercontent.com/kanfu-panda/pdlc-skills/main/install.sh \
+  | bash -s -- --target agents                   # ~/.agents/skills/  (Copilot, Gemini CLI, OpenCode, Amp, Goose)
+#   --target agents --project DIR                # DIR/.agents/skills/
+#   --target agents --dest DIR                   # any tool's own directory, e.g. .cursor/skills, ~/.gemini/config/skills (Antigravity CLI)
+#   --target codex                               # ~/.codex/skills/
+#   add --uninstall to remove; only pdlc-* directories are ever written or removed
 ```
 
-Skills trigger by description: drive PDLC in natural language (`用 pdlc 写个 PRD：<一句话需求>`, "run the pdlc review stage for F…"). Requires a local clone + python3.
+The difference: ① installs the skills exactly as they are in the repo (the frontmatter carries Claude Code's argument hint, and the argument line in the body is a `$ARGUMENTS` placeholder) — on GitHub Copilot CLI 1.0.88 it triggers and reads the arguments correctly; ② installs the standard projection, with the argument line rewritten and a trigger hint added, and passes the official validator. If unsure, use ①. **Claude Code users: install the plugin**, not ① — otherwise you get a second copy of every skill.
+
+Skills trigger by description: drive PDLC in natural language (`用 pdlc 写个 PRD：<一句话需求>`, "run the pdlc review stage for F…").
 
 | Tool | Where | Status |
 |---|---|---|
 | Claude Code | plugin (this repo) | ✅ first-class |
-| Codex | `--target codex` | ✅ passed the state-integrity gate — [ADR 0004](./docs/decisions/0004-codex-loop-run.md); verified on a Codex distribution that reads `~/.codex/skills/`, vanilla OpenAI Codex unverified |
-| GitHub Copilot | `--target agents` (or `--project DIR`) | CLI 1.0.88: loads and triggers · ❌ **failed** the state-integrity gate (3/3 rounds, default model) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸); fine for single stages, not for autonomous loops · VS Code not run |
+| Codex | `--target codex` (`npx skills add` installs into `~/.agents/skills/`; the distribution we verified reads `~/.codex/skills/`) | ✅ passed the state-integrity gate — [ADR 0004](./docs/decisions/0004-codex-loop-run.md); verified on a Codex distribution that reads `~/.codex/skills/`, vanilla OpenAI Codex unverified |
+| GitHub Copilot | `npx skills add`, or `--target agents` (`--project DIR`) | CLI 1.0.88: loads and triggers with either install · ❌ **failed** the state-integrity gate (3/3 rounds, default model) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸); fine for single stages, not for autonomous loops · VS Code not run |
 | Grok CLI | nothing extra — it loads the installed Claude Code plugin by itself | 1.0.41: ✅ passed the state-integrity gate (3/3 rounds) — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) · not yet in the loop driver |
 | Antigravity CLI (`agy`) | `--target agents --dest ~/.gemini/config/skills` (1.2.9 ignores the workspace `.agents/skills/`) | 1.2.9: loads and triggers · ❌ **failed** the gate — claimed "done, state updated" without writing a single file — [ADR 0007 §6](./docs/decisions/0007-agent-skills-standard.md#6-真机准入闸) |
-| Gemini CLI · OpenCode · Amp · Goose | `--target agents` | loads per their docs · not run by us |
-| Cursor · Windsurf · Kiro · Roo Code | `--target agents --dest <their skills dir>` | loads per their docs · not run by us |
+| Gemini CLI · OpenCode · Amp · Goose | `npx skills add`, or `--target agents` | loads per their docs · not run by us |
+| Cursor · Windsurf · Kiro · Roo Code | `npx skills add`, or `--target agents --dest <their skills dir>` | loads per their docs · not run by us |
 
 "Loads" is not the same as "trustworthy state": a tool must pass the **state-integrity gate** (`evals/` `honest-checks` — a deliberately red test, checking that `checks` come from real exit codes) before we recommend it for autonomous loops. **Any other tool**: put [`docs/pdlc-methodology.md`](./docs/pdlc-methodology.md) in your project rules (`AGENTS.md`, …) and drive PDLC in natural language.
 

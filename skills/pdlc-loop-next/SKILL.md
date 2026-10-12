@@ -1,7 +1,7 @@
 ---
 name: pdlc-loop-next
 description: 打印循环下一步应执行的命令（机器可读，供 loop 驱动）
-argument-hint: <功能ID>
+argument-hint: "<功能ID>"
 allowed-tools: Read, Glob, Bash
 layer: 3
 stage: ops

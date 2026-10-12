@@ -195,6 +195,32 @@ inst --target agents --dest --uninstall; rc=$?
 [[ "$rc" -ne 0 ]] && grep -q -- "--dest requires a value" "$ROOT/inst.out" \
   && ok "--dest 后面紧跟另一个选项 → 当作缺值" || bad "--dest 把下一个选项当成了目录" "rc=${rc}"
 
+# ─── 不克隆：curl … | bash -s -- --target agents|codex ───
+# 管道里跑时没有 BASH_SOURCE、找不到克隆，安装脚本自己下载源码包再构建。
+# 用工作树里的文件打一个与 GitHub 源码包同结构（顶层一层 <仓库>-<分支>/）的本地包，经 file:// 喂进去，不连网
+echo ""
+echo "Test: 不克隆安装（管道运行，下载源码包）"
+T="$ROOT/tarball"; mkdir -p "$T/pdlc-skills-main" "$ROOT/tmp"
+git ls-files -co --exclude-standard -z | tar --null -T - -cf - | tar -xf - -C "$T/pdlc-skills-main"
+(cd "$T" && tar -czf src.tar.gz pdlc-skills-main)
+H2="$ROOT/home2"; mkdir -p "$H2"
+pipe_inst() { HOME="$H2" TMPDIR="$ROOT/tmp" PDLC_SOURCE_TARBALL="$1" bash -s -- "${@:2}" < install.sh > "$ROOT/pipe.out" 2>&1; }
+pipe_inst "file://$T/src.tar.gz" --target agents; rc=$?
+assert_eq "管道安装 agents 退出 0" "0" "$rc"
+assert_eq "管道安装装到 ~/.agents/skills 的 pdlc skill 数" "36" "$(find "$H2/.agents/skills" -mindepth 1 -maxdepth 1 -name 'pdlc-*' 2>/dev/null | wc -l | tr -d ' ')"
+assert_eq "管道安装也写版本戳" "$(head -1 VERSION)" "$(cat "$H2/.agents/skills/.pdlc-version" 2>/dev/null)"
+assert_eq "管道安装不留临时源码目录" "0" "$(find "$ROOT/tmp" -mindepth 1 -maxdepth 1 -name 'pdlc-src.*' | wc -l | tr -d ' ')"
+pipe_inst "file://$T/src.tar.gz" --target codex; rc=$?
+assert_eq "管道安装 codex 退出 0" "0" "$rc"
+assert_eq "管道安装装到 ~/.codex/skills 的 pdlc skill 数" "36" "$(find "$H2/.codex/skills" -mindepth 1 -maxdepth 1 -name 'pdlc-*' 2>/dev/null | wc -l | tr -d ' ')"
+rm -rf "$H2/.agents"
+echo "not a tarball" > "$T/bad.tar.gz"
+pipe_inst "file://$T/bad.tar.gz" --target agents; rc=$?
+[[ "$rc" -ne 0 ]] && grep -q "could not download or unpack" "$ROOT/pipe.out" \
+  && ok "源码包坏了 → 点名报错" || bad "源码包坏了没有报错" "rc=${rc}"
+[[ -d "$H2/.agents/skills" ]] && bad "源码包坏了却建了目标目录" || ok "源码包坏了不碰目标目录"
+assert_eq "失败时也不留临时源码目录" "0" "$(find "$ROOT/tmp" -mindepth 1 -maxdepth 1 -name 'pdlc-src.*' | wc -l | tr -d ' ')"
+
 echo ""
 echo "Final: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

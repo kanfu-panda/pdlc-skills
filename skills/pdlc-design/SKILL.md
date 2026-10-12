@@ -1,7 +1,7 @@
 ---
 name: pdlc-design
 description: 创建技术设计文档（自动生成 + 自检 + handoff）
-argument-hint: <功能ID | 功能描述>
+argument-hint: "<功能ID | 功能描述>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 2
 stage: design

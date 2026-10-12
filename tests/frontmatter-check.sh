@@ -16,6 +16,7 @@
 #      named accordingly under skills/)
 #   5. Every @include path must resolve to a real file under references/
 #   6. Sub-skill `name:` field must equal the parent directory name
+#   1b. `argument-hint` must be a double-quoted string (strict YAML)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -122,6 +123,13 @@ for f in skills/*/SKILL.md; do
             issues+=("missing field: $field")
         fi
     done
+
+    # argument-hint 必须写成双引号字符串：`[--init] [--autonomous]` 不加引号，严格 YAML 解析器
+    # （npx skills 等通用安装器）要么报错跳过整个 skill，要么把 `[项目目录]` 悄悄读成列表
+    hint=$(extract_field "$f" argument-hint)
+    if [[ -n "$hint" && ! "$hint" =~ ^\".*\"$ ]]; then
+        issues+=("argument-hint must be a double-quoted string (strict YAML parsers skip or misread it otherwise): $hint")
+    fi
 
     name_field=$(extract_field "$f" name)
     if [[ "$name_field" != "$skill_name" ]]; then

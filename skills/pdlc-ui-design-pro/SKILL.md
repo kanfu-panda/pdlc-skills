@@ -1,7 +1,7 @@
 ---
 name: pdlc-ui-design-pro
 description: 在 /pdlc-ui-design 基础上加视觉设计系统（配色、字体、组件规范），依赖 ui-ux-pro-max，缺失时降级为基础设计
-argument-hint: <功能描述 | 设计目标>
+argument-hint: "<功能描述 | 设计目标>"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: design

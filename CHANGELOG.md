@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.8] - 2026-10-12
+
+本版让 Claude Code 以外的工具也能一条命令装上 pdlc：通用安装器 `npx skills add kanfu-panda/pdlc-skills` 从 main 直接装到 36 个 skill，`install.sh --target agents | codex` 不再要求本地克隆。仍 38 个命令，Claude Code 用户升级不需要迁移。
+
+### Added
+
+- **`npx skills add kanfu-panda/pdlc-skills`**：通用 Agent Skills 安装器可以直接从本仓库 main 装，交互选择装进 Codex、Copilot、Cursor、Gemini CLI 等工具。装的是 skill 原样；GitHub Copilot CLI 1.0.88 上实测能触发、能正确理解参数。`pdlc-settings`、`pdlc-loop-run` 只对 Claude Code 有用，标了 `metadata.internal`，默认不装。
+- **不克隆也能装投影**：`curl … install.sh | bash -s -- --target agents`（或 `--target codex`）在没有本地克隆时，先下载 main 的源码包到临时目录、构建完即删。仍需 python3。`PDLC_SOURCE_TARBALL` 可改下载地址。
+- README 首屏与安装一节写明支持哪些工具、怎么装，加了 Agent Skills 徽章；`docs/usage-guide.md` §4.6 同步。
+
+### Fixed
+
+- **38 个 `argument-hint` 改为双引号字符串**。以前 `[--init] [--autonomous]` 这类写法不加引号，严格 YAML 解析器会报错跳过：`npx skills add` 实测只找到 34 个，`pdlc-quality`、`pdlc-retro`、`pdlc-ship`、`pdlc-test-setup` 被跳过；另有 7 个 `[项目目录]` 这类写法被悄悄读成列表。Claude Code 看到的提示文字不变。`tests/frontmatter-check.sh` 新增断言，防止再写回去。
+
+### Tests
+
+- `tests/adapter-agent-skills-check.sh` 新增 9 条：用工作树打一个与 GitHub 源码包同结构的本地包，经管道运行 `install.sh`，验 agents / codex 两个目标都能装、写版本戳、不留临时目录，源码包坏了点名报错且不碰目标目录。
+
 ## [1.7.7] - 2026-10-09
 
 本版给 `/pdlc-feature` 加上轻量模式 `--lite`，降低小功能的上手门槛。仍 38 个命令，状态文件没有新字段，升级不需要迁移。

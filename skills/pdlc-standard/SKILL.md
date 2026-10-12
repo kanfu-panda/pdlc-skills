@@ -1,7 +1,7 @@
 ---
 name: pdlc-standard
 description: 管理 00_standards 规范型 surface 产物（add/edit/archive/index）
-argument-hint: <add|edit|archive|index> [args]
+argument-hint: "<add|edit|archive|index> [args]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 layer: 3
 stage: engineering
