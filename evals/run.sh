@@ -29,7 +29,8 @@ FLAKE_RETRIES="${EVAL_FLAKE_RETRIES:-2}"
 
 # 默认放行 pdlc-implement 在 frontmatter 里声明的那组工具。
 # 模型必须真能跑 Bash，否则跑不了 unit/lint，honest-checks 判别式无从产生。
-DEFAULT_CLAUDE_FLAGS="--allowedTools Bash Read Write Edit Glob Grep"
+# Task / Agent：/pdlc-feature 阶段二～五各派一个子代理，不放行就只验到「没有子代理工具」的回退路径。
+DEFAULT_CLAUDE_FLAGS="--allowedTools Bash Read Write Edit Glob Grep Task Agent"
 # 常见误用：把额外参数设在 CLAUDE_FLAGS 上——下一行会把它覆盖掉，设了等于没设，却照样跑出结论。
 if [ -n "${CLAUDE_FLAGS:-}" ] && [ -z "${EVAL_CLAUDE_FLAGS:-}" ]; then
   printf '⚠️  检测到 CLAUDE_FLAGS=%s，但本脚本读的是 EVAL_CLAUDE_FLAGS——CLAUDE_FLAGS 不会生效\n' "${CLAUDE_FLAGS}" >&2

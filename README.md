@@ -170,7 +170,7 @@ bash install.sh --global   # installs from your local clone
 
 ```bash
 claude plugin list | grep pdlc
-# expected: pdlc@pdlc-skills  Version: 1.7.10 (or newer)  Status: ✔ enabled
+# expected: pdlc@pdlc-skills  Version: 1.7.11 (or newer)  Status: ✔ enabled
 ```
 
 In Claude Code (after restarting the session), type `/` and start typing `pdlc-` — you should see all 38 sub-commands (`/pdlc-feature`, `/pdlc-prd`, `/pdlc-tdd`, ...) in autocomplete.
@@ -257,7 +257,7 @@ One-sentence prompts drive the whole chain.
 
 | Slash command | Purpose |
 |---|---|
-| `/pdlc-feature` | End-to-end new feature (PRD → Design → TDD → Implement → Review → Ship); `--lite` for small features skips task breakdown, PRD review and design |
+| `/pdlc-feature` | End-to-end new feature (PRD → Design → TDD → Implement → Review → Ship); `--lite` for small features skips task breakdown, PRD review and design; in Claude Code each stage from design to review runs in a fresh subagent |
 | `/pdlc-fix` | End-to-end bug fix (locate → reproduce → fix → test → document), then `/pdlc-review` |
 | `/pdlc-status` | Show the project's PDLC state at a glance |
 

@@ -152,7 +152,7 @@ agent 根本没跑起来时，状态机同样"没变"，看着像通过。
 | `--keep` | 关 | 保留临时目录（配合 `--replay` 用） |
 | `--replay <目录>` | — | 对已保留的现场离线复跑断言，**不调模型**；须配 `--only` |
 
-环境变量：`EVAL_CLAUDE_FLAGS`（默认 `--allowedTools Bash Read Write Edit Glob Grep`）、
+环境变量：`EVAL_CLAUDE_FLAGS`（默认 `--allowedTools Bash Read Write Edit Glob Grep Task Agent`）、
 `EVAL_PLUGIN_DIR`（claude 臂加载哪份插件，默认本仓库根；显式置空 = 测已安装版本）、
 `EVAL_FLAKE_RETRIES`（默认 2）、`EVAL_TIMEOUT`。
 

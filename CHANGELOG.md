@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.11] - 2026-10-12
+
+本版让 `/pdlc-feature` 的设计、测试、实现、评审各阶段在 Claude Code 里各用一个全新的子代理执行。仍 38 个命令，状态文件没有新字段，升级不需要迁移。
+
+### Changed
+
+- **`/pdlc-feature` 阶段二～五各派一个全新子代理**（有 Task / Agent 工具时）：主会话只做需求澄清、PRD 与最终报告，以及每阶段之后的核对。子代理只读磁盘上的文档和代码，写实现的看不到写测试时的推理；主会话上下文也不再随阶段膨胀。
+  - 子代理执行的是 `/pdlc-feature` 自己的那一节（不是单独的 `/pdlc-design` 等命令），所以 `--lite`、评审阶段写 CHANGELOG 等行为与以前一致。
+  - 子代理回来后，主会话自己读状态文件核对 `last_phase_result`，不信子代理的文字；不对就停下，`/pdlc-feature <功能ID>` 续跑。子代理出错重派一次，仍不行就停，不在主会话里替它做完。
+  - 没有子代理工具（其它平台）时照旧在主会话里依次执行，最终报告写明「各阶段未隔离执行」。
+- `evals/run.sh` 的 Claude 臂默认放行 `Task Agent`，评测走的是用户实际会走的子代理路径。
+
+### Tests
+
+- 实测：Claude 跑 `feature-lite` 3 轮通过；其中一轮看 stream-json，主会话派了 3 个子代理（阶段三、四、五，`--lite` 跳过阶段二），各自调用 12～16 次工具，状态 history 为 requirements → tdd → impl → review。
+- ADR 0009 记录为什么执行 `/pdlc-feature` 自己的章节而不是调单独的阶段命令。
+
 ## [1.7.10] - 2026-10-12
 
 本版把「推不推进阶段」从模型手里拿走，交给脚本；Claude Code 另有一套默认关闭的项目级护栏。仍 38 个命令，状态文件格式向后兼容，升级不需要迁移。

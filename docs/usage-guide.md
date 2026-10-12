@@ -141,7 +141,7 @@ pdlc-skills 是 Claude Code plugin，**38 个阶段都是独立斜杠命令**，
 
 | 斜杠命令 | 用途 |
 |---|---|
-| `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布）；小功能加 `--lite`，跳过任务拆解、PRD 评审和技术设计 |
+| `/pdlc-feature` | 全自动新功能（PRD → 设计 → TDD → 实现 → 评审 → 发布）；小功能加 `--lite`，跳过任务拆解、PRD 评审和技术设计。Claude Code 里阶段二～五各交给一个全新的子代理，写实现的看不到写测试时的推理 |
 | `/pdlc-fix` | 全自动 Bug 修复（定位 → 复现 → 修复 → 测试 → 文档），下一步 `/pdlc-review` |
 | `/pdlc-status` | 项目 PDLC 状态总览（不落盘） |
 
