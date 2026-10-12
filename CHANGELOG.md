@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > ⚠️ **行为变更（请留意）**：
 > - **11 个写状态的命令收尾时改为调用 `scripts/pdlc-advance.sh`**，不再手写状态 JSON。脚本自己跑本阶段的检查，红了就不推进；`/pdlc-fix`、`/pdlc-refactor` 以前没跑检查，现在也跑 unit、coverage、lint。
 > - **实现阶段改了 tdd 写的测试会被拦下**：确实要改，须带 `--tests-changed "<理由>"`，理由记进 `auto_decisions`。
+>
+> **升级前请检查**：项目 `test-commands.yml` 配了 lint、全仓又本来就有 lint 报错的话，升级后连修个小缺陷也会被 lint 挡住（`blocked_reason` 是「检查未通过：lint_clean 为 false」）。解法二选一：把 lint 命令改成只查本次改动的文件，或先清掉欠账。`test-commands-template.yml` 里补了这段说明。
 
 ### Added
 
