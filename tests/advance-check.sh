@@ -79,8 +79,13 @@ echo 'echo test changed' > "$P/tests/test_a.sh"
 adv "$P" "$FID" --stage impl --next pdlc-review >/dev/null; rc=$?
 eq "改了 tdd 写的测试 → 退出 3" 3 "$rc"
 st "$P" .last_phase_result.blocked_reason | grep -q 'tests/test_a.sh' && ok "blocked_reason 点名被改的测试文件" || bad "没点名被改的测试"
+adv "$P" "$FID" --stage impl --next pdlc-review --autonomous --tests-changed "断言和设计矛盾，改成设计的值" >/dev/null; rc=$?
+eq "--autonomous 下带 --tests-changed 也不推进 → 退出 3（模型不能自己批准改测试）" 3 "$rc"
+eq "自主模式改测试时 current_stage 仍是 tdd" tdd "$(st "$P" .current_stage)"
+st "$P" .last_phase_result.blocked_reason | grep -q '断言和设计矛盾' && ok "blocked_reason 带上给出的理由，交人判断" || bad "blocked_reason 没带理由" "$(st "$P" .last_phase_result.blocked_reason)"
+st "$P" .last_phase_result.blocked_reason | grep -q 'tests/test_a.sh' && ok "blocked_reason 点名被改的测试文件（自主模式）" || bad "自主模式没点名被改的测试"
 adv "$P" "$FID" --stage impl --next pdlc-review --tests-changed "断言写反了，已和设计核对" >/dev/null; rc=$?
-eq "带 --tests-changed → 退出 0" 0 "$rc"
+eq "交互模式（人已同意）带 --tests-changed → 退出 0" 0 "$rc"
 st "$P" '.history[-1].auto_decisions[0].point' | grep -q '改动 tdd 写的测试' && ok "改测试的理由记进 auto_decisions" || bad "理由没记进 auto_decisions"
 eq "null（coverage 未配置）不拦" null "$(st "$P" .last_phase_result.checks.coverage_pass)"
 eq "lint 通过" true "$(st "$P" .last_phase_result.checks.lint_clean)"
