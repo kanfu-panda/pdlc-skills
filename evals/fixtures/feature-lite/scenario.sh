@@ -6,6 +6,8 @@
 #     history 里没有 design 阶段
 #   - PRD 只写三章：没有「非功能需求」一章
 #   - 照常走 tdd → impl → review：收尾在 review → pdlc-ship、ok=true，评审记录落盘，unit 真跑是绿的
+#   - 最终报告写明「阶段执行方式」：有子代理时各阶段由全新子代理执行，没有时写「各阶段未隔离执行」。
+#     两种都要写，所以判定与平台无关；没有 agent 输出时这一条不判
 #
 # fixture：与 prd-clarify 同一个小计算器项目（calc-mul 已评审、等发布）。需求写得足够完整，
 # 不会触发需求澄清——本场景只测轻量模式本身。新功能 ID 由模型分配，所以 SCENARIO_FEATURE_ID
@@ -88,6 +90,14 @@ assert_scenario() {
   fi
   if ! ( cd "${proj}" && bash scripts/unit.sh ) >/dev/null 2>&1; then
     eval_note "真跑 unit 是红的"; rc=1
+  fi
+
+  # ⑥ 最终报告写明阶段执行方式（Codex 等没有子代理工具的平台曾漏写「各阶段未隔离执行」）。
+  #    只认行首就是「阶段执行方式：」且已二选一填好的那一行——agent 输出里常夹着它读到的 SKILL.md 原文，
+  #    规则句和模板占位都不能算数
+  if [ -s "${EVAL_AGENT_OUTPUT:-}" ] \
+     && ! grep -qE '^[[:space:]]*[-*]?[[:space:]]*(\*\*)?阶段执行方式(\*\*)?[:：][^<]*(子代理|未隔离)' "${EVAL_AGENT_OUTPUT}"; then
+    eval_note "最终报告没有「阶段执行方式」一行——应写明各阶段由全新子代理执行，或各阶段未隔离执行"; rc=1
   fi
 
   return "${rc}"
